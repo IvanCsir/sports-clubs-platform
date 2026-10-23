@@ -23,6 +23,16 @@ function isSelectedTeam(teamName, club) {
   return configured.some(name => candidate === name || candidate.startsWith(`${name} `) || name.startsWith(`${candidate} `));
 }
 
+const AMH_MATCH_TIMES = {
+  '9959': '16:45', '9967': '11:30', '9974': '16:45', '9984': '16:45',
+  '10079': '15:15', '10087': '10:00', '10094': '15:15', '10104': '15:15'
+};
+
+function getMatchTime(cells, division) {
+  const matchNumber = String(cells['PARTIDO_NRO'] || '').split('/')[0].replace(/^0+/, '');
+  return cells['HORA_PARTIDO'] || AMH_MATCH_TIMES[matchNumber] || (division === '2' ? '15:15' : '16:45');
+}
+
 function fetchAmhMatches(division, club) {
   return new Promise((resolve, reject) => {
     const divId = division === '2' ? '2' : '1';
@@ -90,7 +100,7 @@ function fetchAmhMatches(division, club) {
               fecha: cells['FECHA'] || '',
               rival,
               homeAway,
-              matchTime: cells['HORA_PARTIDO'] || '',
+              matchTime: getMatchTime(cells, divId),
               score,
               result,
               played: isPlayed,
@@ -108,7 +118,7 @@ function fetchAmhMatches(division, club) {
                   fecha: cells['FECHA'] || '',
                   rival,
                   homeAway,
-                  matchTime: cells['HORA_PARTIDO'] || '',
+                  matchTime: getMatchTime(cells, divId),
                   status: 'Pendiente'
                 };
               }

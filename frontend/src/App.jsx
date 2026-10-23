@@ -197,7 +197,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
         ? (fixtureMatchesCurrentCallup ? (meta['horario citacion'] || meta['horario citación'] || '') : '')
         : (meta['horario citacion'] || meta['horario citación'] || ''),
       matchTime: nextAmhMatch
-        ? (nextAmhMatch.matchTime || '')
+        ? (fixtureMatchesCurrentCallup && (meta['horario partido'] || meta.partido)
+          ? (meta['horario partido'] || meta.partido)
+          : (nextAmhMatch.matchTime || ''))
         : (meta['horario partido'] || meta.partido || '')
     });
     setCallupError('');
@@ -340,7 +342,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     ? (callupMatchesNextFixture ? (meta.cancha || '') : '')
     : (meta.cancha || '');
   const displayedMatchTime = nextAmhMatch
-    ? (nextAmhMatch.matchTime || '')
+    ? (callupMatchesNextFixture && (meta['horario partido'] || meta.partido)
+      ? (meta['horario partido'] || meta.partido)
+      : (nextAmhMatch.matchTime || ''))
     : (meta['horario partido'] || meta.partido || '');
   const visiblePlayers = physicalPlayers.filter(player => {
     const matchesCategory = physicalFilter === 'all' || player.filterTag === physicalFilter;
@@ -799,6 +803,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                   )}
                   <div className="callup-meta-grid">
                     <label>Cancha<input value={callupMetaDraft.venue || ''} onChange={event => setCallupMetaDraft(current => ({ ...current, venue: event.target.value }))} /></label>
+                    <label>Horario del partido<input value={callupMetaDraft.matchTime || ''} onChange={event => setCallupMetaDraft(current => ({ ...current, matchTime: event.target.value }))} placeholder="Ej.: 16:45" /></label>
                     <label>Horario de citación<input value={callupMetaDraft.callTime || ''} onChange={event => setCallupMetaDraft(current => ({ ...current, callTime: event.target.value }))} placeholder="Ej.: 14:30" /></label>
                   </div>
                   <div className="callup-selection">
