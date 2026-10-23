@@ -2,6 +2,7 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const { getClubAsync } = require('./api/_lib/club-config');
 
 // Cargar variables de entorno desde .env si existe (modo local)
 (function loadEnv() {
@@ -24,7 +25,6 @@ const path = require('path');
 })();
 
 const PORT = 3000;
-const AMH_BASE_URL = process.env.AMH_BASE_URL || 'http://15.235.75.172:8080';
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -36,9 +36,10 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
-function fetchAmhStandings(division, callback) {
+function fetchAmhStandings(division, club, callback) {
   const divId = division === '2' ? '2' : '1';
-  const url = `${AMH_BASE_URL}/ords/r/amh/torneos/5?p5_torneos_f=97&p5_jug_cod_division_f=${divId}`;
+  const tournament = club.tournament || {};
+  const url = `${tournament.baseUrl}/ords/r/amh/torneos/5?p5_torneos_f=${encodeURIComponent(tournament.tournamentId)}&p5_jug_cod_division_f=${divId}`;
   const client = url.startsWith('https:') ? https : http;
 
   client.get(url, res => {
@@ -96,7 +97,7 @@ function fetchAmhStandings(division, callback) {
         });
 
         callback(null, {
-          tournament: "Clausura Damas B 2026",
+          tournament: (tournament && tournament.name) || (tournament.tournamentId === '96' ? 'CLAUSURA DAMAS A - (2026)' : 'Clausura Damas B 2026'),
           division: divId,
           divisionName: divId === '2' ? 'Intermedia (Segunda)' : '1ra División (Primera)',
           standings: tableData,
@@ -110,9 +111,22 @@ function fetchAmhStandings(division, callback) {
   }).on('error', err => callback(err));
 }
 
-function fetchAmhMatches(division, callback) {
+function normalizeAmhTeamName(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/[().,'"']/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function isAmhClubTeam(teamName, club) {
+  const configuredNames = [club.tournament && club.tournament.teamName, club.shortName, club.name]
+    .filter(Boolean).map(normalizeAmhTeamName);
+  const candidate = normalizeAmhTeamName(teamName);
+  return configuredNames.some(name => candidate === name || candidate.startsWith(`${name} `) || name.startsWith(`${candidate} `));
+}
+
+function fetchAmhMatches(division, club, callback) {
   const divId = division === '2' ? '2' : '1';
-  const url = `${AMH_BASE_URL}/ords/f?p=1107:6:0:FLOW_EXCEL_OUTPUT:::P6_TORNEOS_P,P6_CLUB_P,P6_JUG_COD_DIVISION_P:97,3,${divId}`;
+  const tournament = club.tournament || {};
+  const url = `${tournament.baseUrl}/ords/f?p=1107:6:0:FLOW_EXCEL_OUTPUT:::P6_TORNEOS_P,P6_CLUB_P,P6_JUG_COD_DIVISION_P:${encodeURIComponent(tournament.tournamentId)},${encodeURIComponent(tournament.clubId)},${divId}`;
   const client = url.startsWith('https:') ? https : http;
 
   client.get(url, res => {
@@ -151,7 +165,8 @@ function fetchAmhMatches(division, callback) {
 
           const local = (cells['EQUIPO_LOCAL'] || '').trim();
           const visita = (cells['EQUIPO_VISITANTE'] || '').trim();
-          const isHome = local.toUpperCase().includes('REGATAS');
+          if (!isAmhClubTeam(local, club) && !isAmhClubTeam(visita, club)) return;
+          const isHome = isAmhClubTeam(local, club);
           const rival = (isHome ? visita : local).trim();
           const homeAway = isHome ? 'Local' : 'Visitante';
 
@@ -211,16 +226,16 @@ const server = http.createServer((req, res) => {
   // API Proxy para Torneo AMH (evita CORS y Mixed Content en local)
   if (reqPath === '/api/torneo') {
     const division = urlObj.searchParams.get('division') || '1';
-    fetchAmhStandings(division, (err, data) => {
+    getClubAsync(urlObj.searchParams.get('club')).then(club => new Promise((resolve, reject) => {
+      fetchAmhStandings(division, club, (err, data) => err ? reject(err) : resolve(data));
+    })).then(data => {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      if (err) {
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: err.message }));
-      } else {
-        res.writeHead(200);
-        res.end(JSON.stringify(data));
-      }
+      res.writeHead(200);
+      res.end(JSON.stringify(data));
+    }).catch(err => {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
     });
     return;
   }
@@ -228,24 +243,30 @@ const server = http.createServer((req, res) => {
   // API Proxy para Partidos AMH
   if (reqPath === '/api/torneo/matches') {
     const division = urlObj.searchParams.get('division') || '1';
-    fetchAmhMatches(division, (err, data) => {
+    getClubAsync(urlObj.searchParams.get('club')).then(club => new Promise((resolve, reject) => {
+      fetchAmhMatches(division, club, (err, data) => err ? reject(err) : resolve(data));
+    })).then(data => {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      if (err) {
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: err.message }));
-      } else {
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          division,
-          matches: data.allMatches || data.matches,
-          playedMatches: data.playedMatches,
-          pendingMatches: data.pendingMatches,
-          nextMatch: data.nextMatch,
-          updatedAt: new Date().toISOString()
-        }));
-      }
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        division,
+        matches: data.allMatches || data.matches,
+        playedMatches: data.playedMatches,
+        pendingMatches: data.pendingMatches,
+        nextMatch: data.nextMatch,
+        updatedAt: new Date().toISOString()
+      }));
+    }).catch(err => {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
     });
+    return;
+  }
+
+  if (reqPath === '/api/amh/catalog') {
+    const catalogHandler = require('./api/amh/catalog.js');
+    catalogHandler(req, res);
     return;
   }
 
@@ -260,6 +281,24 @@ const server = http.createServer((req, res) => {
   if (reqPath === '/api/auth') {
     const authHandler = require('./api/auth.js');
     authHandler(req, res);
+    return;
+  }
+
+  if (reqPath === '/api/config') {
+    const configHandler = require('./api/config.js');
+    configHandler(req, res);
+    return;
+  }
+
+  if (reqPath === '/api/sheets' || reqPath === '/api/sheets/physical' || reqPath === '/api/sheets/dt-sync') {
+    const sheetsHandler = require('./api/sheets.js');
+    sheetsHandler(req, res);
+    return;
+  }
+
+  if (reqPath === '/api/admin/clubs') {
+    const adminClubsHandler = require('./api/admin/clubs.js');
+    adminClubsHandler(req, res);
     return;
   }
 

@@ -205,11 +205,15 @@ function matchPlayer(citedName, amhPlayers) {
  * Consulta los partidos de la división mediante HTTP directo (Ultra rápido, 200ms, no requiere navegador)
  * Filtra únicamente los partidos activos/pendientes, con formato idéntico al sistema AMH.
  */
-function fetchMatchesHttp(division = '1') {
+function fetchMatchesHttp(division = '1', club = null) {
   return new Promise((resolve) => {
     const divId = (division === '2' || division === 'intermedia') ? '2' : '1';
     const isIntermedia = divId === '2';
-    const url = `${AMH_BASE_URL}/ords/f?p=1107:6:0:FLOW_EXCEL_OUTPUT:::P6_TORNEOS_P,P6_CLUB_P,P6_JUG_COD_DIVISION_P:97,3,${divId}`;
+    const tournament = (club && club.tournament) || {};
+    const tournamentId = tournament.tournamentId || '97';
+    const clubId = tournament.clubId || '3';
+    const baseUrl = tournament.baseUrl || AMH_BASE_URL;
+    const url = `${baseUrl}/ords/f?p=1107:6:0:FLOW_EXCEL_OUTPUT:::P6_TORNEOS_P,P6_CLUB_P,P6_JUG_COD_DIVISION_P:${encodeURIComponent(tournamentId)},${encodeURIComponent(clubId)},${divId}`;
     const client = url.startsWith('https:') ? require('https') : http;
 
     client.get(url, (res) => {
@@ -284,10 +288,10 @@ function fetchMatchesHttp(division = '1') {
 /**
  * Obtiene los partidos disponibles para una división en la AMH
  */
-async function fetchAvailableMatches(division = '1') {
+async function fetchAvailableMatches(division = '1', club = null) {
   // 1. Intento por HTTP directo (funciona en Vercel, móvil y local sin requerir navegador)
   try {
-    const httpMatches = await fetchMatchesHttp(division);
+    const httpMatches = await fetchMatchesHttp(division, club);
     if (httpMatches && httpMatches.length > 0) {
       return httpMatches;
     }

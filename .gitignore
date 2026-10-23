@@ -13,3 +13,10 @@ desktop.ini
 # Entorno y credenciales locales
 .env
 .env.local
+
+# Base de datos local de clubes (puede contener credenciales)
+data/clubs.local.json
+
+# Frontend React generado
+frontend/node_modules/
+frontend/dist/

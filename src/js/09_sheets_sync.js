@@ -1,7 +1,7 @@
 // SINCRONIZACIÓN EN TIEMPO REAL CON GOOGLE SHEETS (CITACIONES)
 // ============================================================================
 
-const CITACION_LAST_SYNC_KEY = 'psb_citacion_last_sync_ts';
+let CITACION_LAST_SYNC_KEY = 'psb_citacion_last_sync_ts';
 
 function formatCitacionSyncTime(timestamp) {
   if (!timestamp) return 'Sin sincronizar aún';

@@ -1,6 +1,6 @@
 // Service Worker - Regatas Andino Hockey PWA
 // Cache Version
-const CACHE_NAME = 'regatas-hockey-v20261022-mobile-v30';
+const CACHE_NAME = 'regatas-hockey-v20261022-mobile-v34';
 
 // Recursos críticos para funcionamiento offline
 const STATIC_ASSETS = [
@@ -52,6 +52,20 @@ self.addEventListener('fetch', (event) => {
 
   // No interceptar peticiones que no sean GET (como los POST del webhook de incidencias)
   if (request.method !== 'GET') {
+    return;
+  }
+
+  // El catálogo de clubes cambia desde el panel de administración y nunca debe
+  // quedar servido desde la caché offline.
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).catch(() => {
+        return new Response(JSON.stringify({ error: 'API no disponible sin conexión' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
     return;
   }
 

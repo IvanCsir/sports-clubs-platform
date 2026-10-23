@@ -9,6 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { getClub, readConfiguredClubsAsync } = require('./_lib/club-config');
 
 // Cargar .env en desarrollo local si no se han cargado variables de entorno
 (function loadEnv() {
@@ -32,8 +33,6 @@ const crypto = require('crypto');
   }
 })();
 
-const CT_PASSWORD = process.env.CT_PASSWORD || 'ctandinob';
-const CT_AUTH_SECRET = process.env.CT_AUTH_SECRET || 'regatas_andino_psb_secret_key_2026';
 const SESSION_DURATION_HOURS = 24;
 
 function safeCompare(a, b) {
@@ -44,15 +43,15 @@ function safeCompare(a, b) {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
-function createSessionToken() {
+function createSessionToken(club) {
   const expiresAt = Date.now() + (SESSION_DURATION_HOURS * 60 * 60 * 1000);
-  const payload = `ct:${expiresAt}`;
-  const signature = crypto.createHmac('sha256', CT_AUTH_SECRET).update(payload).digest('hex');
-  const token = Buffer.from(JSON.stringify({ role: 'cuerpo_tecnico', expiresAt, signature })).toString('base64');
+  const payload = `ct:${club.slug}:${expiresAt}`;
+  const signature = crypto.createHmac('sha256', club.auth.secret).update(payload).digest('hex');
+  const token = Buffer.from(JSON.stringify({ role: 'cuerpo_tecnico', club: club.slug, expiresAt, signature })).toString('base64');
   return { token, expiresAt, durationHours: SESSION_DURATION_HOURS };
 }
 
-function verifySessionToken(token) {
+function verifySessionToken(token, club) {
   try {
     if (!token) return { valid: false, error: 'Token no provisto' };
     const raw = Buffer.from(token, 'base64').toString('utf8');
@@ -63,8 +62,9 @@ function verifySessionToken(token) {
       return { valid: false, error: 'Sesión expirada' };
     }
 
-    const expectedPayload = `ct:${parsed.expiresAt}`;
-    const expectedSig = crypto.createHmac('sha256', CT_AUTH_SECRET).update(expectedPayload).digest('hex');
+    if (parsed.club !== club.slug) return { valid: false, error: 'Token de otro club' };
+    const expectedPayload = `ct:${club.slug}:${parsed.expiresAt}`;
+    const expectedSig = crypto.createHmac('sha256', club.auth.secret).update(expectedPayload).digest('hex');
     if (!safeCompare(parsed.signature, expectedSig)) {
       return { valid: false, error: 'Firma inválida' };
     }
@@ -89,13 +89,15 @@ module.exports = async function handler(req, res) {
 
   const host = (req.headers && req.headers.host) || 'localhost';
   const urlObj = new URL(req.url || '/', `http://${host}`);
+  const clubs = await readConfiguredClubsAsync();
+  const club = clubs.find(item => item.slug === urlObj.searchParams.get('club')) || clubs[0];
 
   // GET: Validar estado de un token existente
   if (req.method === 'GET') {
     const authHeader = (req.headers && req.headers.authorization) || '';
     const token = urlObj.searchParams.get('token') || authHeader.replace(/^Bearer\s+/i, '').trim();
 
-    const verification = verifySessionToken(token);
+    const verification = verifySessionToken(token, club);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(verification));
     return;
@@ -119,10 +121,10 @@ module.exports = async function handler(req, res) {
       }
 
       const submittedPassword = (body.password || '').toString().trim();
-      const officialPassword = CT_PASSWORD.trim();
+      const officialPassword = club.auth.password.trim();
 
       if (submittedPassword && safeCompare(submittedPassword, officialPassword)) {
-        const session = createSessionToken();
+        const session = createSessionToken(club);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({
           success: true,

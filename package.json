@@ -7,6 +7,10 @@
     "bundle": "node scripts/build.js",
     "dev": "node scripts/build.js --watch",
     "start": "node server.js",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
     "check": "node --check app.js && node --check server.js",
     "precarga": "node scripts/amh_precarga.js",
     "precarga:primera": "node scripts/amh_precarga.js --division=1",
@@ -23,6 +27,7 @@
   "license": "ISC",
   "dependencies": {
     "@sparticuz/chromium-min": "^153.0.0",
+    "pg": "^8.23.1",
     "puppeteer-core": "^25.15.0"
   }
 }

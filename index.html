@@ -28,9 +28,50 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=20261022_mobile_v30">
+  <link rel="stylesheet" href="styles.css?v=20261022_mobile_v34">
 </head>
 <body>
+
+  <main id="clubPicker" class="club-picker" hidden>
+    <div class="club-picker-shell">
+      <span class="club-picker-kicker">PLATAFORMA DEPORTIVA</span>
+      <h1>Elegí tu club</h1>
+      <p>Seleccioná el club para acceder a sus citaciones, equipos, torneos y estadísticas.</p>
+      <div id="clubPickerList" class="club-picker-list"></div>
+      <button type="button" class="club-picker-add-button" id="btnAddClub">+ Agregar club</button>
+      <div class="club-picker-add">
+        <span>El alta y la edición requieren autorización de administrador.</span>
+      </div>
+    </div>
+  </main>
+
+  <div id="clubAdminModal" class="club-admin-modal" hidden>
+    <form id="clubAdminForm" class="club-admin-form">
+      <button type="button" class="club-admin-close" id="btnCloseClubAdmin" aria-label="Cerrar">&times;</button>
+      <span class="club-picker-kicker">ADMINISTRACIÓN</span>
+      <h2 id="clubAdminTitle">Agregar club</h2>
+      <div id="clubAdminLogin">
+        <label>Contraseña de administrador<input id="clubAdminPassword" type="password" required></label>
+        <button type="button" id="btnClubAdminLogin">Ingresar</button>
+      </div>
+      <div id="clubAdminFields" hidden>
+        <label>Slug<input name="slug" placeholder="club-ejemplo" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></label>
+        <label>Nombre<input name="name" placeholder="CLUB EJEMPLO" required></label>
+        <label>Nombre corto<input name="shortName" required></label>
+        <label>Deporte<input name="sport" value="Hockey" required></label>
+        <label>Equipo<input name="teamName" value="PLANTEL SUPERIOR" required></label>
+        <label>URL del logo<input name="logoUrl" placeholder="/logos/club.png"></label>
+        <label>ID Google Sheets<input name="spreadsheetId"></label>
+        <label>ID planilla física<input name="physicalSpreadsheetId"></label>
+        <label>ID planilla cuerpo técnico<input name="dtSpreadsheetId"></label>
+        <label>URL planilla cuerpo técnico<input name="dtSpreadsheetUrl" type="url"></label>
+        <label id="staffPasswordField" hidden>Contraseña cuerpo técnico<input name="staffPassword" type="password"></label>
+        <label id="staffSecretField" hidden>Secreto del club<input name="staffSecret" type="password"></label>
+        <button type="submit" id="clubAdminSubmit">Guardar club</button>
+      </div>
+      <p id="clubAdminMessage" role="status"></p>
+    </form>
+  </div>
 
   <!-- Mensaje Flotante Toast -->
   <div id="toast" class="toast">¡Citación actualizada!</div>
@@ -62,10 +103,10 @@
   <aside class="nav-drawer" id="navDrawer" aria-label="Menú Principal" aria-hidden="true">
     <div class="nav-drawer-header">
       <div class="nav-drawer-brand">
-        <img src="escudo-regatas-andino.png" alt="Escudo Regatas Andino" class="drawer-crest">
+        <img src="escudo-regatas-andino.png" alt="Escudo Regatas Andino" class="drawer-crest" data-tenant-logo>
         <div class="drawer-brand-text">
-          <span class="drawer-brand-sub">REGATAS ANDINO</span>
-          <h3 class="drawer-brand-title">PLANTEL SUPERIOR B</h3>
+          <span class="drawer-brand-sub" data-tenant-name>REGATAS ANDINO</span>
+          <h3 class="drawer-brand-title" data-tenant-team>PLANTEL SUPERIOR B</h3>
         </div>
       </div>
       <button type="button" class="btn-drawer-close" id="btnCloseNavDrawer" aria-label="Cerrar menú">&times;</button>
@@ -154,8 +195,8 @@
          TÍTULO INSTITUCIONAL DE LA CABECERA
          ==================================================================== -->
     <header class="top-title-header">
-      <span class="squad-sub-badge">REGATAS ANDINO • HOCKEY</span>
-      <h1 class="squad-main-title">PLANTEL SUPERIOR B</h1>
+      <span class="squad-sub-badge"><span data-tenant-name>REGATAS ANDINO</span> • HOCKEY</span>
+      <h1 class="squad-main-title" data-tenant-team>PLANTEL SUPERIOR B</h1>
     </header>
 
     <!-- ====================================================================
@@ -186,9 +227,9 @@
           <!-- Local: Regatas Andino -->
           <div class="clash-team">
             <div class="team-badge-circle local">
-              <img src="escudo-regatas-andino.png" alt="Regatas Andino">
+              <img src="escudo-regatas-andino.png" alt="Regatas Andino" data-tenant-logo>
             </div>
-            <div class="team-name-title">REGATAS ANDINO</div>
+            <div class="team-name-title" data-tenant-name>REGATAS ANDINO</div>
           </div>
 
           <!-- Insignia VS -->
@@ -238,7 +279,7 @@
         <div class="team-photo-wrapper">
           <img src="foto-plantel.jpg" alt="Plantel Superior Regatas Andino" class="team-photo-img">
           <div class="team-photo-overlay">
-            <span class="team-photo-badge">PLANTEL SUPERIOR B • REGATAS ANDINO</span>
+            <span class="team-photo-badge"><span data-tenant-team>PLANTEL SUPERIOR B</span> • <span data-tenant-name>REGATAS ANDINO</span></span>
             <span class="team-photo-motto">"Juntas somos más"</span>
           </div>
         </div>
@@ -585,7 +626,7 @@
           <!-- Marcador Principal -->
           <div class="dt-scoreboard-wrapper">
             <div class="dt-team-box dt-team-home">
-              <img src="escudo-regatas-andino.png" alt="Regatas Andino" class="dt-team-crest">
+              <img src="escudo-regatas-andino.png" alt="Regatas Andino" class="dt-team-crest" data-tenant-logo>
               <div class="dt-team-names">
                 <span class="dt-team-sub">LOCAL</span>
                 <h4 class="dt-team-name">REGATAS</h4>
@@ -1317,7 +1358,7 @@
   </div>
 
   <!-- Scripts -->
-  <script src="data.js?v=20261022_mobile_v30"></script>
-  <script src="app.js?v=20261022_mobile_v30"></script>
+  <script src="data.js?v=20261022_mobile_v34"></script>
+  <script src="app.js?v=20261022_mobile_v34"></script>
 </body>
 </html>

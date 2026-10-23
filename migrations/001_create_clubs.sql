@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS club_catalog (
+  id BIGSERIAL PRIMARY KEY,
+  slug TEXT UNIQUE NOT NULL,
+  config JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS club_catalog_slug_idx ON club_catalog (slug);

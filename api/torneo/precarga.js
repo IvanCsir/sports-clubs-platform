@@ -5,6 +5,7 @@
  */
 
 const { fetchAvailableMatches, executeAmhPrecarga } = require('../_lib/amh.js');
+const { getClubAsync } = require('../_lib/club-config');
 
 module.exports = async function handler(req, res) {
   // Configuración de CORS
@@ -23,8 +24,10 @@ module.exports = async function handler(req, res) {
   // GET: Obtener partidos disponibles
   if (req.method === 'GET' || url.searchParams.has('matches')) {
     const division = url.searchParams.get('division') || '1';
+    const slug = url.searchParams.get('club');
+    const club = slug ? await getClubAsync(slug) : null;
     try {
-      const matches = await fetchAvailableMatches(division);
+      const matches = await fetchAvailableMatches(division, club);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true, matches }));
     } catch (err) {

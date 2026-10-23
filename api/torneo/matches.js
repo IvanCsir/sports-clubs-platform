@@ -1,12 +1,32 @@
 const http = require('http');
 const https = require('https');
+const { getClubAsync } = require('../_lib/club-config');
 
-const AMH_BASE_URL = process.env.AMH_BASE_URL || 'http://15.235.75.172:8080';
+function normalizeTeamName(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[().,'"']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-function fetchAmhMatches(division) {
+function isSelectedTeam(teamName, club) {
+  const configured = [
+    club.tournament && club.tournament.teamName,
+    club.shortName,
+    club.name
+  ].filter(Boolean).map(normalizeTeamName);
+  const candidate = normalizeTeamName(teamName);
+  return configured.some(name => candidate === name || candidate.startsWith(`${name} `) || name.startsWith(`${candidate} `));
+}
+
+function fetchAmhMatches(division, club) {
   return new Promise((resolve, reject) => {
     const divId = division === '2' ? '2' : '1';
-    const url = `${AMH_BASE_URL}/ords/f?p=1107:6:0:FLOW_EXCEL_OUTPUT:::P6_TORNEOS_P,P6_CLUB_P,P6_JUG_COD_DIVISION_P:97,3,${divId}`;
+    const tournament = club.tournament || {};
+    const url = `${tournament.baseUrl}/ords/f?p=1107:6:0:FLOW_EXCEL_OUTPUT:::P6_TORNEOS_P,P6_CLUB_P,P6_JUG_COD_DIVISION_P:${encodeURIComponent(tournament.tournamentId)},${encodeURIComponent(tournament.clubId)},${divId}`;
     const client = url.startsWith('https:') ? https : http;
 
     const req = client.get(url, (res) => {
@@ -45,7 +65,8 @@ function fetchAmhMatches(division) {
 
             const local = (cells['EQUIPO_LOCAL'] || '').trim();
             const visita = (cells['EQUIPO_VISITANTE'] || '').trim();
-            const isHome = local.toUpperCase().includes('REGATAS');
+            if (!isSelectedTeam(local, club) && !isSelectedTeam(visita, club)) return;
+            const isHome = isSelectedTeam(local, club);
             const rival = (isHome ? visita : local).trim();
             const homeAway = isHome ? 'Local' : 'Visitante';
 
@@ -126,9 +147,12 @@ module.exports = async (req, res) => {
 
   const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const division = urlObj.searchParams.get('division') || '1';
-
   try {
-    const data = await fetchAmhMatches(division);
+    const club = await getClubAsync(urlObj.searchParams.get('club'));
+    if (!club || !club.tournament?.baseUrl || !club.tournament?.tournamentId || !club.tournament?.clubId) {
+      throw new Error('El club no tiene configurado su torneo AMH.');
+    }
+    const data = await fetchAmhMatches(division, club);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     res.statusCode = 200;

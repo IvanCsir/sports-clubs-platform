@@ -1,12 +1,12 @@
 const http = require('http');
 const https = require('https');
+const { getClubAsync } = require('../_lib/club-config');
 
-const AMH_BASE_URL = process.env.AMH_BASE_URL || 'http://15.235.75.172:8080';
-
-function fetchAmhStandings(division) {
+function fetchAmhStandings(division, club) {
   return new Promise((resolve, reject) => {
     const divId = division === '2' ? '2' : '1';
-    const url = `${AMH_BASE_URL}/ords/r/amh/torneos/5?p5_torneos_f=97&p5_jug_cod_division_f=${divId}`;
+    const tournament = club.tournament || {};
+    const url = `${tournament.baseUrl}/ords/r/amh/torneos/5?p5_torneos_f=${encodeURIComponent(tournament.tournamentId)}&p5_jug_cod_division_f=${divId}`;
     const client = url.startsWith('https:') ? https : http;
 
     const req = client.get(url, (res) => {
@@ -64,7 +64,7 @@ function fetchAmhStandings(division) {
           });
 
           resolve({
-            tournament: 'Clausura Damas B 2026',
+            tournament: (tournament && tournament.name) || (tournament.tournamentId === '96' ? 'CLAUSURA DAMAS A - (2026)' : 'Clausura Damas B 2026'),
             division: divId,
             divisionName: divId === '2' ? 'Intermedia (Segunda)' : '1ra División (Primera)',
             standings: tableData,
@@ -98,9 +98,12 @@ module.exports = async (req, res) => {
 
   const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const division = urlObj.searchParams.get('division') || '1';
-
   try {
-    const data = await fetchAmhStandings(division);
+    const club = await getClubAsync(urlObj.searchParams.get('club'));
+    if (!club || !club.tournament?.baseUrl || !club.tournament?.tournamentId) {
+      throw new Error('El club no tiene configurado su torneo AMH.');
+    }
+    const data = await fetchAmhStandings(division, club);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     res.statusCode = 200;

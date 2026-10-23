@@ -118,7 +118,8 @@ function renderRegatasSummary(divData) {
   if (!container) return;
 
   const standings = divData.standings || [];
-  const regatas = standings.find(t => t.team.toUpperCase().includes('REGATAS')) || {
+  const clubName = getTenantConfig().shortName.toUpperCase();
+  const regatas = standings.find(t => t.team.toUpperCase().includes(clubName)) || {
     pos: '-', pts: 0, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, ge: 0, dif: 0
   };
 
@@ -130,7 +131,7 @@ function renderRegatasSummary(divData) {
       <div class="regatas-team-badge-group">
         <img src="escudo-regatas-andino.png" alt="Regatas Andino" class="regatas-mini-escudo">
         <div class="regatas-team-titles">
-          <h4>REGATAS ANDINO - B</h4>
+          <h4>${escapeHtml(getTenantConfig().shortName)}</h4>
           <span>${escapeHtml(divData.divisionTitle)} • ZONA A</span>
         </div>
       </div>
@@ -394,7 +395,7 @@ async function syncTournamentData(manual = false) {
     const fetchDiv = async (divId) => {
       try {
         const cacheBust = manual ? `&_t=${Date.now()}` : '';
-        const res = await fetch(`/api/torneo?division=${divId}${cacheBust}`);
+        const res = await fetch(`/api/torneo?club=${encodeURIComponent(tenantSlug)}&division=${divId}${cacheBust}`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.standings && data.standings.length > 0) return data;
@@ -406,7 +407,7 @@ async function syncTournamentData(manual = false) {
     const fetchMatches = async (divId) => {
       try {
         const cacheBust = manual ? `&_t=${Date.now()}` : '';
-        const res = await fetch(`/api/torneo/matches?division=${divId}${cacheBust}`);
+        const res = await fetch(`/api/torneo/matches?club=${encodeURIComponent(tenantSlug)}&division=${divId}${cacheBust}`);
         if (res.ok) return await res.json();
       } catch (e) {}
       return null;

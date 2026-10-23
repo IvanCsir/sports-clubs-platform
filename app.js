@@ -1,8 +1,225 @@
 /**
  * Web Citaciones y Evaluaciones Físicas - Club Regatas Andino
  * Compilado automáticamente desde /src/js/
- * Última actualización: 2026-10-22T13:49:26.034Z
+ * Última actualización: 2026-10-22T21:11:55.592Z
  */
+
+// ============================================================================
+// MÓDULO: 00_tenant.js
+// ============================================================================
+
+const DEFAULT_TENANT_CONFIG = {
+  slug: 'regatas-andino',
+  name: 'CLUB REGATAS ANDINO',
+  shortName: 'REGATAS ANDINO',
+  sport: 'Hockey',
+  teamName: 'PLANTEL SUPERIOR B',
+  logoUrl: 'escudo-regatas-andino.png',
+  theme: { primary: '#1e88e5', accent: '#00a2ff', danger: '#d32f2f' },
+  spreadsheetId: '',
+  physicalSpreadsheetId: '',
+  dtSpreadsheetId: '',
+  dtSpreadsheetUrl: '',
+  tournament: {}
+};
+
+let tenantConfig = { ...DEFAULT_TENANT_CONFIG };
+const requestedTenantSlug = new URLSearchParams(window.location.search).get('club');
+const tenantSlug = requestedTenantSlug || DEFAULT_TENANT_CONFIG.slug;
+
+function tenantStorageKey(key) {
+  return `${tenantSlug}:${key}`;
+}
+
+function getTenantConfig() {
+  return tenantConfig;
+}
+
+function applyTenantConfig(config) {
+  tenantConfig = {
+    ...DEFAULT_TENANT_CONFIG,
+    ...config,
+    theme: { ...DEFAULT_TENANT_CONFIG.theme, ...(config.theme || {}) }
+  };
+
+  document.documentElement.style.setProperty('--color-regatas-blue', tenantConfig.theme.primary);
+  document.documentElement.style.setProperty('--color-regatas-cyan', tenantConfig.theme.accent);
+  document.documentElement.style.setProperty('--color-regatas-red', tenantConfig.theme.danger);
+  document.title = `${tenantConfig.shortName} ${tenantConfig.sport} | ${tenantConfig.teamName}`;
+
+  document.querySelectorAll('[data-tenant-name]').forEach(el => {
+    el.textContent = tenantConfig.shortName;
+  });
+  document.querySelectorAll('[data-tenant-team]').forEach(el => {
+    el.textContent = tenantConfig.teamName;
+  });
+  document.querySelectorAll('[data-tenant-logo]').forEach(el => {
+    el.src = tenantConfig.logoUrl;
+    el.alt = tenantConfig.shortName;
+  });
+}
+
+async function loadTenantConfig() {
+  try {
+    const response = await fetch(`/api/config?club=${encodeURIComponent(tenantSlug)}`, {
+      cache: 'no-store'
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    if (!requestedTenantSlug) {
+      renderClubPicker(payload.clubs || []);
+      return false;
+    }
+    applyTenantConfig(payload.club || DEFAULT_TENANT_CONFIG);
+    return true;
+  } catch (error) {
+    console.warn('[Tenant] No se pudo cargar la configuración remota; se usan valores locales.', error);
+    if (!requestedTenantSlug) {
+      renderClubPicker([DEFAULT_TENANT_CONFIG]);
+      return false;
+    }
+    applyTenantConfig(DEFAULT_TENANT_CONFIG);
+    return true;
+  }
+}
+
+function renderClubPicker(clubs) {
+  const picker = document.getElementById('clubPicker');
+  const list = document.getElementById('clubPickerList');
+  if (!picker || !list) return;
+
+  list.innerHTML = '';
+  clubs.forEach(club => {
+    const card = document.createElement('div');
+    card.className = 'club-picker-card';
+    const link = document.createElement('a');
+    link.href = `/?club=${encodeURIComponent(club.slug)}`;
+    link.innerHTML = `
+      <img src="${club.logoUrl || DEFAULT_TENANT_CONFIG.logoUrl}" alt="">
+      <span>
+        <strong>${escapeHtml(club.shortName || club.name)}</strong>
+        <small>${escapeHtml(club.sport || 'Club deportivo')} · ${escapeHtml(club.teamName || '')}</small>
+      </span>
+      <b aria-hidden="true">→</b>
+    `;
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'club-picker-edit';
+    edit.textContent = 'Editar perfil';
+    edit.onclick = () => openClubProfile(club);
+    card.append(link, edit);
+    list.appendChild(card);
+  });
+
+  picker.hidden = false;
+  document.body.classList.add('club-picker-active');
+  setupClubAdmin();
+}
+
+function setupClubAdmin() {
+  const modal = document.getElementById('clubAdminModal');
+  const open = document.getElementById('btnAddClub');
+  const close = document.getElementById('btnCloseClubAdmin');
+  const login = document.getElementById('btnClubAdminLogin');
+  const form = document.getElementById('clubAdminForm');
+  const fields = document.getElementById('clubAdminFields');
+  const message = document.getElementById('clubAdminMessage');
+  if (!modal || !open || !login || !form) return;
+
+  open.onclick = () => openClubProfile(null);
+  close.onclick = () => { modal.hidden = true; };
+  login.onclick = async () => {
+    try {
+      const editingSlug = form.dataset.editingSlug || '';
+      const response = await fetch('/api/admin/clubs', {
+        method: editingSlug ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', password: document.getElementById('clubAdminPassword').value })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo iniciar sesión.');
+      sessionStorage.setItem('club_admin_token', payload.token);
+      document.getElementById('clubAdminLogin').hidden = true;
+      fields.hidden = false;
+      const pendingSlug = form.dataset.pendingProfile;
+      if (pendingSlug) {
+        const catalog = await (await fetch('/api/config', { cache: 'no-store' })).json();
+        const pendingClub = (catalog.clubs || []).find(club => club.slug === pendingSlug);
+        if (pendingClub) openClubProfile(pendingClub);
+      } else {
+        fields.hidden = false;
+        document.getElementById('staffPasswordField').hidden = false;
+        document.getElementById('staffSecretField').hidden = false;
+      }
+    } catch (error) {
+      message.textContent = error.message;
+    }
+  };
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form));
+    try {
+      const editingSlug = form.dataset.editingSlug || '';
+      const response = await fetch('/api/admin/clubs', {
+        method: editingSlug ? 'PATCH' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionStorage.getItem('club_admin_token')}`
+        },
+        body: JSON.stringify(editingSlug
+          ? { slug: editingSlug, club: { ...data, auth: { password: data.staffPassword, secret: data.staffSecret } } }
+          : { club: { ...data, auth: { password: data.staffPassword, secret: data.staffSecret } } })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo guardar el club.');
+      message.textContent = editingSlug ? 'Perfil actualizado. Recargando...' : 'Club creado. Actualizando...';
+      setTimeout(() => window.location.reload(), 700);
+    } catch (error) {
+      message.textContent = error.message;
+    }
+  };
+}
+
+function openClubProfile(club) {
+  const modal = document.getElementById('clubAdminModal');
+  const form = document.getElementById('clubAdminForm');
+  const loginFields = document.getElementById('clubAdminLogin');
+  const fields = document.getElementById('clubAdminFields');
+  const title = document.getElementById('clubAdminTitle');
+  const submit = document.getElementById('clubAdminSubmit');
+  if (!modal || !form) return;
+
+  modal.hidden = false;
+  const editing = Boolean(club);
+  document.getElementById('staffPasswordField').hidden = editing;
+  document.getElementById('staffSecretField').hidden = editing;
+  form.elements.staffPassword.disabled = editing;
+  form.elements.staffSecret.disabled = editing;
+  if (!sessionStorage.getItem('club_admin_token')) {
+    form.dataset.pendingProfile = club ? club.slug : '';
+    loginFields.hidden = false;
+    fields.hidden = true;
+    return;
+  }
+  loginFields.hidden = true;
+  fields.hidden = false;
+  form.dataset.editingSlug = club ? club.slug : '';
+  title.textContent = club ? 'Perfil del club' : 'Agregar club';
+  submit.textContent = club ? 'Guardar cambios' : 'Guardar club';
+  form.reset();
+  form.elements.slug.readOnly = Boolean(club);
+  form.classList.toggle('is-editing', editing);
+  document.getElementById('staffPasswordField').hidden = editing;
+  document.getElementById('staffSecretField').hidden = editing;
+  if (club) {
+    ['slug', 'name', 'shortName', 'sport', 'teamName', 'logoUrl', 'spreadsheetId',
+      'physicalSpreadsheetId', 'dtSpreadsheetId', 'dtSpreadsheetUrl'].forEach(name => {
+      if (form.elements[name]) form.elements[name].value = club[name] || '';
+    });
+  }
+}
+
+window.__tenantReady = loadTenantConfig();
 
 // ============================================================================
 // MÓDULO: 01_config.js
@@ -22,14 +239,14 @@ let matchData = null;
 let currentCategory = 'primera'; // 'primera' | 'intermedia'
 
 // Torneo AMH (Clausura Damas B 2026)
-const TOURNAMENT_STORAGE_KEY = 'regatas_andino_torneo_v4';
+let TOURNAMENT_STORAGE_KEY = 'regatas_andino_torneo_v4';
 let tournamentData = null;
 let currentTournamentDivision = 'primera'; // 'primera' | 'intermedia'
 let currentMatchesTab = 'played'; // 'played' | 'pending'
 
 // Evaluaciones Físicas
-const PHYSICAL_SPREADSHEET_ID = "1dAoeA0_F4RGLDEjJ0taIJiPA3WlMWl5e";
-const PHYSICAL_STORAGE_KEY = "regatas_andino_fisico_v1";
+let PHYSICAL_SPREADSHEET_ID = "1dAoeA0_F4RGLDEJj0taIJiPA3WlMWl5e";
+let PHYSICAL_STORAGE_KEY = "regatas_andino_fisico_v1";
 let physicalPlayers = [];
 let physicalCategoryAverages = null;
 let selectedPlayerId = null;
@@ -39,12 +256,12 @@ let currentPhysViewMode = "players"; // 'players' | 'averages' | 'top10'
 let currentTop10Test = "all"; // 'all' | 'broadJump' | 'cmj' | 'agility' | 'sprint' | 'yoyo' | 'bench' | 'deadlift' | 'squat' | 'platform'
 let currentTop10Round = "latest"; // 'latest' | 'best' | 'avg' | '1' | '2' | '3'
 
-const STORAGE_KEY = 'regatas_andino_citaciones_v6';
+let STORAGE_KEY = 'regatas_andino_citaciones_v6';
 
 // Sesión y Seguridad de Cuerpo Técnico (Expiración de 12hs validada por /api/auth)
-const CT_AUTH_STORAGE_KEY = 'regatas_ct_session_v4';
-const DT_SPREADSHEET_ID = '1EfZtExHcLrio49A3wmyZcUOCZYZ7jNnatFt-wsebPQg';
-const DT_SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1EfZtExHcLrio49A3wmyZcUOCZYZ7jNnatFt-wsebPQg/edit';
+let CT_AUTH_STORAGE_KEY = 'regatas_ct_session_v4';
+let DT_SPREADSHEET_ID = '1EfZtExHcLrio49A3wmyZcUOCZYZ7jNnatFt-wsebPQg';
+let DT_SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1EfZtExHcLrio49A3wmyZcUOCZYZ7jNnatFt-wsebPQg/edit';
 
 // ============================================================================
 // MÓDULO: 02_crypto.js
@@ -150,7 +367,7 @@ async function verifyCtPassword(input) {
 
   // 1. Validar contra el Backend Serverless (/api/auth)
   try {
-    const res = await fetch('/api/auth', {
+    const res = await fetch(`/api/auth?club=${encodeURIComponent(tenantSlug)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: clean })
@@ -673,7 +890,8 @@ function renderRegatasSummary(divData) {
   if (!container) return;
 
   const standings = divData.standings || [];
-  const regatas = standings.find(t => t.team.toUpperCase().includes('REGATAS')) || {
+  const clubName = getTenantConfig().shortName.toUpperCase();
+  const regatas = standings.find(t => t.team.toUpperCase().includes(clubName)) || {
     pos: '-', pts: 0, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, ge: 0, dif: 0
   };
 
@@ -685,7 +903,7 @@ function renderRegatasSummary(divData) {
       <div class="regatas-team-badge-group">
         <img src="escudo-regatas-andino.png" alt="Regatas Andino" class="regatas-mini-escudo">
         <div class="regatas-team-titles">
-          <h4>REGATAS ANDINO - B</h4>
+          <h4>${escapeHtml(getTenantConfig().shortName)}</h4>
           <span>${escapeHtml(divData.divisionTitle)} • ZONA A</span>
         </div>
       </div>
@@ -949,7 +1167,7 @@ async function syncTournamentData(manual = false) {
     const fetchDiv = async (divId) => {
       try {
         const cacheBust = manual ? `&_t=${Date.now()}` : '';
-        const res = await fetch(`/api/torneo?division=${divId}${cacheBust}`);
+        const res = await fetch(`/api/torneo?club=${encodeURIComponent(tenantSlug)}&division=${divId}${cacheBust}`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.standings && data.standings.length > 0) return data;
@@ -961,7 +1179,7 @@ async function syncTournamentData(manual = false) {
     const fetchMatches = async (divId) => {
       try {
         const cacheBust = manual ? `&_t=${Date.now()}` : '';
-        const res = await fetch(`/api/torneo/matches?division=${divId}${cacheBust}`);
+        const res = await fetch(`/api/torneo/matches?club=${encodeURIComponent(tenantSlug)}&division=${divId}${cacheBust}`);
         if (res.ok) return await res.json();
       } catch (e) {}
       return null;
@@ -3496,7 +3714,7 @@ function drawRoundRect(ctx, x, y, w, h, r) {
 // SINCRONIZACIÓN EN TIEMPO REAL CON GOOGLE SHEETS (CITACIONES)
 // ============================================================================
 
-const CITACION_LAST_SYNC_KEY = 'psb_citacion_last_sync_ts';
+let CITACION_LAST_SYNC_KEY = 'psb_citacion_last_sync_ts';
 
 function formatCitacionSyncTime(timestamp) {
   if (!timestamp) return 'Sin sincronizar aún';
@@ -8507,7 +8725,23 @@ window.closeIosInstallModal = closeIosInstallModal;
 // MÓDULO: 13_init.js
 // ============================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  const tenantReady = await window.__tenantReady;
+  if (!tenantReady) return;
+  const config = getTenantConfig();
+  PHYSICAL_SPREADSHEET_ID = config.physicalSpreadsheetId || PHYSICAL_SPREADSHEET_ID;
+  DT_SPREADSHEET_ID = config.dtSpreadsheetId || DT_SPREADSHEET_ID;
+  DT_SPREADSHEET_URL = config.dtSpreadsheetUrl || DT_SPREADSHEET_URL;
+  STORAGE_KEY = tenantStorageKey('citaciones_v6');
+  TOURNAMENT_STORAGE_KEY = tenantStorageKey('torneo_v4');
+  PHYSICAL_STORAGE_KEY = tenantStorageKey('fisico_v1');
+  CT_AUTH_STORAGE_KEY = tenantStorageKey('ct_session_v4');
+  CITACION_LAST_SYNC_KEY = tenantStorageKey('citacion_last_sync_ts');
+  if (config.spreadsheetId) DEFAULT_MATCH_DATA.spreadsheetId = config.spreadsheetId;
+  DEFAULT_MATCH_DATA.clubName = config.name;
+  DEFAULT_MATCH_DATA.teamName = config.teamName;
+  DEFAULT_MATCH_DATA.logoUrl = config.logoUrl;
+
   loadData();
   loadTournamentData();
   render();

@@ -18,7 +18,7 @@ async function verifyCtPassword(input) {
 
   // 1. Validar contra el Backend Serverless (/api/auth)
   try {
-    const res = await fetch('/api/auth', {
+    const res = await fetch(`/api/auth?club=${encodeURIComponent(tenantSlug)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: clean })

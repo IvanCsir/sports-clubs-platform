@@ -391,3 +391,213 @@
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.08);
 }
+/* Portal de selección de club */
+.club-picker[hidden] {
+  display: none;
+}
+
+body.club-picker-active > *:not(#clubPicker):not(#clubAdminModal) {
+  display: none;
+}
+
+.club-picker {
+  min-height: 100vh;
+  padding: 32px 18px;
+  display: grid;
+  place-items: center;
+  color: #eaf6ff;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(0, 162, 255, .2), transparent 35%),
+    linear-gradient(145deg, #020817, #071d3d 60%, #031125);
+}
+
+.club-picker-shell {
+  width: min(620px, 100%);
+  padding: clamp(28px, 6vw, 56px);
+  border: 1px solid rgba(141, 211, 255, .24);
+  border-radius: 28px;
+  background: rgba(3, 13, 45, .82);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
+}
+
+.club-picker-kicker {
+  color: var(--color-regatas-cyan);
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .18em;
+}
+
+.club-picker h1 {
+  margin: 12px 0 8px;
+  font-size: clamp(2rem, 7vw, 3.5rem);
+}
+
+.club-picker p {
+  margin: 0 0 28px;
+  color: #b7c9de;
+  line-height: 1.55;
+}
+
+.club-picker-list {
+  display: grid;
+  gap: 12px;
+}
+
+.club-picker-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid rgba(141, 211, 255, .2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .06);
+  transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.club-picker-card > a {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
+}
+
+.club-picker-edit {
+  padding: 8px 10px;
+  border: 1px solid rgba(141, 211, 255, .35);
+  border-radius: 8px;
+  color: #b7c9de;
+  background: transparent;
+  cursor: pointer;
+}
+
+.club-picker-card:hover,
+.club-picker-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--color-regatas-cyan);
+  background: rgba(0, 162, 255, .12);
+}
+
+.club-picker-card img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.club-picker-card span {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+}
+
+.club-picker-card small {
+  color: #9eb4cc;
+}
+
+.club-picker-card b {
+  color: var(--color-regatas-cyan);
+  font-size: 1.4rem;
+}
+
+.club-picker-add {
+  display: grid;
+  gap: 6px;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(141, 211, 255, .14);
+  color: #b7c9de;
+  font-size: .88rem;
+}
+
+.club-picker-add strong {
+  color: #eaf6ff;
+}
+
+.club-picker-add code {
+  color: var(--color-regatas-cyan);
+}
+
+.club-picker-add-button,
+.club-admin-form button {
+  width: 100%;
+  margin-top: 18px;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 12px;
+  color: #031125;
+  background: var(--color-regatas-cyan);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.club-admin-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 5, 18, .78);
+}
+
+.club-admin-modal[hidden] {
+  display: none;
+}
+
+.club-admin-form {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid rgba(141, 211, 255, .25);
+  border-radius: 22px;
+  background: #071832;
+  color: #eaf6ff;
+}
+
+.club-admin-form.is-editing #staffPasswordField,
+.club-admin-form.is-editing #staffSecretField {
+  display: none !important;
+}
+
+.club-admin-form h2 {
+  margin: 8px 0 20px;
+}
+
+.club-admin-form label {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  color: #b7c9de;
+  font-size: .86rem;
+}
+
+.club-admin-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid rgba(141, 211, 255, .25);
+  border-radius: 9px;
+  color: #eaf6ff;
+  background: rgba(255, 255, 255, .07);
+}
+
+.club-admin-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: 0 !important;
+  color: #b7c9de !important;
+  background: transparent !important;
+  font-size: 1.8rem;
+}
+
+#clubAdminMessage {
+  min-height: 1.3em;
+  color: #fbbf24;
+}
