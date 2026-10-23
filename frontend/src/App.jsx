@@ -60,6 +60,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [players, setPlayers] = useState([]);
   const [playerDraft, setPlayerDraft] = useState({ name: '', category: 'primera' });
   const [playerError, setPlayerError] = useState('');
+  const [editingPlayerId, setEditingPlayerId] = useState(null);
+  const [playerEditDraft, setPlayerEditDraft] = useState({ name: '', categories: [] });
+  const [playerEditError, setPlayerEditError] = useState('');
   const [physicalMode, setPhysicalMode] = useState('players');
   const [physicalFilter, setPhysicalFilter] = useState('all');
   const [physicalSearch, setPhysicalSearch] = useState('');
@@ -277,6 +280,29 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       await loadStaffData(sessionToken);
       setPlayerDraft({ name: '', category: playerDraft.category });
     } catch (error) { setPlayerError(error.message); }
+  }
+
+  function beginPlayerEdit(player) {
+    setEditingPlayerId(player.id);
+    setPlayerEditDraft({ name: player.name, categories: [...(player.categories || [])] });
+    setPlayerEditError('');
+  }
+
+  async function submitPlayerEdit(event) {
+    event.preventDefault();
+    setPlayerEditError('');
+    try {
+      const sessionToken = token;
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+        body: JSON.stringify({ action: 'update-player', id: editingPlayerId, ...playerEditDraft })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo editar la jugadora.');
+      await loadStaffData(sessionToken);
+      setEditingPlayerId(null);
+    } catch (error) { setPlayerEditError(error.message); }
   }
 
   // Verificar sesión persistida de cuerpo técnico y fixture
@@ -574,8 +600,25 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             <div className="players-grid">
               {players.filter(player => player.active).map(player => (
                 <div className="player-pill" key={player.id}>
-                  <strong>{player.name}</strong>
-                  <small>{(player.categories || []).map(item => item === 'primera' ? '1ra División' : item === 'intermedia' ? 'Intermedia' : item === '5ta' ? '5ta División' : item).join(' · ') || 'Sin categoría'}</small>
+                  {editingPlayerId === player.id ? (
+                    <form className="player-edit-form" onSubmit={submitPlayerEdit}>
+                      <label>Nombre y apellido<input value={playerEditDraft.name} onChange={event => setPlayerEditDraft(current => ({ ...current, name: event.target.value }))} maxLength={120} required /></label>
+                      <fieldset className="player-category-options">
+                        <legend>Categorías</legend>
+                        {[["primera", "1ra División"], ["intermedia", "Intermedia"], ["5ta", "5ta División"]].map(([value, label]) => (
+                          <label key={value}><input type="checkbox" checked={playerEditDraft.categories.includes(value)} onChange={event => setPlayerEditDraft(current => ({ ...current, categories: event.target.checked ? [...current.categories, value] : current.categories.filter(item => item !== value) }))} />{label}</label>
+                        ))}
+                      </fieldset>
+                      {playerEditError && <p className="message error">{playerEditError}</p>}
+                      <div className="player-edit-actions"><button type="submit">Guardar cambios</button><button type="button" className="secondary" onClick={() => setEditingPlayerId(null)}>Cancelar</button></div>
+                    </form>
+                  ) : (
+                    <>
+                      <strong>{player.name}</strong>
+                      <small>{(player.categories || []).map(item => item === 'primera' ? '1ra División' : item === 'intermedia' ? 'Intermedia' : item === '5ta' ? '5ta División' : item).join(' · ') || 'Sin categoría'}</small>
+                      <button type="button" className="player-edit-trigger secondary" onClick={() => beginPlayerEdit(player)}>Editar</button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

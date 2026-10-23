@@ -197,6 +197,49 @@ async function savePlayer(slug, input) {
   }
 }
 
+async function updatePlayer(slug, input) {
+  const id = Number(input.id);
+  const name = String(input.name || '').trim().replace(/\s+/g, ' ');
+  const categories = [...new Set(Array.isArray(input.categories) ? input.categories : [])];
+  const allowedCategories = ['primera', 'intermedia', '5ta'];
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('La jugadora seleccionada no es válida.');
+  if (!name || name.length > 120) throw new Error('El nombre debe tener entre 1 y 120 caracteres.');
+  if (!categories.length || categories.some(category => !allowedCategories.includes(category))) {
+    throw new Error('Seleccioná al menos una categoría válida.');
+  }
+
+  const db = ensureDb();
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const updated = await client.query(
+      `UPDATE sc_players SET display_name = $3, updated_at = NOW()
+       WHERE club_slug = $1 AND id = $2 RETURNING id, display_name`, [slug, id, name]
+    );
+    if (!updated.rowCount) {
+      await client.query('ROLLBACK');
+      throw new Error('No se encontró la jugadora en este club.');
+    }
+    await client.query('DELETE FROM sc_team_players WHERE player_id = $1', [id]);
+    for (const category of categories) {
+      const team = await client.query(
+        `INSERT INTO sc_teams (club_slug, name, category) VALUES ($1, $2, $2)
+         ON CONFLICT (club_slug, category) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+        [slug, category]
+      );
+      await client.query('INSERT INTO sc_team_players (team_id, player_id) VALUES ($1, $2)', [team.rows[0].id, id]);
+    }
+    await client.query('COMMIT');
+    return { id: String(updated.rows[0].id), name: updated.rows[0].display_name, categories, active: true };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    if (error.code === '23505') throw new Error('Ya existe otra jugadora con ese nombre en este club.');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function saveCallup(slug, input) {
   const players = [...new Set((input.players || []).map(name => String(name).trim()).filter(Boolean))];
   if (players.length > 60 || players.some(name => name.length > 120)) throw new Error('La convocatoria supera los límites permitidos.');
@@ -395,4 +438,4 @@ async function savePhysicalAssessment(slug, input) {
   }
 }
 
-module.exports = { getClubData, getMatchPreparations, saveMatchPreparation, savePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, savePhysicalAssessment };
+module.exports = { getClubData, getMatchPreparations, saveMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, savePhysicalAssessment };

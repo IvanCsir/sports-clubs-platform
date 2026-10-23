@@ -115,6 +115,16 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .player-editor .message { grid-column: 1 / -1; margin: 0; }
 .player-pill { display: grid; gap: 4px; }
 .player-pill small { color: #9eb4cc; }
+.player-edit-trigger { justify-self: start; margin-top: 6px; padding: 7px 11px; font-size: .82rem; }
+.player-edit-form { display: grid; gap: 10px; }
+.player-edit-form label { display: grid; gap: 6px; color: #b7c9de; font-size: .84rem; }
+.player-edit-form input:not([type="checkbox"]) { width: 100%; min-height: 40px; padding: 9px 10px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #071d3d; font: inherit; }
+.player-category-options { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 0; padding: 8px 10px 10px; border: 1px solid #8dd3ff30; border-radius: 9px; }
+.player-category-options legend { padding: 0 4px; color: #b7c9de; font-size: .82rem; }
+.player-category-options label { display: flex; align-items: center; gap: 6px; }
+.player-category-options input[type="checkbox"] { width: 17px; height: 17px; accent-color: #00a2ff; }
+.player-edit-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.player-edit-actions button { flex: 1; padding: 9px 10px; font-size: .84rem; }
 .callup-unlock { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
 .callup-unlock label { min-width: min(100%, 260px); }
 .callup-selection { display: grid; gap: 10px; }

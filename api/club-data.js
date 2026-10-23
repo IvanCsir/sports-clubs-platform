@@ -65,6 +65,21 @@ module.exports = async function handler(req, res) {
       if (!['primera', 'intermedia', '5ta'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
       return json(res, 200, await sportsData.savePlayer(slug, body));
     }
+    if (body.action === 'update-player') {
+      if (!String(body.name || '').trim() || String(body.name).trim().length > 120) {
+        return json(res, 400, { error: 'Ingresá un nombre de hasta 120 caracteres.' });
+      }
+      if (!Number.isSafeInteger(Number(body.id)) || Number(body.id) <= 0) return json(res, 400, { error: 'La jugadora seleccionada no es válida.' });
+      if (!Array.isArray(body.categories) || !body.categories.length || body.categories.some(category => !['primera', 'intermedia', '5ta'].includes(category))) {
+        return json(res, 400, { error: 'Seleccioná al menos una categoría válida.' });
+      }
+      try {
+        return json(res, 200, await sportsData.updatePlayer(slug, body));
+      } catch (error) {
+        if (error.message === 'Ya existe otra jugadora con ese nombre en este club.') return json(res, 409, { error: error.message });
+        throw error;
+      }
+    }
     if (body.action === 'save-callup') {
       if (!['primera', 'intermedia'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
       if (!Array.isArray(body.players) || body.players.length > 60) return json(res, 400, { error: 'La lista de jugadoras no es válida.' });
