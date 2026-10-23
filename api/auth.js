@@ -33,7 +33,7 @@ const { getClub, readConfiguredClubsAsync } = require('./_lib/club-config');
   }
 })();
 
-const SESSION_DURATION_HOURS = 24;
+const SESSION_DURATION_HOURS = 12;
 
 function safeCompare(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
@@ -91,6 +91,11 @@ module.exports = async function handler(req, res) {
   const urlObj = new URL(req.url || '/', `http://${host}`);
   const clubs = await readConfiguredClubsAsync();
   const club = clubs.find(item => item.slug === urlObj.searchParams.get('club')) || clubs[0];
+  if (!club) {
+    res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'No hay clubes configurados.' }));
+    return;
+  }
 
   // GET: Validar estado de un token existente
   if (req.method === 'GET') {
@@ -121,7 +126,14 @@ module.exports = async function handler(req, res) {
       }
 
       const submittedPassword = (body.password || '').toString().trim();
-      const officialPassword = club.auth.password.trim();
+      const officialPassword = String(club.auth?.password || '').trim();
+      const authSecret = String(club.auth?.secret || '');
+
+      if (!officialPassword || !authSecret) {
+        res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: 'Autenticación no configurada para este club.' }));
+        return;
+      }
 
       if (submittedPassword && safeCompare(submittedPassword, officialPassword)) {
         const session = createSessionToken(club);
@@ -150,3 +162,6 @@ module.exports = async function handler(req, res) {
   res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify({ error: 'Método no permitido' }));
 };
+
+module.exports.verifySessionToken = verifySessionToken;
+module.exports.createSessionToken = createSessionToken;

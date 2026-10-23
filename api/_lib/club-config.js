@@ -20,11 +20,12 @@ const DEFAULT_CLUB = {
     tournamentId: '97',
     clubId: '3',
     teamName: 'REGATAS ANDINO',
+    amhTeamName: '',
     name: 'Clausura Damas B 2026'
   },
   auth: {
-    password: 'ctandinob',
-    secret: 'regatas_andino_psb_secret_key_2026'
+    password: '',
+    secret: ''
   }
 };
 const supabase = require('./supabase');
@@ -103,6 +104,11 @@ function mergeClubs(baseClubs, additionalClubs) {
 function getPublicClub(club) {
   const safeClub = clone(club);
   delete safeClub.auth;
+  // Sheet identifiers are migration-only configuration and must never reach browsers.
+  delete safeClub.spreadsheetId;
+  delete safeClub.physicalSpreadsheetId;
+  delete safeClub.dtSpreadsheetId;
+  delete safeClub.dtSpreadsheetUrl;
   return safeClub;
 }
 
@@ -111,6 +117,6 @@ module.exports = {
   getClub,
   getClubAsync,
   getPublicClub,
-  readConfiguredClubs
-  , readConfiguredClubsAsync
+  readConfiguredClubs,
+  readConfiguredClubsAsync
 };

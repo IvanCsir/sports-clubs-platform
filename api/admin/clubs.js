@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getPublicClub } = require('../_lib/club-config');
+const { getPublicClub, readConfiguredClubsAsync } = require('../_lib/club-config');
 const supabase = require('../_lib/supabase');
 const localClubs = require('../_lib/local-clubs');
 const postgres = require('../_lib/postgres');
@@ -57,10 +57,6 @@ function validateClub(input) {
     teamName: input.teamName.trim(),
     logoUrl: String(input.logoUrl || '').trim(),
     theme: input.theme || {},
-    spreadsheetId: String(input.spreadsheetId || '').trim(),
-    physicalSpreadsheetId: String(input.physicalSpreadsheetId || '').trim(),
-    dtSpreadsheetId: String(input.dtSpreadsheetId || '').trim(),
-    dtSpreadsheetUrl: String(input.dtSpreadsheetUrl || '').trim(),
     tournament: input.tournament || {},
     auth: {
       password: String(input.auth && input.auth.password || '').trim(),
@@ -97,9 +93,19 @@ module.exports = async function handler(req, res) {
 
   const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!verifyAdminToken(auth)) return json(res, 401, { error: 'Sesión de administrador inválida o expirada.' });
+  if (req.method === 'GET') {
+    const clubs = await readConfiguredClubsAsync();
+    return json(res, 200, { valid: true, clubs: clubs.map(getPublicClub) });
+  }
   if (req.method === 'POST') {
     try {
       const club = validateClub(body.club || {});
+      if (!club.auth.password || !club.auth.secret) {
+        return json(res, 400, { error: 'Configurá la contraseña y el secreto del cuerpo técnico.' });
+      }
+      if (Buffer.byteLength(club.auth.secret, 'utf8') < 32) {
+        return json(res, 400, { error: 'El secreto del club debe tener al menos 32 bytes.' });
+      }
       if (postgres.isConfigured()) {
         try {
           const saved = await postgres.insertClub(club);
@@ -126,6 +132,17 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     try {
+      const incomingAuth = body.club && body.club.auth;
+      if (incomingAuth) {
+        const hasPassword = Boolean(String(incomingAuth.password || '').trim());
+        const hasSecret = Boolean(String(incomingAuth.secret || '').trim());
+        if (hasPassword !== hasSecret) {
+          return json(res, 400, { error: 'Para cambiar el acceso del cuerpo técnico, enviá la contraseña y el secreto juntos.' });
+        }
+        if (hasSecret && Buffer.byteLength(String(incomingAuth.secret).trim(), 'utf8') < 32) {
+          return json(res, 400, { error: 'El secreto del club debe tener al menos 32 bytes.' });
+        }
+      }
       const current = (await require('../_lib/club-config').readConfiguredClubsAsync())
         .find(item => item.slug === body.slug);
       if (!current) return json(res, 404, { error: 'Club no encontrado.' });

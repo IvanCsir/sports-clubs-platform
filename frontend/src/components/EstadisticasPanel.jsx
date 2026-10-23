@@ -40,7 +40,7 @@ export default function EstadisticasPanel({
       if (!response.ok || !data.token) {
         throw new Error(data.error || 'Contraseña incorrecta');
       }
-      onAuthenticate(data.token);
+      await onAuthenticate(data.token);
     } catch (err) {
       setAuthError(err.message);
     } finally {

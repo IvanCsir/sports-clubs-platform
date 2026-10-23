@@ -1,8 +1,8 @@
 @echo off
-title Web Citaciones - Hockey Femenino
+title Sports Clubs Platform
 echo ======================================================
-echo    Iniciando Servidor Local de Citaciones...
+echo    Iniciando el portal de clubes...
 echo ======================================================
 start http://localhost:3000
-node server.js
+npm start
 pause

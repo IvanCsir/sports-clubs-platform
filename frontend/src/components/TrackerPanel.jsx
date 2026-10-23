@@ -11,6 +11,8 @@ export default function TrackerPanel({
   club,
   events,
   setEvents,
+  onPersistEvent,
+  onDeleteEvent,
   matches,
   loadMatches,
   authenticated,
@@ -48,7 +50,7 @@ export default function TrackerPanel({
       if (!response.ok || !payload.token) {
         throw new Error(payload.error || 'No se pudo iniciar sesión.');
       }
-      onAuthenticate(payload.token);
+      await onAuthenticate(payload.token);
       setPassword('');
       setAuthStatus('Sesión activa');
     } catch (error) {
@@ -98,20 +100,26 @@ export default function TrackerPanel({
   const count = (team, type) =>
     currentEvents.filter(event => event.team === team && event.type === type).length;
 
-  const addEvent = (team, type) => {
+  const addEvent = async (team, type) => {
     const newEvent = {
       id: `${Date.now()}-${Math.random()}`,
       match: matchKey,
+      matchKey,
       quarter,
       team,
       type,
       at: new Date().toISOString()
     };
-    setEvents(current => [...current, newEvent]);
+    try {
+      await onPersistEvent(newEvent, match?.rival);
+      setEvents(current => [...current, newEvent]);
+    } catch (error) {
+      setAuthStatus(error.message);
+    }
   };
 
-  const addSetPiece = (team, type) => {
-    addEvent(team, type);
+  const addSetPiece = async (team, type) => {
+    await addEvent(team, type);
     if (window.confirm('¿Terminó en gol esta jugada fija?')) {
       addEvent(team, `${type}Goal`);
     }
@@ -119,21 +127,20 @@ export default function TrackerPanel({
 
   const resetMatch = () => {
     if (window.confirm('¿Reiniciar los datos de este partido?')) {
-      setEvents(current => current.filter(event => (event.match || 'amistoso') !== matchKey));
+      const removed = events.filter(event => (event.match || 'amistoso') === matchKey);
+      Promise.all(removed.map(event => onDeleteEvent(event.id))).then(() => {
+        setEvents(current => current.filter(event => (event.match || 'amistoso') !== matchKey));
+      }).catch(error => setAuthStatus(error.message));
       setQuarter(1);
       setSeconds(900);
       setTimerRunning(false);
     }
   };
 
-  // Sincronización con Google Sheets (Apps Script DT)
-  async function syncWithSheets() {
-    if (!club.dtSpreadsheetUrl) {
-      setSyncStatus('⚠️ Club sin URL de Google Apps Script configurada');
-      return;
-    }
+  // Guardado completo del partido en PostgreSQL.
+  async function saveMatch() {
     setIsSyncing(true);
-    setSyncStatus('Transmitiendo a Google Sheets...');
+    setSyncStatus('Guardando en la base de datos...');
     try {
       const payload = {
         action: 'sync_full_match',
@@ -148,15 +155,16 @@ export default function TrackerPanel({
         }
       };
 
-      await fetch(club.dtSpreadsheetUrl, {
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
         method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'replace-match-events', match: payload.round, matchKey, opponent: payload.rival, events: currentEvents })
       });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudo guardar el partido.');
 
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setSyncStatus(`✅ Sincronizado con Sheets a las ${timeStr} hs`);
+      setSyncStatus(`✅ Guardado en la base a las ${timeStr} hs`);
     } catch (err) {
       setSyncStatus(`❌ Error sincronizando: ${err.message}`);
     } finally {
@@ -239,14 +247,14 @@ export default function TrackerPanel({
         <button className="refresh" onClick={loadMatches}>
           Actualizar Fixture
         </button>
-        {club.dtSpreadsheetUrl && (
+        {authenticated && (
           <button
             type="button"
             className="secondary sync-sheets-btn"
-            onClick={syncWithSheets}
+            onClick={saveMatch}
             disabled={isSyncing}
           >
-            {isSyncing ? 'Sincronizando...' : '☁️ Sincronizar en Sheets'}
+            {isSyncing ? 'Guardando...' : '☁️ Guardar partido'}
           </button>
         )}
         {onOpenPrecarga && (
@@ -328,7 +336,14 @@ export default function TrackerPanel({
       </div>
 
       <div className="tracker-actions">
-        <button onClick={() => setEvents(current => current.slice(0, -1))}>
+        <button onClick={async () => {
+          const lastEvent = events.at(-1);
+          if (!lastEvent) return;
+          try {
+            await onDeleteEvent(lastEvent.id);
+            setEvents(current => current.filter(event => event.id !== lastEvent.id));
+          } catch (error) { setAuthStatus(error.message); }
+        }}>
           ↩ Deshacer última jugada
         </button>
         <button onClick={() => setTeamView('both')}>📊 Vista Ambos Equipos</button>

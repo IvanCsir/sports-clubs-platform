@@ -1,0 +1,138 @@
+const { getClubAsync } = require('./_lib/club-config');
+const { verifySessionToken } = require('./auth');
+const sportsData = require('./_lib/sports-data');
+
+function json(res, status, payload) {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify(payload));
+}
+
+async function readBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body;
+  const raw = await new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
+  });
+  try { return JSON.parse(raw || '{}'); } catch (_) { return {}; }
+}
+
+module.exports = async function handler(req, res) {
+  const url = new URL(req.url || '/', `http://${req.headers?.host || 'localhost'}`);
+  const slug = url.searchParams.get('club');
+  try {
+    const club = slug ? await getClubAsync(slug) : null;
+    if (!club) return json(res, 404, { error: 'Club no encontrado.' });
+
+    if (req.method === 'GET') {
+      const dataset = url.searchParams.get('dataset') || 'citations';
+      if (!['citations', 'physical', 'staff', 'preparations'].includes(dataset)) return json(res, 400, { error: 'Conjunto de datos inválido.' });
+      if (dataset === 'preparations') {
+        return json(res, 200, { preparations: await sportsData.getMatchPreparations(slug) });
+      }
+      if (dataset === 'physical') {
+        const data = await sportsData.getClubData(slug);
+        return json(res, 200, { physicalPlayers: data.physicalPlayers });
+      }
+      if (dataset === 'staff') {
+        const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
+        if (!token || !verifySessionToken(token, club).valid) {
+          return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
+        }
+        const data = await sportsData.getClubData(slug);
+        return json(res, 200, { physicalPlayers: data.physicalPlayers, events: data.events, players: data.players || [] });
+      }
+      const data = await sportsData.getClubData(slug);
+      return json(res, 200, { citations: data.citations });
+    }
+    if (!['POST', 'DELETE'].includes(req.method)) return json(res, 405, { error: 'Método no permitido.' });
+
+    const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
+    if (!token || !verifySessionToken(token, club).valid) {
+      return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
+    }
+    const body = await readBody(req);
+    if (req.method === 'DELETE' || body.action === 'delete-event') {
+      const id = url.searchParams.get('id') || body.id;
+      if (!id) return json(res, 400, { error: 'Falta el identificador del evento.' });
+      return json(res, 200, { deleted: await sportsData.deleteEvent(slug, id) });
+    }
+    if (body.action === 'save-player') {
+      if (!String(body.name || '').trim() || String(body.name).trim().length > 120) {
+        return json(res, 400, { error: 'Ingresá un nombre de hasta 120 caracteres.' });
+      }
+      if (!['primera', 'intermedia', '5ta'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
+      return json(res, 200, await sportsData.savePlayer(slug, body));
+    }
+    if (body.action === 'save-callup') {
+      if (!['primera', 'intermedia'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
+      if (!Array.isArray(body.players) || body.players.length > 60) return json(res, 400, { error: 'La lista de jugadoras no es válida.' });
+      return json(res, 200, await sportsData.saveCallup(slug, body));
+    }
+    if (body.action === 'save-preparation') {
+      if (!['primera', 'intermedia'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
+      if (!String(body.matchKey || '').trim() || String(body.matchKey).length > 180 ||
+          !String(body.round || '').trim() || String(body.round).length > 100 ||
+          !String(body.opponent || '').trim() || String(body.opponent).length > 140) {
+        return json(res, 400, { error: 'Completá el partido para guardar su preparación.' });
+      }
+      const preparation = body.preparation || {};
+      const plays = preparation.plays || [];
+      const videoUrls = preparation.videoUrls || [];
+      if (String(preparation.focus || '').length > 1500 ||
+          !Array.isArray(videoUrls) || videoUrls.length > 10 ||
+          !Array.isArray(plays) || plays.length > 12 ||
+          Buffer.byteLength(JSON.stringify(preparation), 'utf8') > 180000) {
+        return json(res, 400, { error: 'La preparación supera los límites permitidos.' });
+      }
+      for (const value of videoUrls) {
+        try {
+          const url = new URL(String(value));
+          if (!['http:', 'https:'].includes(url.protocol) || String(value).length > 1000) throw new Error();
+        } catch (_) {
+          return json(res, 400, { error: 'Cada video debe tener un enlace web válido.' });
+        }
+      }
+      for (const play of plays) {
+        if (!play || String(play.title || '').trim().length > 80 || !Array.isArray(play.frames) || play.frames.length > 30) {
+          return json(res, 400, { error: 'Una jugada táctica no es válida.' });
+        }
+        for (const frame of play.frames) {
+          if (!Array.isArray(frame) || frame.length > 22) return json(res, 400, { error: 'Un paso de la jugada no es válido.' });
+          for (const marker of frame) {
+            if (!marker || !['own', 'opponent', 'ball'].includes(marker.side) ||
+                !Number.isFinite(Number(marker.x)) || Number(marker.x) < 0 || Number(marker.x) > 100 ||
+                !Number.isFinite(Number(marker.y)) || Number(marker.y) < 0 || Number(marker.y) > 100 ||
+                String(marker.label || '').length > 12) {
+              return json(res, 400, { error: 'La pizarra táctica contiene una ficha inválida.' });
+            }
+          }
+        }
+      }
+      const saved = await sportsData.saveMatchPreparation(slug, {
+        ...body,
+        preparation: { focus: String(preparation.focus || '').trim(), videoUrls, plays }
+      });
+      return json(res, 200, saved);
+    }
+    if (body.action === 'save-event') {
+      if (!body.event || !body.event.id) return json(res, 400, { error: 'El evento debe incluir un identificador.' });
+      return json(res, 200, await sportsData.saveEvent(slug, body));
+    }
+    if (body.action === 'replace-match-events') {
+      if (!Array.isArray(body.events) || body.events.length > 1000) return json(res, 400, { error: 'La lista de eventos no es válida.' });
+      return json(res, 200, await sportsData.replaceMatchEvents(slug, body));
+    }
+    if (body.action === 'save-physical-assessment') {
+      if (!String(body.name || '').trim() || !Array.isArray(body.results) || body.results.length > 27) {
+        return json(res, 400, { error: 'Completá la jugadora y los resultados de la evaluación.' });
+      }
+      return json(res, 200, await sportsData.savePhysicalAssessment(slug, body));
+    }
+    return json(res, 400, { error: 'Acción de persistencia desconocida.' });
+  } catch (error) {
+    console.error('[API Club Data]', error);
+    return json(res, 503, { error: 'No se pudo acceder a la base de datos del club.' });
+  }
+};

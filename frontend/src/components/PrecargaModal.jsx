@@ -4,6 +4,7 @@ export default function PrecargaModal({
   club,
   citedPlayers = {},
   authenticated,
+  token,
   onAuthenticate,
   onClose
 }) {
@@ -148,7 +149,7 @@ export default function PrecargaModal({
     try {
       const res = await fetch('/api/torneo/precarga', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           division: divId,
           partidoId: selectedMatchId,

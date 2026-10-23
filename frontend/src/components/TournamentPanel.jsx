@@ -36,15 +36,27 @@ export default function TournamentPanel({ club }) {
   }, [club.slug, club.tournament?.tournamentId]);
 
   const current = data[division] || { standings: [], scorers: [], playedMatches: [], pendingMatches: [] };
+  const normalizeTeamName = name => String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[().,'’']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const normalizeTeamKey = name => normalizeTeamName(name).replace(/[^A-Z0-9]/g, '');
+  const amhTeamName = normalizeTeamName(club.tournament?.amhTeamName);
+  const exactTeamKeys = [club.tournament?.amhTeamName, club.shortName, club.teamName, club.name]
+    .map(normalizeTeamKey)
+    .filter(Boolean);
   const teamTokens = [club.shortName, club.name, club.teamName]
     .filter(Boolean)
-    .map(name => name.toUpperCase().replace(/\s+[AB]\s*$/, '').replace(/\s+PS[A-Z]*\s*$/, '').trim())
+    .map(name => normalizeTeamName(name).replace(/\s+[AB]\s*$/, '').replace(/\s+PS[A-Z]*\s*$/, '').trim())
     .sort((a, b) => b.length - a.length);
   const isBranchA = (club.slug && club.slug.includes('-a')) || (club.shortName && club.shortName.toUpperCase().includes(' A')) || (club.teamName && club.teamName.toUpperCase().includes(' A'));
   const isBranchB = (club.slug && (club.slug.includes('-b') || club.slug === 'regatas-andino')) || (club.shortName && club.shortName.toUpperCase().includes(' B')) || (club.teamName && club.teamName.toUpperCase().includes(' B'));
 
   const matchesClub = row => {
-    const rowTeam = (row.team || '').toUpperCase();
+    const rowTeam = normalizeTeamName(row.team);
     if (isBranchA && rowTeam.includes('REGATAS')) {
       return rowTeam.includes('- A') || rowTeam.includes('(A)') || rowTeam.endsWith(' A');
     }
@@ -53,17 +65,19 @@ export default function TournamentPanel({ club }) {
     }
     return teamTokens.some(token => token && rowTeam.includes(token));
   };
-  const clubRow = current.standings.find(matchesClub) || {};
+  const clubRow = current.standings.find(row => exactTeamKeys.includes(normalizeTeamKey(row.team)))
+    || current.standings.find(row => amhTeamName && normalizeTeamName(row.team) === amhTeamName)
+    || current.standings.find(matchesClub)
+    || {};
+  const selectedTeamName = normalizeTeamName(clubRow.team);
+  const isClubRow = row => selectedTeamName
+    ? normalizeTeamName(row.team) === selectedTeamName
+    : matchesClub(row);
   const matches = matchesTab === 'played' ? current.playedMatches || [] : current.pendingMatches || [];
   const scorers = (current.scorers || []).slice(0, 10);
 
   return (
     <section className="tournament-panel">
-      <div className="tournament-hero">
-        <span className="kicker">TORNEO · {current.tournament || club.tournament?.name || 'COMPETENCIA'}</span>
-        <h2>Tabla de posiciones y fixture</h2>
-        <p>Resultados oficiales, próximos partidos y posiciones de {club.shortName || club.name}.</p>
-      </div>
       <div className="tournament-actions">
         <div className="tournament-tabs">
           <button
@@ -175,7 +189,7 @@ export default function TournamentPanel({ club }) {
               <tbody>
                 {current.standings.length ? (
                   current.standings.map((row, index) => (
-                    <tr className={matchesClub(row) ? 'highlight' : ''} key={`${row.team}-${index}`}>
+                    <tr className={isClubRow(row) ? 'highlight' : ''} key={`${row.team}-${index}`}>
                       <td>{row.pos || index + 1}</td>
                       <td>{row.team}</td>
                       <td>{row.pts ?? 0}</td>

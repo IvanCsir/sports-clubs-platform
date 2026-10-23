@@ -11,7 +11,9 @@ function getPool() {
   if (!pool) {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      max: 5,
+      // Vercel can keep several function instances warm at once; keep each
+      // instance's client pool small when using Supabase's transaction pooler.
+      max: process.env.VERCEL ? 1 : 5,
       connectionTimeoutMillis: 5000
     });
   }
@@ -43,4 +45,4 @@ async function updateClub(slug, config) {
   return result.rows[0].config;
 }
 
-module.exports = { isConfigured, listClubs, insertClub, updateClub };
+module.exports = { isConfigured, getPool, listClubs, insertClub, updateClub };

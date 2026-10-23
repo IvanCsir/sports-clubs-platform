@@ -14,6 +14,7 @@ function normalizeTeamName(value) {
 
 function isSelectedTeam(teamName, club) {
   const configured = [
+    club.tournament && club.tournament.amhTeamName,
     club.tournament && club.tournament.teamName,
     club.shortName,
     club.name

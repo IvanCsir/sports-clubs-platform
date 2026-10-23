@@ -1,19 +1,27 @@
-const { getClub, getPublicClub, readConfiguredClubs, readConfiguredClubsAsync } = require('./_lib/club-config');
+const { getClubAsync, getPublicClub } = require('./_lib/club-config');
 
 module.exports = async function handler(req, res) {
   try {
     const host = (req.headers && req.headers.host) || 'localhost';
     const url = new URL(req.url || '/', `http://${host}`);
-    const configured = await readConfiguredClubsAsync();
-    const clubs = configured.map(club => getPublicClub(club));
-    const selected = configured.find(club => club.slug === url.searchParams.get('club')) || configured[0] || getClub();
+    const slug = url.searchParams.get('club');
+    if (!slug) {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ error: 'Ingresá con el enlace de tu club.' }));
+      return;
+    }
+    const selected = await getClubAsync(slug);
+    if (!selected) {
+      res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ error: 'Club no encontrado.' }));
+      return;
+    }
 
-    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.writeHead(200);
     res.end(JSON.stringify({
       club: getPublicClub(selected),
-      clubs,
       updatedAt: new Date().toISOString()
     }));
   } catch (error) {

@@ -3,7 +3,7 @@ import TrackerPanel from './components/TrackerPanel';
 import TournamentPanel from './components/TournamentPanel';
 import EstadisticasPanel from './components/EstadisticasPanel';
 import PrecargaModal from './components/PrecargaModal';
-import SunModeToggle from './components/SunModeToggle';
+import MatchPreparationPanel from './components/MatchPreparationPanel';
 
 const emptyClub = {
   slug: '',
@@ -12,66 +12,15 @@ const emptyClub = {
   sport: 'Hockey',
   teamName: 'PLANTEL SUPERIOR',
   logoUrl: '',
-  spreadsheetId: '',
-  physicalSpreadsheetId: '',
-  dtSpreadsheetId: '',
-  dtSpreadsheetUrl: '',
   staffPassword: '',
   staffSecret: '',
   tournamentName: '',
   tournamentBaseUrl: '',
   tournamentId: '',
   tournamentClubId: '',
+  tournamentAmhTeamName: '',
   tournamentDivision: '1'
 };
-
-function parseSheet(table) {
-  const players = [];
-  const meta = {};
-  (table?.rows || []).forEach(row => {
-    if (!row.c) return;
-    const cited = row.c[5]?.v?.toString().trim();
-    if (cited && cited.toLowerCase() !== 'jugadoras citadas') players.push(cited);
-    const label = row.c[7]?.v?.toString().trim().toLowerCase();
-    const value = (row.c[8]?.f || row.c[8]?.v || '').toString().trim();
-    if (label && value) meta[label] = value;
-  });
-  return { players, meta };
-}
-
-function parsePhysicalTable(table) {
-  const players = [];
-  const value = cell => (cell?.f ?? cell?.v ?? '').toString().trim();
-  const number = cell => {
-    const raw = value(cell).replace(',', '.').replace(/[^\d.-]/g, '');
-    if (!raw) return null;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : null;
-  };
-  (table?.rows || []).forEach((row, index) => {
-    const name = value(row.c?.[2]);
-    if (!name || name.toLowerCase().includes('apellido') || name.length <= 1) return;
-    const division = value(row.c?.[0]) || 'PS';
-    const branch = value(row.c?.[1]) || 'B';
-    const filterTag = division.toLowerCase().includes('5ta') || division.toLowerCase().includes('quinta')
-      ? '5ta' : branch.toLowerCase().includes('inter') ? 'Inter' : '1ra';
-    const tests = {};
-    PHYSICAL_TESTS.forEach(test => {
-      const evals = test.cols.map((column, round) => {
-        const item = number(row.c?.[column]);
-        return item === null ? null : { round: round + 1, value: item };
-      }).filter(Boolean);
-      if (evals.length) {
-        const first = evals[0].value;
-        const last = evals[evals.length - 1].value;
-        const diff = evals.length > 1 ? Number((last - first).toFixed(test.decimals)) : null;
-        tests[test.key] = { evals, diff, improved: diff === null ? null : test.higherIsBetter ? diff > 0 : diff < 0 };
-      }
-    });
-    players.push({ id: `physical-${index}`, name, division, branch, filterTag, tests });
-  });
-  return players;
-}
 
 const PHYSICAL_TESTS = [
   { key: 'broadJump', name: 'Broad Jump', type: 'Salto horizontal', unit: 'm', higherIsBetter: true, icon: '🏃‍♀️', decimals: 2, cols: [3, 4, 5] },
@@ -85,52 +34,41 @@ const PHYSICAL_TESTS = [
   { key: 'platform', name: 'Plataforma', type: 'Potencia', unit: '', higherIsBetter: true, icon: '🎯', decimals: 1, cols: [27, 28, 29] }
 ];
 
-function ClubWorkspace({ club, onBack }) {
+function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [category, setCategory] = useState('primera');
-  const [view, setView] = useState('citaciones'); // 'citaciones' | 'fisico' | 'dt' | 'stats' | 'torneo'
+  const [view, setView] = useState('inicio');
   const [data, setData] = useState({ primera: null, intermedia: null });
   const [physicalPlayers, setPhysicalPlayers] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const [playerDraft, setPlayerDraft] = useState({ name: '', category: 'primera' });
+  const [playerError, setPlayerError] = useState('');
   const [physicalMode, setPhysicalMode] = useState('players');
   const [physicalFilter, setPhysicalFilter] = useState('all');
   const [physicalSearch, setPhysicalSearch] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState(null);
-  const [status, setStatus] = useState('Cargando planillas...');
+  const [editingCallup, setEditingCallup] = useState(false);
+  const [callupDraft, setCallupDraft] = useState('');
+  const [callupMetaDraft, setCallupMetaDraft] = useState({});
+  const [callupError, setCallupError] = useState('');
+  const [editingPhysical, setEditingPhysical] = useState(false);
+  const [physicalDraft, setPhysicalDraft] = useState({ name: '', category: 'primera', evaluatedOn: '', values: {} });
+  const [physicalSaveError, setPhysicalSaveError] = useState('');
+  const [status, setStatus] = useState('Cargando información del club...');
   const [showPrecargaModal, setShowPrecargaModal] = useState(false);
 
   // Estado compartido para Botonera DT y Estadísticas
   const storageKey = `club_tracker_${club.slug}`;
   const authKey = `club_tracker_auth_${club.slug}`;
-  const [events, setEvents] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
-      return saved.events || [];
-    } catch (_) {
-      return [];
-    }
-  });
+  const [events, setEvents] = useState([]);
 
   const [matches, setMatches] = useState([]);
   const [nextAmhMatch, setNextAmhMatch] = useState(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [token, setToken] = useState('');
-
-  // Recargar eventos al cambiar de club
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
-      setEvents(saved.events || []);
-    } catch (_) {
-      setEvents([]);
-    }
-  }, [club.slug, storageKey]);
-
-  // Sincronizar persistencia de eventos
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
-      localStorage.setItem(storageKey, JSON.stringify({ ...saved, events }));
-    } catch (_) {}
-  }, [events, storageKey]);
+  const [showStaffLogin, setShowStaffLogin] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [staffLoginPassword, setStaffLoginPassword] = useState('');
+  const [staffLoginError, setStaffLoginError] = useState('');
 
   // Cargar fixture para Botonera y Estadísticas
   async function loadMatches(div = (category === 'intermedia' ? '2' : '1')) {
@@ -143,42 +81,210 @@ function ClubWorkspace({ club, onBack }) {
     } catch (_) {}
   }
 
+  async function loadStaffData(sessionToken = token) {
+    if (!sessionToken) return;
+    const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}&dataset=staff`, {
+      headers: { Authorization: `Bearer ${sessionToken}` }, cache: 'no-store'
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar los datos del cuerpo técnico.');
+    setEvents(payload.events || []);
+    setPhysicalPlayers(payload.physicalPlayers || []);
+    setPlayers(payload.players || []);
+  }
+
+  async function authenticateStaff(password) {
+    const response = await fetch(`/api/auth?club=${encodeURIComponent(club.slug)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password })
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.token) throw new Error(payload.error || 'No se pudo iniciar sesión.');
+    await loadStaffData(payload.token);
+    setToken(payload.token);
+    setAuthenticated(true);
+    sessionStorage.setItem(authKey, payload.token);
+    return payload.token;
+  }
+
+  async function authenticateStaffWithToken(sessionToken) {
+    const response = await fetch(`/api/auth?club=${encodeURIComponent(club.slug)}`, {
+      headers: { Authorization: `Bearer ${sessionToken}` }, cache: 'no-store'
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.valid) throw new Error('La sesión venció. Ingresá nuevamente.');
+    await loadStaffData(sessionToken);
+    setToken(sessionToken);
+    setAuthenticated(true);
+    sessionStorage.setItem(authKey, sessionToken);
+    return sessionToken;
+  }
+
+  async function submitStaffLogin(event) {
+    event.preventDefault();
+    setStaffLoginError('');
+    try {
+      await authenticateStaff(staffLoginPassword);
+      setStaffLoginPassword('');
+      setShowStaffLogin(false);
+      setView('inicio');
+    } catch (error) { setStaffLoginError(error.message); }
+  }
+
+  function logoutStaff() {
+    sessionStorage.removeItem(authKey);
+    localStorage.removeItem(authKey);
+    setToken('');
+    setAuthenticated(false);
+    setEvents([]);
+    setPlayers([]);
+    setPhysicalPlayers([]);
+    setSelectedPlayer(null);
+    setEditingCallup(false);
+    setEditingPhysical(false);
+    setShowPrecargaModal(false);
+    setView('inicio');
+  }
+
+  async function persistTrackerEvent(event, opponent) {
+    const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'save-event', match: event.match, matchKey: event.matchKey, opponent, event })
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'No se pudo guardar el evento en la base de datos.');
+  }
+
+  async function removeTrackerEvent(id) {
+    const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id })
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'No se pudo eliminar el evento.');
+  }
+
+  function beginCallupEdit() {
+    const currentData = data[category] || { players: [], meta: {} };
+    setCallupDraft((currentData.players || []).join('\n'));
+    const meta = currentData.meta || {};
+    setCallupMetaDraft({
+      round: meta['fecha n°'] || meta['fecha n'] || meta.fecha || '',
+      opponent: meta.rival || '',
+      date: meta.dia || meta['día'] || '',
+      venue: meta.cancha || '',
+      callTime: meta['horario citacion'] || meta['horario citación'] || '',
+      matchTime: meta['horario partido'] || meta.partido || '',
+      opponentLogoUrl: meta['url escudo rival'] || meta['escudo rival'] || ''
+    });
+    setCallupError('');
+    setEditingCallup(true);
+  }
+
+  async function submitCallup(event) {
+    event.preventDefault();
+    setCallupError('');
+    try {
+      if (!authenticated) throw new Error('Ingresá con la contraseña del cuerpo técnico para elegir y guardar las citadas.');
+      const sessionToken = token;
+      const players = callupDraft.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+        body: JSON.stringify({
+          action: 'save-callup', category, teamName: category,
+          matchKey: `${category}-${(callupMetaDraft.round || 'actual').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+          ...callupMetaDraft, players
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudo guardar la citación.');
+      await loadSheets();
+      await loadStaffData(sessionToken);
+      setEditingCallup(false);
+    } catch (error) { setCallupError(error.message); }
+  }
+
+  function toggleCallupPlayer(name, selected) {
+    setCallupDraft(current => {
+      const selection = new Set(current.split(/\r?\n/).map(item => item.trim()).filter(Boolean));
+      if (selected) selection.add(name);
+      else selection.delete(name);
+      return [...selection].join('\n');
+    });
+  }
+
+  async function submitPhysicalAssessment(event) {
+    event.preventDefault();
+    setPhysicalSaveError('');
+    const results = Object.entries(physicalDraft.values)
+      .map(([key, value]) => {
+        const [testKey, attempt] = key.split(':');
+        const test = PHYSICAL_TESTS.find(item => item.key === testKey);
+        return { testKey, attempt: Number(attempt), rawValue: value, value: Number(value), unit: test?.unit || '' };
+      }).filter(item => item.rawValue !== '' && Number.isFinite(item.value));
+    try {
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'save-physical-assessment', ...physicalDraft, results })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo guardar la evaluación.');
+      await loadStaffData(token);
+      setEditingPhysical(false);
+      setPhysicalDraft({ name: '', category: 'primera', evaluatedOn: '', values: {} });
+    } catch (error) { setPhysicalSaveError(error.message); }
+  }
+
+  async function submitPlayer(event) {
+    event.preventDefault();
+    setPlayerError('');
+    try {
+      const sessionToken = token;
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionToken}` },
+        body: JSON.stringify({ action: 'save-player', ...playerDraft })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo agregar la jugadora.');
+      await loadStaffData(sessionToken);
+      setPlayerDraft({ name: '', category: playerDraft.category });
+    } catch (error) { setPlayerError(error.message); }
+  }
+
   // Verificar sesión persistida de cuerpo técnico y fixture
   useEffect(() => {
     loadMatches(category === 'intermedia' ? '2' : '1');
     try {
-      const savedToken = localStorage.getItem(authKey);
+      localStorage.removeItem(authKey);
+      const savedToken = sessionStorage.getItem(authKey);
       if (savedToken) {
         fetch(`/api/auth?club=${encodeURIComponent(club.slug)}`, { headers: { Authorization: `Bearer ${savedToken}` } })
           .then(res => res.json())
           .then(payload => {
             if (payload.valid) {
-              setToken(savedToken);
-              setAuthenticated(true);
+              loadStaffData(savedToken).then(() => {
+                setToken(savedToken);
+                setAuthenticated(true);
+              }).catch(() => sessionStorage.removeItem(authKey));
             } else {
-              localStorage.removeItem(authKey);
+              sessionStorage.removeItem(authKey);
             }
           })
-          .catch(() => localStorage.removeItem(authKey));
+          .catch(() => sessionStorage.removeItem(authKey));
       }
     } catch (_) {}
   }, [club.slug, category]);
 
   async function loadSheets() {
-    if (!club.spreadsheetId) {
-      setStatus('Este club todavía no tiene configurada la planilla de citaciones.');
-      return;
-    }
     try {
-      const loadTab = async tab => {
-        const response = await fetch(`/api/sheets?club=${encodeURIComponent(club.slug)}&sheet=${encodeURIComponent(tab)}`, { cache: 'no-store' });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || `Planilla ${tab}: HTTP ${response.status}`);
-        return parseSheet(payload.table);
-      };
-      const [primera, intermedia] = await Promise.all([loadTab('primera'), loadTab('intermedia')]);
-      setData({ primera, intermedia });
-      setStatus(`Actualizado ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`);
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}&dataset=citations`, { cache: 'no-store' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar las citaciones.');
+      setData(payload.citations || { primera: null, intermedia: null });
+      setStatus(`Citaciones actualizadas a las ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`);
     } catch (error) {
       setStatus(error.message);
     }
@@ -187,11 +293,11 @@ function ClubWorkspace({ club, onBack }) {
   async function loadPhysical() {
     setStatus('Cargando evaluaciones físicas...');
     try {
-      const response = await fetch(`/api/sheets/physical?club=${encodeURIComponent(club.slug)}`, { cache: 'no-store' });
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}&dataset=physical`, { cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || `Evaluaciones físicas: HTTP ${response.status}`);
-      setPhysicalPlayers(parsePhysicalTable(payload.table));
-      setStatus(`Evaluaciones actualizadas ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`);
+      setPhysicalPlayers(payload.physicalPlayers || []);
+      setStatus(`Evaluaciones físicas actualizadas a las ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`);
     } catch (error) {
       setStatus(error.message);
     }
@@ -199,7 +305,7 @@ function ClubWorkspace({ club, onBack }) {
 
   useEffect(() => {
     loadSheets();
-  }, [club.spreadsheetId]);
+  }, [club.slug]);
 
   const current = data[category] || { players: [], meta: {} };
   const meta = current.meta;
@@ -219,11 +325,29 @@ function ClubWorkspace({ club, onBack }) {
   });
 
   const selected = physicalPlayers.find(player => player.id === selectedPlayer);
+  const latestResult = [...matches].reverse().find(match => match.played) || null;
+  const workspaceSections = [
+    { id: 'inicio', label: 'Inicio' },
+    { id: 'citaciones', label: 'Citaciones' },
+    { id: 'preparacion', label: 'Plan partido' },
+    { id: 'torneo', label: 'Torneos' },
+    { id: 'fisico', label: 'Evaluaciones físicas' },
+    ...(authenticated ? [
+      { id: 'jugadoras', label: 'Plantel' },
+      { id: 'dt', label: 'Botonera DT' },
+      { id: 'stats', label: 'Estadísticas' }
+    ] : [])
+  ];
+  const selectWorkspaceSection = id => {
+    setView(id);
+    setMobileMenuOpen(false);
+    if (id === 'fisico') loadPhysical();
+  };
 
   return (
     <main className="portal">
       <section className="workspace">
-        <button className="secondary back-button" onClick={onBack}>← Volver a clubes</button>
+        {showAdminBack && <button className="secondary back-button" onClick={() => { logoutStaff(); onBack(); }}>← Volver a administración</button>}
         <header className="workspace-header">
           <img src={club.logoUrl || '/escudo-regatas-andino.png'} alt="" />
           <div>
@@ -232,7 +356,13 @@ function ClubWorkspace({ club, onBack }) {
             <p>{club.sport}</p>
           </div>
           <div className="workspace-header-actions">
-            <SunModeToggle />
+            {authenticated ? (
+              <button type="button" className="secondary staff-access-header" onClick={logoutStaff}>Salir del cuerpo técnico</button>
+            ) : (
+              <button type="button" className="secondary staff-access-header" onClick={() => { setStaffLoginError(''); setShowStaffLogin(true); }}>
+                Acceso cuerpo técnico
+              </button>
+            )}
             {authenticated && (
               <button
                 type="button"
@@ -246,43 +376,137 @@ function ClubWorkspace({ club, onBack }) {
           </div>
         </header>
 
-        <nav className="workspace-nav">
-          <button className={view === 'citaciones' ? 'active' : ''} onClick={() => setView('citaciones')}>Citaciones</button>
-          <button className={view === 'fisico' ? 'active' : ''} onClick={() => { setView('fisico'); if (!physicalPlayers.length) loadPhysical(); }}>Evaluaciones físicas</button>
-          <button className={view === 'dt' ? 'active' : ''} onClick={() => setView('dt')}>Botonera DT</button>
-          <button className={view === 'stats' ? 'active' : ''} onClick={() => setView('stats')}>Estadísticas</button>
-          <button className={view === 'torneo' ? 'active' : ''} onClick={() => setView('torneo')}>Torneos</button>
+        <button
+          type="button"
+          className="mobile-menu-trigger secondary"
+          aria-expanded={mobileMenuOpen}
+          aria-controls="workspace-mobile-menu"
+          onClick={() => setMobileMenuOpen(true)}
+        >
+          <span aria-hidden="true">☰</span> Menú <small>{workspaceSections.find(section => section.id === view)?.label}</small>
+        </button>
+        <nav className="workspace-nav" aria-label="Secciones del club">
+          <button className={view === 'inicio' ? 'active' : ''} onClick={() => selectWorkspaceSection('inicio')}>Inicio</button>
+          <button className={view === 'citaciones' ? 'active' : ''} onClick={() => selectWorkspaceSection('citaciones')}>Citaciones</button>
+          <button className={view === 'preparacion' ? 'active' : ''} onClick={() => selectWorkspaceSection('preparacion')}>Plan partido</button>
+          <button className={view === 'torneo' ? 'active' : ''} onClick={() => selectWorkspaceSection('torneo')}>Torneos</button>
+          <button className={view === 'fisico' ? 'active' : ''} onClick={() => selectWorkspaceSection('fisico')}>Evaluaciones físicas</button>
+          {authenticated && <>
+            <span className="workspace-nav-divider" aria-hidden="true" />
+            <button className={view === 'jugadoras' ? 'active' : ''} onClick={() => selectWorkspaceSection('jugadoras')}>Plantel</button>
+            <button className={view === 'dt' ? 'active' : ''} onClick={() => selectWorkspaceSection('dt')}>Botonera DT</button>
+            <button className={view === 'stats' ? 'active' : ''} onClick={() => selectWorkspaceSection('stats')}>Estadísticas</button>
+          </>}
         </nav>
+        {mobileMenuOpen && (
+          <div className="mobile-menu-layer" onMouseDown={event => { if (event.target === event.currentTarget) setMobileMenuOpen(false); }}>
+            <nav id="workspace-mobile-menu" className="mobile-menu-drawer" aria-label="Menú del club">
+              <div className="mobile-menu-heading">
+                <div><span className="kicker">{club.shortName}</span><h2>Secciones</h2></div>
+                <button type="button" className="secondary mobile-menu-close" aria-label="Cerrar menú" onClick={() => setMobileMenuOpen(false)}>×</button>
+              </div>
+              {workspaceSections.map(section => (
+                <button
+                  type="button"
+                  key={section.id}
+                  className={`mobile-menu-item${view === section.id ? ' active' : ''}`}
+                  aria-current={view === section.id ? 'page' : undefined}
+                  onClick={() => selectWorkspaceSection(section.id)}
+                >
+                  {section.label}<span aria-hidden="true">→</span>
+                </button>
+              ))}
+              <div className="mobile-menu-footer">
+                {authenticated ? (
+                  <button type="button" className="mobile-staff-access" onClick={() => { setMobileMenuOpen(false); logoutStaff(); }}>
+                    Salir del cuerpo técnico
+                  </button>
+                ) : (
+                  <button type="button" className="mobile-staff-access" onClick={() => { setMobileMenuOpen(false); setStaffLoginError(''); setShowStaffLogin(true); }}>
+                    Acceso cuerpo técnico
+                  </button>
+                )}
+              </div>
+            </nav>
+          </div>
+        )}
 
-        {view === 'citaciones' && (
+        {['inicio', 'citaciones'].includes(view) && (
           <div className="category-tabs">
             <button className={category === 'primera' ? 'active' : ''} onClick={() => setCategory('primera')}>1ra División</button>
             <button className={category === 'intermedia' ? 'active' : ''} onClick={() => setCategory('intermedia')}>Intermedia</button>
           </div>
         )}
 
-        {!['dt', 'stats'].includes(view) && (
+        {['inicio', 'citaciones', 'fisico'].includes(view) && (
           <div className="sync-status">
             {status}
-            <button className="refresh" onClick={view === 'fisico' ? loadPhysical : loadSheets}>Actualizar</button>
+            <button className="refresh" onClick={() => {
+              if (view === 'fisico') loadPhysical();
+              else {
+                loadSheets();
+                if (view === 'inicio') loadMatches();
+              }
+            }}>Actualizar datos</button>
           </div>
         )}
 
-        {view === 'dt' ? (
+        {view === 'inicio' ? (
+          <section className="club-home">
+            <header className="club-home-heading">
+              <div><span className="kicker">INICIO</span><h2>Hola, {club.shortName || club.name}</h2><p>Este es el resumen de {category === 'primera' ? '1ra División' : 'Intermedia'}.</p></div>
+            </header>
+            <section className="home-next-match">
+              <div>
+                <span className="kicker">{nextAmhMatch?.round || meta['fecha n°'] || meta['fecha'] || 'PRÓXIMO PARTIDO'}</span>
+                <h2>vs {nextAmhMatch?.rival || meta.rival || 'Rival pendiente'}</h2>
+                <p>{nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</p>
+                <div className="home-match-facts">
+                  {(meta['horario citacion'] || meta['horario citación']) && <span>📣 Citación: {meta['horario citacion'] || meta['horario citación']}</span>}
+                  <span>⏱️ {meta['horario partido'] || meta.partido || 'Horario pendiente de confirmar'}</span>
+                  <span>📍 {meta.cancha || (nextAmhMatch ? (nextAmhMatch.homeAway === 'Local' ? `${club.shortName || club.name} (Local)` : `${nextAmhMatch.rival} (Visitante)`) : 'Cancha pendiente')}</span>
+                </div>
+              </div>
+              <button type="button" onClick={() => selectWorkspaceSection('citaciones')}>Ver citación</button>
+            </section>
+            <div className="home-dashboard-grid">
+              <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('citaciones')}>
+                <span className="home-card-icon" aria-hidden="true">📋</span>
+                <span className="home-card-copy"><strong>Citaciones</strong><small>{current.players.length ? `${current.players.length} jugadoras citadas` : 'Todavía no hay jugadoras citadas'}</small>
+                  {current.players.length > 0 && <small className="home-card-preview">{current.players.slice(0, 3).join(' · ')}{current.players.length > 3 ? ` · +${current.players.length - 3}` : ''}</small>}
+                </span><b aria-hidden="true">→</b>
+              </button>
+              <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('preparacion')}>
+                <span className="home-card-icon" aria-hidden="true">🏑</span>
+                <span className="home-card-copy"><strong>Plan partido</strong><small>Foco semanal, videos y jugadas del equipo</small></span><b aria-hidden="true">→</b>
+              </button>
+              <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('torneo')}>
+                <span className="home-card-icon" aria-hidden="true">🏆</span>
+                <span className="home-card-copy"><strong>Torneos y resultados</strong><small>{latestResult ? `${latestResult.round}: ${latestResult.score} vs ${latestResult.rival}` : 'Fixture y tabla de posiciones'}</small></span><b aria-hidden="true">→</b>
+              </button>
+              <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('fisico')}>
+                <span className="home-card-icon" aria-hidden="true">⚡</span>
+                <span className="home-card-copy"><strong>Evaluaciones físicas</strong><small>Consultá las mediciones y su evolución</small></span><b aria-hidden="true">→</b>
+              </button>
+              {authenticated && <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('jugadoras')}>
+                <span className="home-card-icon" aria-hidden="true">👥</span>
+                <span className="home-card-copy"><strong>Plantel</strong><small>{players.filter(player => player.active).length} jugadoras activas</small></span><b aria-hidden="true">→</b>
+              </button>}
+            </div>
+          </section>
+        ) : view === 'dt' ? (
           <TrackerPanel
             club={club}
             events={events}
             setEvents={setEvents}
+            onPersistEvent={persistTrackerEvent}
+            onDeleteEvent={removeTrackerEvent}
             matches={matches}
             loadMatches={loadMatches}
             authenticated={authenticated}
             token={token}
             onOpenPrecarga={() => setShowPrecargaModal(true)}
-            onAuthenticate={t => {
-              setToken(t);
-              setAuthenticated(true);
-              localStorage.setItem(authKey, t);
-            }}
+            onAuthenticate={authenticateStaffWithToken}
           />
         ) : view === 'stats' ? (
           <EstadisticasPanel
@@ -290,17 +514,69 @@ function ClubWorkspace({ club, onBack }) {
             events={events}
             matches={matches}
             authenticated={authenticated}
-            onAuthenticate={t => {
-              setToken(t);
-              setAuthenticated(true);
-              localStorage.setItem(authKey, t);
-            }}
+            onAuthenticate={authenticateStaffWithToken}
           />
         ) : view === 'torneo' ? (
           <TournamentPanel club={club} />
+        ) : view === 'preparacion' ? (
+          <MatchPreparationPanel club={club} authenticated={authenticated} token={token} />
+        ) : view === 'jugadoras' ? (
+          <section className="physical-card">
+            <div className="section-heading">
+              <div><h2>Plantel de {club.shortName || club.name}</h2><p>Agregá jugadoras y asignales una categoría.</p></div>
+              <span>{players.filter(player => player.active).length} activas</span>
+            </div>
+            <form className="player-editor" onSubmit={submitPlayer}>
+              <label>Nombre y apellido<input value={playerDraft.name} onChange={event => setPlayerDraft(current => ({ ...current, name: event.target.value }))} maxLength={120} required /></label>
+              <label>Categoría<select value={playerDraft.category} onChange={event => setPlayerDraft(current => ({ ...current, category: event.target.value }))}>
+                <option value="primera">1ra División</option><option value="intermedia">Intermedia</option><option value="5ta">5ta División</option>
+              </select></label>
+              {playerError && <p className="message error">{playerError}</p>}
+              <button type="submit">Agregar jugadora</button>
+            </form>
+            <div className="players-grid">
+              {players.filter(player => player.active).map(player => (
+                <div className="player-pill" key={player.id}>
+                  <strong>{player.name}</strong>
+                  <small>{(player.categories || []).map(item => item === 'primera' ? '1ra División' : item === 'intermedia' ? 'Intermedia' : item === '5ta' ? '5ta División' : item).join(' · ') || 'Sin categoría'}</small>
+                </div>
+              ))}
+            </div>
+            {authenticated && players.filter(player => player.active).length === 0 && <p className="empty-state">Todavía no hay jugadoras cargadas en este club.</p>}
+          </section>
         ) : view === 'fisico' ? (
           <section className="physical-card">
-            <h2>Evaluaciones físicas</h2>
+            <div className="section-heading">
+              <h2>Evaluaciones físicas</h2>
+              {authenticated && (
+                <button className="secondary" type="button" onClick={() => setEditingPhysical(value => !value)}>
+                  {editingPhysical ? 'Cerrar carga' : 'Cargar evaluación'}
+                </button>
+              )}
+            </div>
+            {editingPhysical && (
+              <form className="physical-editor" onSubmit={submitPhysicalAssessment}>
+                <div className="callup-meta-grid">
+                  <label>Jugadora<input value={physicalDraft.name} onChange={event => setPhysicalDraft(current => ({ ...current, name: event.target.value }))} required /></label>
+                  <label>Categoría<select value={physicalDraft.category} onChange={event => setPhysicalDraft(current => ({ ...current, category: event.target.value }))}>
+                    <option value="primera">1ra División</option><option value="intermedia">Intermedia</option><option value="5ta">5ta División</option>
+                  </select></label>
+                  <label>Fecha de evaluación<input type="date" value={physicalDraft.evaluatedOn} onChange={event => setPhysicalDraft(current => ({ ...current, evaluatedOn: event.target.value }))} /></label>
+                </div>
+                <div className="physical-entry-grid">
+                  {PHYSICAL_TESTS.map(test => (
+                    <fieldset key={test.key}><legend>{test.name} ({test.unit || 'sin unidad'})</legend>
+                      {[1, 2, 3].map(attempt => {
+                        const key = `${test.key}:${attempt}`;
+                        return <label key={key}>{attempt}° intento<input type="number" step="any" value={physicalDraft.values[key] || ''} onChange={event => setPhysicalDraft(current => ({ ...current, values: { ...current.values, [key]: event.target.value } }))} /></label>;
+                      })}
+                    </fieldset>
+                  ))}
+                </div>
+                {physicalSaveError && <p className="message error">{physicalSaveError}</p>}
+                <button type="submit">Guardar mediciones en la base</button>
+              </form>
+            )}
             <div className="physical-hero">
               <span className="kicker">⚡ RENDIMIENTO ATLÉTICO</span>
               <p>Buscá una jugadora para ver sus mediciones y evolución.</p>
@@ -460,12 +736,52 @@ function ClubWorkspace({ club, onBack }) {
               <h2>{nextAmhMatch ? `vs ${nextAmhMatch.rival}` : (meta.rival || 'Rival pendiente')}</h2>
               <div className="match-details">
                 <span>📅 {nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</span>
+                {(meta['horario citacion'] || meta['horario citación']) && <span>📣 Citación: {meta['horario citacion'] || meta['horario citación']}</span>}
                 <span>⏱️ {meta['horario partido'] || meta.partido || (nextAmhMatch ? 'Horario oficial AMH' : 'Horario pendiente')}</span>
                 <span>📍 {nextAmhMatch ? (nextAmhMatch.homeAway === 'Local' ? `${club.shortName || club.name} (Local)` : `${nextAmhMatch.rival} (Visitante)`) : (meta.cancha || 'Cancha pendiente')}</span>
               </div>
             </section>
             <section className="players-section">
-              <h2>Jugadoras citadas <span>{current.players.length}</span></h2>
+              <div className="section-heading">
+                <h2>Jugadoras citadas <span>{current.players.length}</span></h2>
+                <div className="callup-actions">
+                  {authenticated && <button type="button" className="secondary" onClick={beginCallupEdit}>Editar citación</button>}
+                </div>
+              </div>
+              {editingCallup && (
+                <form className="callup-editor" onSubmit={submitCallup}>
+                  <div className="callup-meta-grid">
+                    {[
+                      ['round', 'Fecha / ronda'], ['opponent', 'Rival'], ['date', 'Día'], ['venue', 'Cancha'],
+                      ['callTime', 'Horario de citación'], ['matchTime', 'Horario del partido'], ['opponentLogoUrl', 'URL del escudo rival']
+                    ].map(([key, label]) => (
+                      <label key={key}>{label}<input value={callupMetaDraft[key] || ''} onChange={event => setCallupMetaDraft(current => ({ ...current, [key]: event.target.value }))} /></label>
+                    ))}
+                  </div>
+                  <div className="callup-selection">
+                    <div className="callup-selection-heading">
+                      <strong>Elegí las jugadoras citadas</strong>
+                      <span>{callupDraft.split(/\r?\n/).filter(Boolean).length} seleccionadas</span>
+                    </div>
+                    {!authenticated ? <p className="empty-state">Ingresá para elegir entre las jugadoras registradas en este club.</p> : (
+                      <div className="callup-player-list">
+                        {players.filter(player => player.active).map(player => (
+                          <label className="callup-player-option" key={player.id}>
+                            <input type="checkbox" checked={callupDraft.split(/\r?\n/).map(name => name.trim()).includes(player.name)} onChange={event => toggleCallupPlayer(player.name, event.target.checked)} />
+                            <span>{player.name}<small className="callup-player-categories">{(player.categories || []).map(item => item === 'primera' ? '1ra' : item === 'intermedia' ? 'Intermedia' : item === '5ta' ? '5ta' : item).join(' · ') || 'Sin categoría de plantel'}</small></span>
+                          </label>
+                        ))}
+                        {!players.some(player => player.active) && (
+                          <p className="empty-state">Todavía no hay jugadoras cargadas en el plantel. <button type="button" className="inline-link" onClick={() => { setEditingCallup(false); setView('jugadoras'); }}>Agregar al plantel</button></p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {callupError && <p className="message error">{callupError}</p>}
+                  {authenticated && <button type="submit">Guardar citación en la base de datos</button>}
+                  <button type="button" className="secondary" onClick={() => setEditingCallup(false)}>Cancelar</button>
+                </form>
+              )}
               {current.players.length ? (
                 <div className="players-grid">
                   {current.players.map((player, index) => (
@@ -473,16 +789,29 @@ function ClubWorkspace({ club, onBack }) {
                   ))}
                 </div>
               ) : (
-                <p className="empty-state">No hay jugadoras citadas en la hoja {category}.</p>
+                <p className="empty-state">Todavía no hay jugadoras citadas para esta categoría.</p>
               )}
             </section>
           </>
         )}
 
-        <a className="legacy-link" href={`http://localhost:3000/?club=${encodeURIComponent(club.slug)}`}>
-          Abrir módulo legacy completo
-        </a>
       </section>
+
+      {showStaffLogin && (
+        <div className="overlay" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setShowStaffLogin(false); }}>
+          <form className="form-card staff-login-card" role="dialog" aria-modal="true" aria-labelledby="staffLoginTitle" onSubmit={submitStaffLogin}>
+            <button type="button" className="close" aria-label="Cerrar" onClick={() => setShowStaffLogin(false)}>×</button>
+            <span className="kicker">ACCESO PRIVADO</span>
+            <h2 id="staffLoginTitle">Cuerpo técnico</h2>
+            <p>Ingresá para administrar el plantel, las citaciones y las herramientas del equipo.</p>
+            <label>Contraseña del cuerpo técnico
+              <input type="password" value={staffLoginPassword} onChange={event => setStaffLoginPassword(event.target.value)} autoComplete="current-password" required autoFocus />
+            </label>
+            {staffLoginError && <p className="message error" role="alert">{staffLoginError}</p>}
+            <button type="submit">Ingresar</button>
+          </form>
+        </div>
+      )}
 
       {/* Modal de Precarga AMH */}
       {showPrecargaModal && (
@@ -490,11 +819,8 @@ function ClubWorkspace({ club, onBack }) {
           club={club}
           citedPlayers={data}
           authenticated={authenticated}
-          onAuthenticate={t => {
-            setToken(t);
-            setAuthenticated(true);
-            localStorage.setItem(authKey, t);
-          }}
+          token={token}
+          onAuthenticate={authenticateStaffWithToken}
           onClose={() => setShowPrecargaModal(false)}
         />
       )}
@@ -510,6 +836,7 @@ async function api(path, options) {
 }
 
 function App() {
+  const isAdminRoute = window.location.pathname.replace(/\/+$/, '') === '/admin';
   const [clubs, setClubs] = useState([]);
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(emptyClub);
@@ -522,17 +849,31 @@ function App() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [workspaceClub, setWorkspaceClub] = useState(null);
+  const [workspaceAdminOrigin, setWorkspaceAdminOrigin] = useState(false);
 
   async function loadClubs() {
     setLoading(true);
     try {
-      const data = await api('/api/config');
-      const availableClubs = data.clubs || [];
-      setClubs(availableClubs);
+      if (isAdminRoute) {
+        if (!adminToken) {
+          setClubs([]);
+          return;
+        }
+        const data = await api('/api/admin/clubs', { headers: { Authorization: `Bearer ${adminToken}` } });
+        setClubs(data.clubs || []);
+        return;
+      }
+
       const requestedSlug = new URLSearchParams(window.location.search).get('club');
-      const requestedClub = availableClubs.find(club => club.slug === requestedSlug);
-      if (requestedClub) setWorkspaceClub(requestedClub);
+      setClubs([]);
+      if (!requestedSlug) {
+        setWorkspaceClub(null);
+        return;
+      }
+      const data = await api(`/api/config?club=${encodeURIComponent(requestedSlug)}`);
+      setWorkspaceClub(data.club || null);
     } catch (error) {
+      setWorkspaceClub(null);
       setMessage(error.message);
     } finally {
       setLoading(false);
@@ -543,6 +884,17 @@ function App() {
     loadClubs();
   }, []);
 
+  useEffect(() => {
+    if (!isAdminRoute || !adminToken) return;
+    api('/api/admin/clubs', { headers: { Authorization: `Bearer ${adminToken}` } })
+      .then(data => setClubs(data.clubs || []))
+      .catch(() => {
+        sessionStorage.removeItem('club_admin_token');
+        setAdminToken('');
+        setMessage('La sesión de administración venció. Ingresá nuevamente.');
+      });
+  }, []);
+
   function openCreate() {
     setSelected(null);
     setForm(emptyClub);
@@ -551,6 +903,7 @@ function App() {
   }
 
   function openWorkspace(club) {
+    setWorkspaceAdminOrigin(isAdminRoute && Boolean(adminToken));
     setWorkspaceClub(club);
     window.history.pushState({}, '', `/?club=${encodeURIComponent(club.slug)}`);
   }
@@ -564,6 +917,7 @@ function App() {
       tournamentBaseUrl: club.tournament?.baseUrl || '',
       tournamentId: club.tournament?.tournamentId || '',
       tournamentClubId: club.tournament?.clubId || '',
+      tournamentAmhTeamName: club.tournament?.amhTeamName || '',
       tournamentDivision: club.tournament?.division || '1'
     });
     setShowForm(true);
@@ -576,6 +930,10 @@ function App() {
       const baseUrl = form.tournamentBaseUrl || 'http://15.235.75.172:8080';
       const data = await api(`/api/amh/catalog?baseUrl=${encodeURIComponent(baseUrl)}`);
       setAmhCatalog(data);
+      if (form.tournamentClubId) {
+        const selectedTeam = data.teams.find(item => item.value === form.tournamentClubId);
+        if (selectedTeam) setForm(current => ({ ...current, tournamentAmhTeamName: selectedTeam.label }));
+      }
       setMessage('Catálogo AMH cargado. Elegí el torneo y el equipo.');
     } catch (error) {
       setMessage(error.message);
@@ -595,7 +953,10 @@ function App() {
             tournamentId: value
           }
         : {}),
-      ...(name === 'tournamentClubSelect' ? { tournamentClubId: value } : {})
+      ...(name === 'tournamentClubSelect' ? {
+        tournamentClubId: value,
+        tournamentAmhTeamName: amhCatalog?.teams.find(item => item.value === value)?.label || ''
+      } : {})
     }));
   }
 
@@ -610,6 +971,8 @@ function App() {
       sessionStorage.setItem('club_admin_token', data.token);
       setAdminToken(data.token);
       setAdminPassword('');
+      const adminData = await api('/api/admin/clubs', { headers: { Authorization: `Bearer ${data.token}` } });
+      setClubs(adminData.clubs || []);
       setMessage('Administrador autenticado.');
     } catch (error) {
       setMessage(error.message);
@@ -626,6 +989,12 @@ function App() {
       setMessage('Iniciá sesión como administrador antes de guardar.');
       return;
     }
+    const hasStaffPassword = Boolean(form.staffPassword.trim());
+    const hasStaffSecret = Boolean(form.staffSecret.trim());
+    if (hasStaffPassword !== hasStaffSecret) {
+      setMessage('Para cambiar el acceso del cuerpo técnico, completá la contraseña y el secreto. Dejá ambos vacíos para conservar los actuales.');
+      return;
+    }
     const body = {
       slug: selected?.slug,
       club: {
@@ -635,15 +1004,12 @@ function App() {
         sport: form.sport,
         teamName: form.teamName,
         logoUrl: form.logoUrl,
-        spreadsheetId: form.spreadsheetId,
-        physicalSpreadsheetId: form.physicalSpreadsheetId,
-        dtSpreadsheetId: form.dtSpreadsheetId,
-        dtSpreadsheetUrl: form.dtSpreadsheetUrl,
         tournament: {
           name: form.tournamentName,
           baseUrl: form.tournamentBaseUrl,
           tournamentId: form.tournamentId,
           clubId: form.tournamentClubId,
+          amhTeamName: form.tournamentAmhTeamName,
           division: form.tournamentDivision || '1'
         },
         auth: { password: form.staffPassword, secret: form.staffSecret }
@@ -697,9 +1063,11 @@ function App() {
     return (
       <ClubWorkspace
         club={workspaceClub}
+        showAdminBack={workspaceAdminOrigin}
         onBack={() => {
           setWorkspaceClub(null);
-          window.history.pushState({}, '', '/');
+          setWorkspaceAdminOrigin(false);
+          window.history.pushState({}, '', '/admin');
         }}
       />
     );
@@ -708,37 +1076,54 @@ function App() {
   return (
     <main className="portal">
       <section className="shell">
-        <span className="kicker">SPORTS CLUBS PLATFORM</span>
-        <h1>Elegí tu club</h1>
-        <p className="intro">Un espacio para administrar equipos, citaciones, evaluaciones y torneos.</p>
+        {isAdminRoute ? (
+          <>
+            <a className="admin-back-link" href="/">← Volver al portal</a>
+            <span className="kicker">ÁREA PRIVADA</span>
+            <h1>Administración</h1>
+            <p className="intro">Gestión de clubes. El acceso requiere credenciales de administrador.</p>
+          </>
+        ) : (
+          <>
+            <span className="kicker">SPORTS CLUBS PLATFORM</span>
+            <h1>Ingresá a tu club</h1>
+            <p className="intro">Abrí el enlace que te compartió el cuerpo técnico de tu club.</p>
+          </>
+        )}
         {message && <div className="message">{message}</div>}
-        <div className="toolbar">
-          {!adminToken ? (
-            <form className="admin-login" onSubmit={loginAdmin}>
-              <input
-                type="password"
-                placeholder="Contraseña de administrador"
-                value={adminPassword}
-                onChange={event => setAdminPassword(event.target.value)}
-              />
-              <button>Ingresar</button>
-            </form>
-          ) : (
-            <button
-              className="secondary"
-              onClick={() => {
-                sessionStorage.removeItem('club_admin_token');
-                setAdminToken('');
-              }}
-            >
-              Cerrar sesión admin
-            </button>
-          )}
-          <button onClick={openCreate}>+ Agregar club</button>
-        </div>
+        {isAdminRoute && (
+          <div className="toolbar">
+            {!adminToken ? (
+              <form className="admin-login" onSubmit={loginAdmin}>
+                <input
+                  type="password"
+                  placeholder="Contraseña de administrador"
+                  value={adminPassword}
+                  onChange={event => setAdminPassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+                <button>Ingresar</button>
+              </form>
+            ) : (
+              <>
+                <button onClick={openCreate}>+ Agregar club</button>
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    sessionStorage.removeItem('club_admin_token');
+                    setAdminToken('');
+                  }}
+                >
+                  Cerrar sesión
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {loading ? (
           <p>Cargando clubes...</p>
-        ) : (
+        ) : (isAdminRoute && adminToken) && (
           <div className="club-list">
             {clubs.map(club => (
               <article className="club-card" key={club.slug}>
@@ -756,7 +1141,7 @@ function App() {
                   </span>
                   <b>→</b>
                 </a>
-                {adminToken && (
+                {isAdminRoute && adminToken && (
                   <button className="edit" onClick={() => openEdit(club)}>
                     Editar perfil
                   </button>
@@ -766,7 +1151,7 @@ function App() {
           </div>
         )}
       </section>
-      {showForm && (
+      {isAdminRoute && adminToken && showForm && (
         <div className="overlay">
           <form className="form-card" onSubmit={saveClub}>
             <button type="button" className="close" onClick={() => setShowForm(false)}>
@@ -781,10 +1166,6 @@ function App() {
               'sport',
               'teamName',
               'logoUrl',
-              'spreadsheetId',
-              'physicalSpreadsheetId',
-              'dtSpreadsheetId',
-              'dtSpreadsheetUrl',
               'tournamentName',
               'tournamentBaseUrl',
               'tournamentId',
@@ -796,6 +1177,7 @@ function App() {
                   name={name}
                   value={form[name]}
                   onChange={updateField}
+                  type={name.toLowerCase().includes('url') ? 'url' : 'text'}
                   required={['slug', 'name', 'shortName', 'sport', 'teamName'].includes(name)}
                   readOnly={selected && name === 'slug'}
                 />
@@ -886,30 +1268,34 @@ function App() {
                 </>
               )}
             </fieldset>
-            {!selected && (
-              <>
-                <label>
-                  Contraseña cuerpo técnico
-                  <input
-                    name="staffPassword"
-                    type="password"
-                    value={form.staffPassword}
-                    onChange={updateField}
-                    required
-                  />
-                </label>
-                <label>
-                  Secreto del club
-                  <input
-                    name="staffSecret"
-                    type="password"
-                    value={form.staffSecret}
-                    onChange={updateField}
-                    required
-                  />
-                </label>
-              </>
-            )}
+            <p className="auth-settings-help">
+              {selected
+                ? 'Para cambiar el acceso, completá ambos campos. Si los dejás vacíos, se conserva la configuración actual. El secreto debe tener al menos 32 caracteres.'
+                : 'Configurá la contraseña de acceso y un secreto privado de al menos 32 caracteres para firmar las sesiones.'}
+            </p>
+            <label>
+              Contraseña cuerpo técnico
+              <input
+                name="staffPassword"
+                type="password"
+                value={form.staffPassword}
+                onChange={updateField}
+                autoComplete="new-password"
+                required={!selected || Boolean(form.staffSecret)}
+              />
+            </label>
+            <label>
+              Secreto del club
+              <input
+                name="staffSecret"
+                type="password"
+                value={form.staffSecret}
+                onChange={updateField}
+                autoComplete="new-password"
+                minLength={32}
+                required={!selected || Boolean(form.staffPassword)}
+              />
+            </label>
             <button type="submit" disabled={logoReading}>
               {logoReading ? 'Cargando escudo...' : selected ? 'Guardar cambios' : 'Crear club'}
             </button>

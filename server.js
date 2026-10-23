@@ -24,7 +24,7 @@ const { getClubAsync } = require('./api/_lib/club-config');
   }
 })();
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -32,7 +32,10 @@ const MIME_TYPES = {
   '.json': 'application/json',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.woff2': 'font/woff2',
   '.ico': 'image/x-icon'
 };
 
@@ -290,9 +293,9 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (reqPath === '/api/sheets' || reqPath === '/api/sheets/physical' || reqPath === '/api/sheets/dt-sync') {
-    const sheetsHandler = require('./api/sheets.js');
-    sheetsHandler(req, res);
+  if (reqPath === '/api/club-data') {
+    const clubDataHandler = require('./api/club-data.js');
+    clubDataHandler(req, res);
     return;
   }
 
@@ -302,13 +305,37 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  let filePath = path.join(__dirname, reqPath === '/' ? 'index.html' : reqPath);
-  const ext = path.extname(filePath).toLowerCase();
-  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+  const staticRoot = path.resolve(__dirname, 'frontend', 'dist');
+  let relativePath;
+  try { relativePath = decodeURIComponent(reqPath.replace(/^\/+/, '')); }
+  catch (_) {
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('400 Solicitud inválida');
+    return;
+  }
+  let filePath = path.resolve(staticRoot, relativePath || 'index.html');
+  if (filePath !== staticRoot && !filePath.toLowerCase().startsWith(`${staticRoot.toLowerCase()}${path.sep}`)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('403 Acceso denegado');
+    return;
+  }
+  const contentType = MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
 
   fs.readFile(filePath, (err, content) => {
     if (err) {
       if (err.code === 'ENOENT') {
+        if (!path.extname(reqPath)) {
+          fs.readFile(path.join(staticRoot, 'index.html'), (indexError, indexContent) => {
+            if (indexError) {
+              res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });
+              res.end('El portal no está compilado. Ejecutá npm start para prepararlo.');
+              return;
+            }
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(indexContent);
+          });
+          return;
+        }
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('404 No Encontrado');
       } else {
@@ -324,7 +351,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`\n======================================================`);
-  console.log(`🏑 Servidor de Citaciones y Torneo Hockey ACTIVO`);
+  console.log(`🏑 Sports Clubs Platform ACTIVO`);
   console.log(`👉 Abrí en tu navegador: http://localhost:${PORT}`);
   console.log(`======================================================\n`);
 });

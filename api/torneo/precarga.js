@@ -6,12 +6,13 @@
 
 const { fetchAvailableMatches, executeAmhPrecarga } = require('../_lib/amh.js');
 const { getClubAsync } = require('../_lib/club-config');
+const { verifySessionToken } = require('../auth');
 
 module.exports = async function handler(req, res) {
   // Configuración de CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -27,6 +28,11 @@ module.exports = async function handler(req, res) {
     const slug = url.searchParams.get('club');
     const club = slug ? await getClubAsync(slug) : null;
     try {
+      if (!club) {
+        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: 'Club no encontrado.' }));
+        return;
+      }
       const matches = await fetchAvailableMatches(division, club);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true, matches }));
@@ -58,6 +64,21 @@ module.exports = async function handler(req, res) {
       }
 
       const { division = '1', partidoId = null, rival = null, players = [] } = payload;
+      const clubSlug = String(payload.clubSlug || url.searchParams.get('club') || '').trim();
+      const club = clubSlug ? await getClubAsync(clubSlug) : null;
+      const authHeader = String(req.headers?.authorization || '');
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+      if (!club) {
+        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: 'Club no encontrado.' }));
+        return;
+      }
+      if (!token || !verifySessionToken(token, club).valid) {
+        res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: 'Sesión inválida o perteneciente a otro club.' }));
+        return;
+      }
 
       if (!players || players.length === 0) {
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -66,6 +87,7 @@ module.exports = async function handler(req, res) {
       }
 
       const result = await executeAmhPrecarga({
+        club,
         division,
         partidoId,
         rival,

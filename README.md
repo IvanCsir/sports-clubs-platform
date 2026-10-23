@@ -4,32 +4,26 @@ Página web de citaciones oficial para el **Plantel Superior B (1ra e Intermedia
 
 ---
 
-## 📊 Sincronización en Vivo con Google Sheets
+## Datos y migración desde Google Sheets
 
-La aplicación puede servir a varios clubes desde el mismo despliegue. La URL raíz (`/`)
-presenta un portal para elegir el club. También se puede abrir un club directamente con
-`?club=slug`; por ejemplo:
+La aplicación puede servir a varios clubes desde el mismo despliegue. Cada club se abre
+con `?club=slug`; por ejemplo:
 
 ```text
 https://tu-dominio.com/?club=regatas-andino
 ```
 
-La página web está conectada directamente con la planilla de Google Sheets configurada para cada club:
-🔗 [Abrir Planilla de Google Sheets](https://docs.google.com/spreadsheets/d/1S0g4BpD6m6Ih9_DQRrdLlnUsruUKrZmlKBAKiWL3XbU/edit?usp=sharing)
+PostgreSQL es la fuente operativa para el plantel, las citaciones, las evaluaciones físicas y los eventos del tracker. La interfaz no consulta ni escribe planillas durante el uso normal.
 
-### ¿Cómo funciona cada fin de semana?
-1. **Jugadoras Citadas (Columna F)**:
-   - Marcás con la casilla de verificación en la columna C y automáticamente la columna F filtra a las citadas.
-   - La web lee la **Columna F** de la hoja `primera` y de la hoja `intermedia`.
-2. **Datos del Partido (Columna I)**:
-   - Al lado de cada etiqueta en la columna H, escribís en la columna I:
-     - **Rival**: Nombre del rival (ej: *Vistalba*).
-     - **Dia**: Día del partido (ej: *Sábado 17 de Octubre*).
-     - **Horario citacion**: Hora de vestuario para cada categoría.
-     - **Horario partido**: Hora de inicio de cada categoría.
-     - **Cancha**: Lugar donde se juega.
-3. **Actualización Automática**:
-   - Cada vez que una jugadora o vos abren la página web, **los datos se actualizan solos en tiempo real**.
+Aplicá las migraciones y cargá el estado actual de las planillas:
+
+```powershell
+npm run db:up
+npm run db:migrate
+npm run db:import-sheets -- --club=regatas-andino
+```
+
+El importador carga convocatorias actuales, resultados físicos e historial de partidos si `DT_IMPORT_WEBHOOK_URL` apunta temporalmente al Apps Script anterior. La importación puede repetirse sin duplicar las convocatorias o los eventos ya identificados. Cuando verifiques la información, podés revocar el acceso del Apps Script y quitar esa variable de entorno. Las planillas quedan como copia histórica hasta que decidas archivarlas o eliminarlas.
 
 ---
 
@@ -39,8 +33,9 @@ En desarrollo local copiá `.env.example` a `.env`. Para un único club se puede
 `CT_PASSWORD`, `CT_AUTH_SECRET` y los valores existentes. Para varios clubes, configurá
 `CLUBS_CONFIG_JSON` en Vercel o en el entorno de ejecución con un array JSON.
 
-Cada perfil contiene un `slug`, identidad visual, IDs de planillas, configuración del torneo
-y sus credenciales privadas dentro de `auth`. La API `/api/config` sólo devuelve los campos
+Cada perfil contiene un `slug`, identidad visual, configuración del torneo y sus credenciales
+privadas dentro de `auth`. Los IDs de planillas se conservan sólo como fuente temporal de la
+importación histórica y nunca se devuelven al navegador. La API `/api/config` sólo devuelve los campos
 públicos; las contraseñas nunca llegan al navegador. Las sesiones y caches del navegador se
 aislan usando el slug del club, y un token de autenticación no puede reutilizarse entre clubes.
 
@@ -54,13 +49,11 @@ Ejemplo mínimo:
   "sport": "Hockey",
   "teamName": "PLANTEL SUPERIOR",
   "logoUrl": "/logos/club-ejemplo.png",
-  "spreadsheetId": "GOOGLE_SHEET_ID",
-  "physicalSpreadsheetId": "GOOGLE_PHYSICAL_SHEET_ID",
-  "dtSpreadsheetId": "GOOGLE_DT_SHEET_ID",
-  "dtSpreadsheetUrl": "https://docs.google.com/spreadsheets/d/GOOGLE_DT_SHEET_ID/edit",
   "auth": { "password": "CAMBIAR", "secret": "SECRET_LARGO_Y_ALEATORIO" }
 }]
 ```
+
+La botonera y las estadísticas guardan sus eventos en PostgreSQL.
 
 La configuración por variables de entorno evita depender de un disco local efímero en Vercel.
 Si se necesita alta/baja de clubes desde un panel, el siguiente paso recomendado es mover el
@@ -109,45 +102,19 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 La `SUPABASE_SERVICE_ROLE_KEY` nunca debe incluirse en el navegador ni en archivos públicos.
 
-## 🛠️ Arquitectura Modular y Desarrollo
+## Aplicación y desarrollo
 
-El código fuente del frontend está organizado en módulos claros dentro de la carpeta `src/`:
-- **`src/js/`**: Módulos JavaScript (autenticación, citaciones, torneo AMH, evaluaciones físicas, live tracker DT, estadísticas y PWA).
-- **`src/css/`**: Módulos CSS separados por funcionalidad y pantallas (colores del club, layouts, componentes, modo sol).
-- **`api/`**: Funciones Serverless para Vercel (`/api/torneo` y `/api/torneo/matches`) para scraping y sincronización en vivo del torneo oficial AMH.
+El portal React de `frontend/` es la interfaz principal y consume las API del proyecto.
+En desarrollo, iniciá el servidor local con `npm start`; compila el portal y lo sirve en
+`http://localhost:3000/`. También podés ejecutar `npm run dev` para usar Vite en
+`http://localhost:5173/` mientras el servidor local está activo para atender las API.
 
-### Comandos de desarrollo:
-```bash
-# Compilar los módulos a app.js y styles.css
-npm run bundle
-
-# Modo observador (recompila automáticamente ante cualquier cambio en /src)
-npm run dev
-
-# Servidor de pruebas local
-npm start
-```
-
-### Frontend React en migración
-
-El frontend nuevo vive en `frontend/` y consume las mismas APIs y PostgreSQL local.
-Durante la migración incremental se ejecuta separado del frontend legacy:
-
-```bash
-# Terminal 1: API y aplicación actual
-npm start
-
-# Terminal 2: portal React
-npm run frontend:dev
-```
-
-Abrí `http://localhost:5173/`. El portal React ya permite listar clubes, autenticar
-administradores, crear clubes y editar sus perfiles. La aplicación actual sigue disponible
-en `http://localhost:3000/?club=slug` mientras se migran sus módulos funcionales.
+El portal permite seleccionar clubes, gestionar su plantel, preparar citaciones, consultar
+evaluaciones físicas y registrar eventos del partido. El cuerpo técnico debe iniciar sesión
+para acceder a los datos privados y guardar cambios.
 
 Desde "Editar perfil" se puede subir el escudo del club (PNG, JPG o SVG de hasta 1 MB).
-Las citaciones se leen mediante `/api/sheets`, un proxy del backend hacia las hojas
-`primera` e `intermedia`; esto evita depender de permisos CORS del navegador.
+Las citaciones se consultan y editan mediante `/api/club-data`; evaluaciones físicas y eventos requieren una sesión del cuerpo técnico. Las escrituras se guardan en PostgreSQL.
 
 La configuración de torneo AMH también es propia de cada club. En el perfil se deben
 completar el nombre del torneo, la URL base de AMH, el ID del torneo y el ID del club
@@ -159,7 +126,7 @@ Ese selector consulta AMH y permite elegir el torneo, el equipo y la división; 
 seleccionar las opciones se completan automáticamente los identificadores usados por
 la sincronización.
 
-Para generar el bundle de producción:
+Para generar el portal de producción:
 
 ```bash
 npm run frontend:build
@@ -167,6 +134,8 @@ npm run frontend:build
 
 ---
 
-## 🌐 Publicación en Vercel
-La aplicación se despliega automáticamente en Vercel con cada `git push` a la rama `main`:
-🔗 **Dominio Oficial:** [https://psb-regatasandino.com](https://psb-regatasandino.com)
+## 🌐 Publicación
+
+La guía paso a paso para publicar la aplicación en Vercel y conectar Supabase está en
+[DEPLOY.md](DEPLOY.md). Vercel asigna un subdominio `vercel.app`; un dominio propio es
+opcional.

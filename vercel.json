@@ -1,12 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": null,
-  "outputDirectory": ".",
+  "installCommand": "npm ci && npm --prefix frontend ci",
+  "buildCommand": "npm run frontend:build",
+  "outputDirectory": "frontend/dist",
   "rewrites": [
     {
       "source": "/api/precarga",
       "destination": "/api/torneo/precarga"
+    },
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/",
+      "destination": "/index.html"
     }
   ],
   "functions": {
