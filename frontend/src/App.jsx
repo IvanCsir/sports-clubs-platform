@@ -309,7 +309,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar las citaciones.');
       setData(payload.citations || { primera: null, intermedia: null });
-      setStatus(`Citaciones actualizadas a las ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`);
+      setStatus(`Datos actualizados · ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`);
     } catch (error) {
       setStatus(error.message);
     }
@@ -322,7 +322,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || `Evaluaciones físicas: HTTP ${response.status}`);
       setPhysicalPlayers(payload.physicalPlayers || []);
-      setStatus(`Evaluaciones físicas actualizadas a las ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`);
+      setStatus(`Datos actualizados · ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`);
     } catch (error) {
       setStatus(error.message);
     }
@@ -477,14 +477,14 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
 
         {['inicio', 'citaciones', 'fisico'].includes(view) && (
           <div className="sync-status">
-            {status}
+            <span className="sync-status-message">{status}</span>
             <button className="refresh" onClick={() => {
               if (view === 'fisico') loadPhysical();
               else {
                 loadSheets();
                 if (view === 'inicio') loadMatches();
               }
-            }}>Actualizar datos</button>
+            }} aria-label="Actualizar datos"><span aria-hidden="true">↻</span><span>Actualizar</span></button>
           </div>
         )}
 
