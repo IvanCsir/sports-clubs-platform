@@ -119,8 +119,9 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .callup-selection-heading { display: flex; justify-content: space-between; gap: 12px; color: #eaf6ff; }
 .callup-selection-heading span { color: #9eb4cc; }
 .callup-player-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
-.callup-player-option { display: flex !important; grid-template-columns: none !important; align-items: center; gap: 10px !important; padding: 10px 12px; border: 1px solid #8dd3ff33; border-radius: 9px; background: #ffffff09; cursor: pointer; }
-.callup-player-option input { width: 18px; height: 18px; accent-color: #00a2ff; }
+.callup-player-option { display: flex !important; grid-template-columns: none !important; align-items: center; min-width: 0; gap: 10px !important; padding: 10px 12px; border: 1px solid #8dd3ff33; border-radius: 9px; background: #ffffff09; cursor: pointer; }
+.callup-player-option input { flex: 0 0 20px; width: 20px !important; min-width: 20px; height: 20px; margin: 0; accent-color: #00a2ff; }
+.callup-player-option > span { min-width: 0; overflow-wrap: anywhere; }
 .callup-player-categories { display: block; margin-top: 2px; color: #9eb4cc; font-size: .76rem; }
 .inline-link { padding: 0; border: 0; color: #62c3ff; background: none; text-decoration: underline; }
 @media (max-width: 680px) { .player-editor { grid-template-columns: 1fr; } }
@@ -207,6 +208,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .callup-fixture-summary { display: grid; gap: 5px; padding: 12px 14px; border: 1px solid #8dd3ff33; border-radius: 10px; background: #ffffff09; color: #cfe6ff; }
 .callup-fixture-summary strong { color: #00a2ff; }
 .callup-editor input, .callup-editor select { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #071d3d; font: inherit; }
+.callup-editor input[type="checkbox"] { width: 20px; min-width: 20px; min-height: 20px; height: 20px; padding: 0; border: 0; background: transparent; }
 .callup-fixture-summary { display: grid; gap: 5px; padding: 12px 14px; border: 1px solid #8dd3ff33; border-radius: 10px; background: #ffffff09; color: #cfe6ff; }
 .callup-fixture-summary strong { color: #00a2ff; }
 .physical-entry-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
