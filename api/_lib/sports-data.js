@@ -8,7 +8,7 @@ function ensureDb() {
 async function getClubData(slug) {
   const db = ensureDb();
   const [callups, assessments, events, roster] = await Promise.all([
-    db.query(`SELECT t.category, m.round_label, m.opponent, m.home_away, m.date_label,
+    db.query(`SELECT t.category, m.provider_match_id AS callup_match_key, m.round_label, m.opponent, m.home_away, m.date_label,
                      m.call_time, m.match_time, m.venue, m.opponent_logo_url,
                      COALESCE(array_agg(p.display_name ORDER BY cp.position) FILTER (WHERE p.id IS NOT NULL), '{}') AS players
               FROM sc_teams t
@@ -48,13 +48,14 @@ async function getClubData(slug) {
               ORDER BY p.active DESC, p.display_name`, [slug])
   ]);
 
-  const citations = { primera: { players: [], meta: {} }, intermedia: { players: [], meta: {} } };
+  const citations = { primera: { players: [], meta: {}, matchKey: '' }, intermedia: { players: [], meta: {}, matchKey: '' } };
   const seenCategory = new Set();
   for (const row of callups.rows) {
     const category = row.category;
     if (!category || seenCategory.has(category) || !citations[category]) continue;
     seenCategory.add(category);
     citations[category].players = row.players || [];
+    citations[category].matchKey = row.callup_match_key || '';
     const meta = citations[category].meta;
     if (row.round_label) meta['fecha n°'] = row.round_label;
     if (row.opponent) meta.rival = row.opponent;

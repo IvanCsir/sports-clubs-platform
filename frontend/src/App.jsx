@@ -112,6 +112,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setEvents(payload.events || []);
     setPhysicalPlayers(payload.physicalPlayers || []);
     setPlayers(payload.players || []);
+    if (payload.citations) setData(payload.citations);
   }
 
   async function authenticateStaff(password) {
@@ -405,6 +406,10 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setView(id);
     setMobileMenuOpen(false);
     if (id === 'fisico') loadPhysical();
+    if (id === 'dt') {
+      setMatches([]);
+      loadMatches('1');
+    }
   };
 
   return (
@@ -560,6 +565,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
         ) : view === 'dt' ? (
           <TrackerPanel
             club={club}
+            calledUpPlayers={data.primera?.players || []}
+            callupMatchKey={data.primera?.matchKey || ''}
             events={events}
             setEvents={setEvents}
             onPersistEvent={persistTrackerEvent}

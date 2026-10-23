@@ -41,7 +41,7 @@ module.exports = async function handler(req, res) {
           return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
         }
         const data = await sportsData.getClubData(slug);
-        return json(res, 200, { physicalPlayers: data.physicalPlayers, events: data.events, players: data.players || [] });
+        return json(res, 200, { physicalPlayers: data.physicalPlayers, events: data.events, players: data.players || [], citations: data.citations });
       }
       const data = await sportsData.getClubData(slug);
       return json(res, 200, { citations: data.citations });

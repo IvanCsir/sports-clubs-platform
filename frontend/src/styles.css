@@ -92,6 +92,11 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .tracker-feed { margin-top: 18px; }
 .tracker-feed > div { display: grid; grid-template-columns: 100px 1fr auto; gap: 12px; padding: 10px 0; border-bottom: 1px solid #8dd3ff1f; }
 .tracker-feed span, .tracker-feed small { color: #8ca6c1; }
+.tracker-event-dialog h2 { margin: 0 28px 8px 0; }
+.tracker-event-dialog select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #102747; font: inherit; }
+.tracker-event-question { margin: 0; color: #b7c9de; }
+.tracker-event-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 520px) { .tracker-event-actions { grid-template-columns: 1fr; } }
 @media (max-width: 680px) { .tracker-grid { grid-template-columns: 1fr; } .tracker-header { align-items: flex-start; } .tracker-total-score { font-size: 2rem; } .tracker-login, .tracker-clock { flex-direction: column; align-items: stretch; } .tracker-clock strong { align-self: center; } }
 .sync-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 42px; margin: 8px 0 18px; color: #9eb4cc; font-size: .9rem; }
 .sync-status-message { min-width: 0; line-height: 1.35; }

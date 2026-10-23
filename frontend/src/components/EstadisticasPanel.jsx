@@ -321,7 +321,7 @@ export default function EstadisticasPanel({
                   <span className="timeline-badge">{e.quarter}°C</span>
                   <div className="timeline-desc">
                     <strong>{e.team === 'home' ? homeName : awayName}</strong>
-                    <span>{e.type}</span>
+                    <span>{e.type}{e.player ? ` · Gol: ${e.player}` : ''}{e.generatedBy ? ` · Generó: ${e.generatedBy}` : ''}</span>
                   </div>
                   <small className="timeline-time">
                     {e.at ? new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
