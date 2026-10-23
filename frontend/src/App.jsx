@@ -34,6 +34,24 @@ const PHYSICAL_TESTS = [
   { key: 'platform', name: 'Plataforma', type: 'Potencia', unit: '', higherIsBetter: true, icon: '🎯', decimals: 1, cols: [27, 28, 29] }
 ];
 
+function normalizeMatchValue(value) {
+  return String(value || '').trim().toLocaleLowerCase('es-AR').replace(/\s+/g, ' ');
+}
+
+function callupMatchesFixture(meta, fixture) {
+  if (!fixture) return false;
+  const storedRound = meta['fecha n°'] || meta['fecha n'] || meta.fecha || '';
+  const storedDate = meta.dia || meta['día'] || '';
+  const comparisons = [
+    [fixture.round, storedRound],
+    [fixture.rival, meta.rival],
+    [fixture.fecha, storedDate]
+  ].filter(([fixtureValue]) => fixtureValue);
+  return comparisons.length >= 2 && comparisons.every(([fixtureValue, storedValue]) =>
+    normalizeMatchValue(fixtureValue) === normalizeMatchValue(storedValue)
+  );
+}
+
 function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [category, setCategory] = useState('primera');
   const [view, setView] = useState('inicio');
@@ -168,14 +186,19 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     const currentData = data[category] || { players: [], meta: {} };
     setCallupDraft((currentData.players || []).join('\n'));
     const meta = currentData.meta || {};
+    const fixtureMatchesCurrentCallup = callupMatchesFixture(meta, nextAmhMatch);
     setCallupMetaDraft({
-      round: meta['fecha n°'] || meta['fecha n'] || meta.fecha || '',
-      opponent: meta.rival || '',
-      date: meta.dia || meta['día'] || '',
-      venue: meta.cancha || '',
-      callTime: meta['horario citacion'] || meta['horario citación'] || '',
-      matchTime: meta['horario partido'] || meta.partido || '',
-      opponentLogoUrl: meta['url escudo rival'] || meta['escudo rival'] || ''
+      round: nextAmhMatch?.round || meta['fecha n°'] || meta['fecha n'] || meta.fecha || '',
+      opponent: nextAmhMatch?.rival || meta.rival || '',
+      date: nextAmhMatch?.fecha || meta.dia || meta['día'] || '',
+      homeAway: nextAmhMatch?.homeAway || meta.localia || 'Local',
+      venue: nextAmhMatch ? (fixtureMatchesCurrentCallup ? (meta.cancha || '') : '') : (meta.cancha || ''),
+      callTime: nextAmhMatch
+        ? (fixtureMatchesCurrentCallup ? (meta['horario citacion'] || meta['horario citación'] || '') : '')
+        : (meta['horario citacion'] || meta['horario citación'] || ''),
+      matchTime: nextAmhMatch
+        ? (nextAmhMatch.matchTime || '')
+        : (meta['horario partido'] || meta.partido || '')
     });
     setCallupError('');
     setEditingCallup(true);
@@ -309,6 +332,16 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
 
   const current = data[category] || { players: [], meta: {} };
   const meta = current.meta;
+  const callupMatchesNextFixture = callupMatchesFixture(meta, nextAmhMatch);
+  const displayedCallTime = nextAmhMatch
+    ? (callupMatchesNextFixture ? (meta['horario citacion'] || meta['horario citación'] || '') : '')
+    : (meta['horario citacion'] || meta['horario citación'] || '');
+  const displayedVenue = nextAmhMatch
+    ? (callupMatchesNextFixture ? (meta.cancha || '') : '')
+    : (meta.cancha || '');
+  const displayedMatchTime = nextAmhMatch
+    ? (nextAmhMatch.matchTime || '')
+    : (meta['horario partido'] || meta.partido || '');
   const visiblePlayers = physicalPlayers.filter(player => {
     const matchesCategory = physicalFilter === 'all' || player.filterTag === physicalFilter;
     const query = physicalSearch.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -462,9 +495,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                 <h2>vs {nextAmhMatch?.rival || meta.rival || 'Rival pendiente'}</h2>
                 <p>{nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</p>
                 <div className="home-match-facts">
-                  {(meta['horario citacion'] || meta['horario citación']) && <span>📣 Citación: {meta['horario citacion'] || meta['horario citación']}</span>}
-                  <span>⏱️ {meta['horario partido'] || meta.partido || 'Horario pendiente de confirmar'}</span>
-                  <span>📍 {meta.cancha || (nextAmhMatch ? (nextAmhMatch.homeAway === 'Local' ? `${club.shortName || club.name} (Local)` : `${nextAmhMatch.rival} (Visitante)`) : 'Cancha pendiente')}</span>
+                  {displayedCallTime && <span>📣 Citación: {displayedCallTime}</span>}
+                  <span>⏱️ {displayedMatchTime || 'Horario pendiente de confirmar'}</span>
+                  <span>📍 {displayedVenue || (nextAmhMatch ? (nextAmhMatch.homeAway === 'Local' ? `${club.shortName || club.name} (Local)` : `${nextAmhMatch.rival} (Visitante)`) : 'Cancha pendiente')}</span>
                 </div>
               </div>
               <button type="button" onClick={() => selectWorkspaceSection('citaciones')}>Ver citación</button>
@@ -736,9 +769,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               <h2>{nextAmhMatch ? `vs ${nextAmhMatch.rival}` : (meta.rival || 'Rival pendiente')}</h2>
               <div className="match-details">
                 <span>📅 {nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</span>
-                {(meta['horario citacion'] || meta['horario citación']) && <span>📣 Citación: {meta['horario citacion'] || meta['horario citación']}</span>}
-                <span>⏱️ {meta['horario partido'] || meta.partido || (nextAmhMatch ? 'Horario oficial AMH' : 'Horario pendiente')}</span>
-                <span>📍 {nextAmhMatch ? (nextAmhMatch.homeAway === 'Local' ? `${club.shortName || club.name} (Local)` : `${nextAmhMatch.rival} (Visitante)`) : (meta.cancha || 'Cancha pendiente')}</span>
+                {displayedCallTime && <span>📣 Citación: {displayedCallTime}</span>}
+                <span>⏱️ {displayedMatchTime || 'Horario pendiente de confirmar'}</span>
+                <span>📍 {displayedVenue || (nextAmhMatch ? (nextAmhMatch.homeAway === 'Local' ? `${club.shortName || club.name} (Local)` : `${nextAmhMatch.rival} (Visitante)`) : 'Cancha pendiente')}</span>
               </div>
             </section>
             <section className="players-section">
@@ -750,13 +783,23 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               </div>
               {editingCallup && (
                 <form className="callup-editor" onSubmit={submitCallup}>
+                  {nextAmhMatch ? (
+                    <div className="callup-fixture-summary">
+                      <strong>Partido obtenido de AMH</strong>
+                      <span>{callupMetaDraft.round} · vs {callupMetaDraft.opponent}</span>
+                      <span>{callupMetaDraft.date || 'Fecha pendiente'} · {callupMetaDraft.homeAway}</span>
+                    </div>
+                  ) : (
+                    <div className="callup-meta-grid">
+                      <label>Fecha / ronda<input value={callupMetaDraft.round || ''} onChange={event => setCallupMetaDraft(current => ({ ...current, round: event.target.value }))} /></label>
+                      <label>Rival<input value={callupMetaDraft.opponent || ''} onChange={event => setCallupMetaDraft(current => ({ ...current, opponent: event.target.value }))} /></label>
+                      <label>Día<input value={callupMetaDraft.date || ''} onChange={event => setCallupMetaDraft(current => ({ ...current, date: event.target.value }))} /></label>
+                      <label>Localía<select value={callupMetaDraft.homeAway || 'Local'} onChange={event => setCallupMetaDraft(current => ({ ...current, homeAway: event.target.value }))}><option>Local</option><option>Visitante</option></select></label>
+                    </div>
+                  )}
                   <div className="callup-meta-grid">
-                    {[
-                      ['round', 'Fecha / ronda'], ['opponent', 'Rival'], ['date', 'Día'], ['venue', 'Cancha'],
-                      ['callTime', 'Horario de citación'], ['matchTime', 'Horario del partido'], ['opponentLogoUrl', 'URL del escudo rival']
-                    ].map(([key, label]) => (
-                      <label key={key}>{label}<input value={callupMetaDraft[key] || ''} onChange={event => setCallupMetaDraft(current => ({ ...current, [key]: event.target.value }))} /></label>
-                    ))}
+                    <label>Cancha<input value={callupMetaDraft.venue || ''} onChange={event => setCallupMetaDraft(current => ({ ...current, venue: event.target.value }))} /></label>
+                    <label>Horario de citación<input value={callupMetaDraft.callTime || ''} onChange={event => setCallupMetaDraft(current => ({ ...current, callTime: event.target.value }))} placeholder="Ej.: 14:30" /></label>
                   </div>
                   <div className="callup-selection">
                     <div className="callup-selection-heading">

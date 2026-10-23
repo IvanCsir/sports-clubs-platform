@@ -59,6 +59,7 @@ async function getClubData(slug) {
     if (row.round_label) meta['fecha n°'] = row.round_label;
     if (row.opponent) meta.rival = row.opponent;
     if (row.date_label) meta.dia = row.date_label;
+    if (row.home_away) meta.localia = row.home_away;
     if (row.venue) meta.cancha = row.venue;
     if (row.call_time) meta['horario citacion'] = row.call_time;
     if (row.match_time) meta['horario partido'] = row.match_time;

@@ -90,6 +90,7 @@ function fetchAmhMatches(division, club) {
               fecha: cells['FECHA'] || '',
               rival,
               homeAway,
+              matchTime: cells['HORA_PARTIDO'] || '',
               score,
               result,
               played: isPlayed,
@@ -107,6 +108,7 @@ function fetchAmhMatches(division, club) {
                   fecha: cells['FECHA'] || '',
                   rival,
                   homeAway,
+                  matchTime: cells['HORA_PARTIDO'] || '',
                   status: 'Pendiente'
                 };
               }

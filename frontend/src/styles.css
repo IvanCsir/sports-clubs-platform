@@ -204,6 +204,11 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .tactical-frame-delete-tools button { padding: 8px 10px; font-size: .78rem; color: #ffb4b4; border-color: #e54b4b55; }
 .tactical-playback-tools small { color: #9eb4cc; }
 .callup-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.callup-fixture-summary { display: grid; gap: 5px; padding: 12px 14px; border: 1px solid #8dd3ff33; border-radius: 10px; background: #ffffff09; color: #cfe6ff; }
+.callup-fixture-summary strong { color: #00a2ff; }
+.callup-editor input, .callup-editor select { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #071d3d; font: inherit; }
+.callup-fixture-summary { display: grid; gap: 5px; padding: 12px 14px; border: 1px solid #8dd3ff33; border-radius: 10px; background: #ffffff09; color: #cfe6ff; }
+.callup-fixture-summary strong { color: #00a2ff; }
 .physical-entry-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
 .physical-entry-grid fieldset { display: grid; gap: 8px; border: 1px solid #8dd3ff33; border-radius: 10px; }
 .physical-entry-grid fieldset label { grid-template-columns: 70px 1fr; align-items: center; }
