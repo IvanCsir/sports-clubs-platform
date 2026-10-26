@@ -110,11 +110,12 @@ En desarrollo, iniciá el servidor local con `npm start`; compila el portal y lo
 `http://localhost:5173/` mientras el servidor local está activo para atender las API.
 
 El portal permite seleccionar clubes, gestionar su plantel, preparar citaciones, consultar
-evaluaciones físicas y registrar eventos del partido. El cuerpo técnico debe iniciar sesión
-para acceder a los datos privados y guardar cambios.
+evaluaciones físicas y registrar eventos del partido. Las jugadoras pueden consultar las
+evaluaciones físicas desde el enlace público del club; la carga y edición requieren una sesión
+del cuerpo técnico. El resto de los datos privados y las escrituras también requieren esa sesión.
 
 Desde "Editar perfil" se puede subir el escudo del club (PNG, JPG o SVG de hasta 1 MB).
-Las citaciones se consultan y editan mediante `/api/club-data`; evaluaciones físicas y eventos requieren una sesión del cuerpo técnico. Las escrituras se guardan en PostgreSQL.
+Las citaciones se consultan y editan mediante `/api/club-data`; la consulta de evaluaciones es pública por club, pero su edición y el acceso a eventos requieren una sesión del cuerpo técnico. Las escrituras se guardan en PostgreSQL.
 
 La configuración de torneo AMH también es propia de cada club. En el perfil se deben
 completar el nombre del torneo, la URL base de AMH, el ID del torneo y el ID del club
