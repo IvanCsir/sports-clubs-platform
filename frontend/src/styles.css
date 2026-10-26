@@ -45,6 +45,10 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .workspace-nav button.active, .category-tabs button.active { color: #031125; background: #00a2ff; }
 .workspace-nav button:disabled { cursor: not-allowed; opacity: .45; }
 .workspace-nav-divider { align-self: center; width: 1px; height: 26px; margin: 0 4px; background: #8dd3ff40; flex: 0 0 1px; }
+@media (min-width: 761px) {
+  .workspace-nav { flex-wrap: wrap; overflow: visible; padding-bottom: 0; }
+  .workspace-nav button { flex: 0 0 auto; }
+}
 .club-home { display: grid; gap: 16px; margin-top: 18px; }
 .club-home-heading h2 { margin: 5px 0; }
 .club-home-heading p { margin: 0; color: #9eb4cc; }
@@ -360,6 +364,12 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .workspace-header { justify-content: space-between; flex-wrap: wrap; }
 .workspace-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .precarga-trigger-btn { font-size: .85rem; padding: 9px 14px; }
+@media (min-width: 761px) {
+  .workspace-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "identity crest" "actions actions"; align-items: center; column-gap: 24px; row-gap: 12px; }
+  .workspace-header > img { grid-area: crest; justify-self: end; }
+  .workspace-header > div:not(.workspace-header-actions) { grid-area: identity; min-width: 0; }
+  .workspace-header-actions { grid-area: actions; justify-self: end; margin-left: 0; }
+}
 
 
 /* ==========================================================================
