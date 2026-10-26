@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Activity, ClipboardList, Dumbbell, Goal, HeartPulse, Timer, Trophy, UsersRound, Wind, Zap, PersonStanding, Target } from 'lucide-react';
 import TrackerPanel from './components/TrackerPanel';
 import TournamentPanel from './components/TournamentPanel';
 import EstadisticasPanel from './components/EstadisticasPanel';
@@ -23,15 +24,15 @@ const emptyClub = {
 };
 
 const PHYSICAL_TESTS = [
-  { key: 'broadJump', name: 'Broad Jump', type: 'Salto horizontal', unit: 'm', higherIsBetter: true, icon: '🏃‍♀️', decimals: 2, cols: [3, 4, 5] },
-  { key: 'cmj', name: 'CMJ', type: 'Salto vertical', unit: 'cm', higherIsBetter: true, icon: '⚡', decimals: 1, cols: [6, 7, 8] },
-  { key: 'agility', name: 'Test 5-10-5', type: 'Agilidad', unit: 'seg', higherIsBetter: false, icon: '⏱️', decimals: 2, cols: [9, 10, 11] },
-  { key: 'sprint', name: 'Velocidad 40 mts', type: 'Velocidad', unit: 'seg', higherIsBetter: false, icon: '💨', decimals: 2, cols: [12, 13, 14] },
-  { key: 'yoyo', name: 'Yo-Yo Test', type: 'Resistencia', unit: 'm', higherIsBetter: true, icon: '🫁', decimals: 0, cols: [15, 16, 17] },
-  { key: 'bench', name: 'Press de banca', type: 'Fuerza superior', unit: 'kg', higherIsBetter: true, icon: '🏋️‍♀️', decimals: 1, cols: [18, 19, 20] },
-  { key: 'deadlift', name: 'Peso muerto', type: 'Cadena posterior', unit: 'kg', higherIsBetter: true, icon: '🏋️', decimals: 1, cols: [21, 22, 23] },
-  { key: 'squat', name: 'Sentadilla', type: 'Fuerza inferior', unit: 'kg', higherIsBetter: true, icon: '🦵', decimals: 1, cols: [24, 25, 26] },
-  { key: 'platform', name: 'Plataforma', type: 'Potencia', unit: '', higherIsBetter: true, icon: '🎯', decimals: 1, cols: [27, 28, 29] }
+  { key: 'broadJump', name: 'Broad Jump', type: 'Salto horizontal', unit: 'm', higherIsBetter: true, icon: PersonStanding, decimals: 2, cols: [3, 4, 5] },
+  { key: 'cmj', name: 'CMJ', type: 'Salto vertical', unit: 'cm', higherIsBetter: true, icon: Zap, decimals: 1, cols: [6, 7, 8] },
+  { key: 'agility', name: 'Test 5-10-5', type: 'Agilidad', unit: 'seg', higherIsBetter: false, icon: Timer, decimals: 2, cols: [9, 10, 11] },
+  { key: 'sprint', name: 'Velocidad 40 mts', type: 'Velocidad', unit: 'seg', higherIsBetter: false, icon: Wind, decimals: 2, cols: [12, 13, 14] },
+  { key: 'yoyo', name: 'Yo-Yo Test', type: 'Resistencia', unit: 'm', higherIsBetter: true, icon: HeartPulse, decimals: 0, cols: [15, 16, 17] },
+  { key: 'bench', name: 'Press de banca', type: 'Fuerza superior', unit: 'kg', higherIsBetter: true, icon: Dumbbell, decimals: 1, cols: [18, 19, 20] },
+  { key: 'deadlift', name: 'Peso muerto', type: 'Cadena posterior', unit: 'kg', higherIsBetter: true, icon: Dumbbell, decimals: 1, cols: [21, 22, 23] },
+  { key: 'squat', name: 'Sentadilla', type: 'Fuerza inferior', unit: 'kg', higherIsBetter: true, icon: Activity, decimals: 1, cols: [24, 25, 26] },
+  { key: 'platform', name: 'Plataforma', type: 'Potencia', unit: '', higherIsBetter: true, icon: Target, decimals: 1, cols: [27, 28, 29] }
 ];
 
 function normalizeMatchValue(value) {
@@ -539,25 +540,25 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             </section>
             <div className="home-dashboard-grid">
               <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('citaciones')}>
-                <span className="home-card-icon" aria-hidden="true">📋</span>
+                <span className="home-card-icon" aria-hidden="true"><ClipboardList /></span>
                 <span className="home-card-copy"><strong>Citaciones</strong><small>{current.players.length ? `${current.players.length} jugadoras citadas` : 'Todavía no hay jugadoras citadas'}</small>
                   {current.players.length > 0 && <small className="home-card-preview">{current.players.slice(0, 3).join(' · ')}{current.players.length > 3 ? ` · +${current.players.length - 3}` : ''}</small>}
                 </span><b aria-hidden="true">→</b>
               </button>
               <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('preparacion')}>
-                <span className="home-card-icon" aria-hidden="true">🏑</span>
+                <span className="home-card-icon" aria-hidden="true"><Goal /></span>
                 <span className="home-card-copy"><strong>Plan partido</strong><small>Foco semanal, videos y jugadas del equipo</small></span><b aria-hidden="true">→</b>
               </button>
               <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('torneo')}>
-                <span className="home-card-icon" aria-hidden="true">🏆</span>
+                <span className="home-card-icon" aria-hidden="true"><Trophy /></span>
                 <span className="home-card-copy"><strong>Torneos y resultados</strong><small>{latestResult ? `${latestResult.round}: ${latestResult.score} vs ${latestResult.rival}` : 'Fixture y tabla de posiciones'}</small></span><b aria-hidden="true">→</b>
               </button>
               <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('fisico')}>
-                <span className="home-card-icon" aria-hidden="true">⚡</span>
+                <span className="home-card-icon" aria-hidden="true"><Zap /></span>
                 <span className="home-card-copy"><strong>Evaluaciones físicas</strong><small>Consultá las mediciones y su evolución</small></span><b aria-hidden="true">→</b>
               </button>
               {authenticated && <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('jugadoras')}>
-                <span className="home-card-icon" aria-hidden="true">👥</span>
+                <span className="home-card-icon" aria-hidden="true"><UsersRound /></span>
                 <span className="home-card-copy"><strong>Plantel</strong><small>{players.filter(player => player.active).length} jugadoras activas</small></span><b aria-hidden="true">→</b>
               </button>}
             </div>
@@ -733,10 +734,11 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                       {PHYSICAL_TESTS.map(test => {
                         const result = selected.tests[test.key];
                         const latest = result?.evals.at(-1);
+                        const TestIcon = test.icon;
                         return (
                           <article className="test-card" key={test.key}>
                             <div>
-                              <span className="test-icon">{test.icon}</span>
+                              <span className="test-icon"><TestIcon /></span>
                               <strong>{test.name}</strong>
                               <small>{test.type}</small>
                             </div>
@@ -763,10 +765,12 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             )}
             {physicalMode === 'averages' && (
               <div className="average-grid">
-                {averages.map(test => (
+                {averages.map(test => {
+                  const TestIcon = test.icon;
+                  return (
                   <article className="average-card" key={test.key}>
                     <div className="average-heading">
-                      <span className="test-icon">{test.icon}</span>
+                      <span className="test-icon"><TestIcon /></span>
                       <div>
                         <strong>{test.name}</strong>
                         <small>{test.type}</small>
@@ -779,12 +783,14 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                       ))}
                     </div>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             )}
             {physicalMode === 'top10' && (
               <div className="top10-grid-react">
                 {PHYSICAL_TESTS.map(test => {
+                  const TestIcon = test.icon;
                   const ranked = visiblePlayers
                     .map(player => ({ player, value: player.tests[test.key]?.evals.at(-1)?.value }))
                     .filter(item => item.value !== undefined)
@@ -792,7 +798,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                     .slice(0, 10);
                   return (
                     <article className="top10-card" key={test.key}>
-                      <h3>{test.icon} {test.name}</h3>
+                      <h3><TestIcon /> {test.name}</h3>
                       {ranked.length ? (
                         ranked.map((item, index) => (
                           <button

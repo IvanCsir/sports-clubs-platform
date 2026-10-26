@@ -56,7 +56,8 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .home-dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .home-dashboard-card { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 16px; color: #eaf6ff; border: 1px solid #8dd3ff33; border-radius: 14px; background: #ffffff09; text-align: left; }
 .home-dashboard-card:hover { border-color: #00a2ff99; background: #00a2ff12; }
-.home-card-icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 12px; background: #00a2ff1a; font-size: 1.25rem; }
+.home-card-icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 12px; background: #00a2ff1a; }
+.home-card-icon svg { width: 21px; height: 21px; stroke-width: 1.8; }
 .home-card-copy { display: grid; flex: 1; gap: 4px; min-width: 0; }
 .home-card-copy small { color: #9eb4cc; font-size: .8rem; font-weight: 500; line-height: 1.4; }
 .home-card-copy .home-card-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -84,7 +85,8 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .tracker-team { padding: 16px; border-radius: 16px; background: #ffffff0a; }
 .tracker-team h3 { margin-top: 0; }
 .tracker-team > button { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; width: 100%; margin: 8px 0; text-align: left; color: #eaf6ff; background: #123154; }
-.tracker-team > button span { font-size: 1.3rem; }
+.tracker-team > button span { display: grid; place-items: center; color: #8dd3ff; }
+.tracker-team > button span svg { width: 20px; height: 20px; }
 .tracker-team > button small { grid-column: 2; color: #b7c9de; font-weight: 500; }
 .tracker-team > button b { grid-column: 3; grid-row: 1 / span 2; color: #00a2ff; }
 .tracker-cards { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; color: #b7c9de; }
@@ -251,7 +253,8 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .test-card strong, .average-heading strong { display: block; }
 .test-card small, .average-heading small { display: block; margin-top: 3px; }
 .test-card > b, .average-heading > b { display: block; margin: 14px 0 10px; color: #fff; font-size: 1.3rem; }
-.test-icon { font-size: 1.35rem; }
+.test-icon { display: inline-flex; vertical-align: middle; margin-right: 6px; color: #58bdff; }
+.test-icon svg { width: 21px; height: 21px; stroke-width: 1.8; }
 .test-rounds { display: flex; flex-wrap: wrap; gap: 6px; color: #b7c9de; font-size: .75rem; }
 .test-rounds span { padding: 4px 6px; border-radius: 6px; background: #ffffff0b; }
 .test-card em { display: inline-block; margin-top: 10px; font-size: .78rem; font-style: normal; }
@@ -384,7 +387,8 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 
 .tactical-insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 20px 0; }
 .insight-card { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 1px solid #8dd3ff2e; border-radius: 14px; background: linear-gradient(135deg, #00a2ff14, #ffffff08); }
-.insight-icon { font-size: 2rem; }
+.insight-icon { display: grid; place-items: center; color: #58bdff; }
+.insight-icon svg { width: 30px; height: 30px; stroke-width: 1.8; }
 .insight-card strong { display: block; font-size: .92rem; color: #fff; }
 .insight-card p { margin: 3px 0 0; color: #b7c9de; font-size: .82rem; }
 

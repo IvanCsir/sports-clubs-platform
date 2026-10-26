@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { CircleDot, Goal, Target, ArrowDownToLine } from 'lucide-react';
 
 const TRACKER_ACTIONS = [
-  ['entry', '📥', 'Ingreso al área'],
-  ['corner', '🏑', 'Córner corto'],
-  ['stroke', '🎯', 'Penal'],
-  ['fieldGoal', '⚽', 'Gol de jugada']
+  ['entry', ArrowDownToLine, 'Ingreso al área'],
+  ['corner', Goal, 'Córner corto'],
+  ['stroke', Target, 'Penal'],
+  ['fieldGoal', CircleDot, 'Gol de jugada']
 ];
 
 export default function TrackerPanel({
@@ -240,12 +241,12 @@ export default function TrackerPanel({
     <div className={`tracker-team ${team}`}>
       <h3>{name}</h3>
       <div className="tracker-score">{score(team)}</div>
-      {TRACKER_ACTIONS.map(([type, icon, label]) => (
+      {TRACKER_ACTIONS.map(([type, Icon, label]) => (
         <button
           key={type}
           onClick={() => beginAction(team, type)}
         >
-          <span>{icon}</span>
+          <span><Icon /></span>
           <strong>{label}</strong>
           <small>{count(team, type)} en partido</small>
           <b>+1</b>

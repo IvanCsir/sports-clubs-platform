@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Goal, Zap, Shield, Timer } from 'lucide-react';
 import { calculateQuarterStats } from '../utils/statsCalculator';
 
 export default function EstadisticasPanel({
@@ -126,7 +127,7 @@ export default function EstadisticasPanel({
             className={activeTab === 'timeline' ? 'active' : ''}
             onClick={() => setActiveTab('timeline')}
           >
-            ⏱️ Cronología ({filteredEvents.length})
+            <Timer aria-hidden="true" /> Cronología ({filteredEvents.length})
           </button>
         </div>
       </div>
@@ -160,7 +161,7 @@ export default function EstadisticasPanel({
           {/* Insights tácticos */}
           <div className="tactical-insights">
             <div className="insight-card">
-              <span className="insight-icon">🎯</span>
+              <span className="insight-icon"><Goal /></span>
               <div>
                 <strong>Mejor cuarto ofensivo</strong>
                 <p>
@@ -171,7 +172,7 @@ export default function EstadisticasPanel({
               </div>
             </div>
             <div className="insight-card">
-              <span className="insight-icon">⚡</span>
+              <span className="insight-icon"><Zap /></span>
               <div>
                 <strong>Mayor volumen de ataque</strong>
                 <p>
@@ -182,7 +183,7 @@ export default function EstadisticasPanel({
               </div>
             </div>
             <div className="insight-card">
-              <span className="insight-icon">🛡️</span>
+              <span className="insight-icon"><Shield /></span>
               <div>
                 <strong>Cuarto defensivo más exigido</strong>
                 <p>
