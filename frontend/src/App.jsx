@@ -556,11 +556,11 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               <div className="home-match-content">
                 <span className="home-match-label"><CalendarClock aria-hidden="true" />{nextAmhMatch?.round || meta['fecha n°'] || meta['fecha'] || 'PRÓXIMO PARTIDO'}</span>
                 <div className="home-match-opponent">
-                  <OpponentBadge key={nextAmhMatch?.rival || meta.rival || ''} name={nextAmhMatch?.rival || meta.rival || ''} />
                   <div className="home-match-title">
                     <h2>vs {nextAmhMatch?.rival || meta.rival || 'Rival pendiente'}</h2>
                     <p>{nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</p>
                   </div>
+                  <OpponentBadge key={nextAmhMatch?.rival || meta.rival || ''} name={nextAmhMatch?.rival || meta.rival || ''} />
                 </div>
                 <div className="home-match-facts">
                   {displayedCallTime && <span><Megaphone aria-hidden="true" /> Citación: {displayedCallTime}</span>}

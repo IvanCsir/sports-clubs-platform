@@ -59,7 +59,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .home-next-match > button { flex: 0 0 auto; }
 .home-match-content { flex: 1; min-width: 0; }
 .home-match-opponent { display: flex; align-items: center; gap: 16px; min-width: 0; margin-top: 10px; }
-.opponent-badge { display: grid; place-items: center; flex: 0 0 74px; width: 74px; height: 74px; overflow: hidden; border: 1px solid #ffffff30; border-radius: 18px; background: #f7f9fc; box-shadow: 0 8px 20px #0003; }
+.opponent-badge { display: grid; place-items: center; flex: 0 0 74px; width: 74px; height: 74px; overflow: hidden; border: 1px solid #ffffff30; border-radius: 50%; background: #f7f9fc; box-shadow: 0 8px 20px #0003; }
 .opponent-badge img { display: block; width: 100%; height: 100%; padding: 7px; object-fit: contain; }
 .opponent-badge > span { color: #173452; font-size: 1.2rem; font-weight: 900; letter-spacing: .04em; }
 .home-match-title { min-width: 0; }
@@ -738,5 +738,5 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .home-match-title p { margin: 0 0 18px; }
 @media (max-width: 600px) {
   .home-match-opponent { gap: 12px; }
-  .opponent-badge { flex-basis: 62px; width: 62px; height: 62px; border-radius: 15px; }
+  .opponent-badge { flex-basis: 62px; width: 62px; height: 62px; }
 }
