@@ -701,7 +701,8 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
   .wellness-question-list { grid-template-columns: 1fr; }
   .monitoring-fields { grid-template-columns: 1fr; }
   .monitoring-fields label:first-child { grid-column: auto; }
-  .effort-options { gap: 4px; }
-  .effort-options label { min-height: 32px; }
+  .monitoring-kind-tabs button { min-width: 0; padding: 8px 6px; font-size: .78rem; white-space: nowrap; }
+  .effort-options { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  .effort-options label { min-height: 36px; }
   .monitoring-form-heading { align-items: flex-start; flex-direction: column; }
 }
