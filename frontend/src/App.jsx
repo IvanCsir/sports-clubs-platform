@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, ClipboardList, Dumbbell, Goal, HeartPulse, Timer, Trophy, UsersRound, Wind, Zap, PersonStanding, Target } from 'lucide-react';
+import { Activity, CalendarClock, ChevronRight, ClipboardList, Dumbbell, Goal, HeartPulse, MapPin, Megaphone, Timer, Trophy, UsersRound, Wind, Zap, PersonStanding, Target } from 'lucide-react';
 import TrackerPanel from './components/TrackerPanel';
 import TournamentPanel from './components/TournamentPanel';
 import EstadisticasPanel from './components/EstadisticasPanel';
@@ -419,7 +419,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   };
 
   return (
-    <main className="portal">
+    <main className="portal" style={{ '--club-accent': club.theme?.accent || '#00a2ff', '--club-primary': club.theme?.primary || '#1e88e5' }}>
       <section className="workspace">
         {showAdminBack && <button className="secondary back-button" onClick={() => { logoutStaff(); onBack(); }}>← Volver a administración</button>}
         <header className="workspace-header">
@@ -528,43 +528,43 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
         {view === 'inicio' ? (
           <section className="club-home">
             <header className="club-home-heading">
-              <div><span className="kicker">INICIO</span><h2>Hola, {club.shortName || club.name}</h2><p>Este es el resumen de {category === 'primera' ? '1ra División' : 'Intermedia'}.</p></div>
+              <div><span className="kicker">PANEL DEL CLUB</span><h2>Hola, {club.shortName || club.name}</h2><p>Resumen de {category === 'primera' ? '1ra División' : 'Intermedia'}</p></div>
             </header>
             <section className="home-next-match">
               <div>
-                <span className="kicker">{nextAmhMatch?.round || meta['fecha n°'] || meta['fecha'] || 'PRÓXIMO PARTIDO'}</span>
+                <span className="home-match-label"><CalendarClock aria-hidden="true" />{nextAmhMatch?.round || meta['fecha n°'] || meta['fecha'] || 'PRÓXIMO PARTIDO'}</span>
                 <h2>vs {nextAmhMatch?.rival || meta.rival || 'Rival pendiente'}</h2>
                 <p>{nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</p>
                 <div className="home-match-facts">
-                  {displayedCallTime && <span>📣 Citación: {displayedCallTime}</span>}
-                  <span>⏱️ {displayedMatchTime || 'Horario pendiente de confirmar'}</span>
-                  <span>📍 {displayedVenue || (nextAmhMatch ? (nextAmhMatch.homeAway === 'Local' ? `${club.shortName || club.name} (Local)` : `${nextAmhMatch.rival} (Visitante)`) : 'Cancha pendiente')}</span>
+                  {displayedCallTime && <span><Megaphone aria-hidden="true" /> Citación: {displayedCallTime}</span>}
+                  <span><Timer aria-hidden="true" /> {displayedMatchTime || 'Horario pendiente de confirmar'}</span>
+                  <span><MapPin aria-hidden="true" /> {displayedVenue || (nextAmhMatch ? (nextAmhMatch.homeAway === 'Local' ? `${club.shortName || club.name} (Local)` : `${nextAmhMatch.rival} (Visitante)`) : 'Cancha pendiente')}</span>
                 </div>
               </div>
-              <button type="button" onClick={() => selectWorkspaceSection('citaciones')}>Ver citación</button>
+              <button type="button" onClick={() => selectWorkspaceSection('citaciones')}>Ver citación <ChevronRight aria-hidden="true" /></button>
             </section>
             <div className="home-dashboard-grid">
               <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('citaciones')}>
                 <span className="home-card-icon" aria-hidden="true"><ClipboardList /></span>
                 <span className="home-card-copy"><strong>Citaciones</strong><small>{current.players.length ? `${current.players.length} jugadoras citadas` : 'Todavía no hay jugadoras citadas'}</small>
                   {current.players.length > 0 && <small className="home-card-preview">{current.players.slice(0, 3).join(' · ')}{current.players.length > 3 ? ` · +${current.players.length - 3}` : ''}</small>}
-                </span><b aria-hidden="true">→</b>
+                </span><ChevronRight className="home-card-chevron" aria-hidden="true" />
               </button>
               <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('preparacion')}>
                 <span className="home-card-icon" aria-hidden="true"><Goal /></span>
-                <span className="home-card-copy"><strong>Plan partido</strong><small>Foco semanal, videos y jugadas del equipo</small></span><b aria-hidden="true">→</b>
+                <span className="home-card-copy"><strong>Plan partido</strong><small>Foco semanal, videos y jugadas del equipo</small></span><ChevronRight className="home-card-chevron" aria-hidden="true" />
               </button>
               <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('torneo')}>
                 <span className="home-card-icon" aria-hidden="true"><Trophy /></span>
-                <span className="home-card-copy"><strong>Torneos y resultados</strong><small>{latestResult ? `${latestResult.round}: ${latestResult.score} vs ${latestResult.rival}` : 'Fixture y tabla de posiciones'}</small></span><b aria-hidden="true">→</b>
+                <span className="home-card-copy"><strong>Torneos y resultados</strong><small>{latestResult ? `${latestResult.round}: ${latestResult.score} vs ${latestResult.rival}` : 'Fixture y tabla de posiciones'}</small></span><ChevronRight className="home-card-chevron" aria-hidden="true" />
               </button>
               <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('fisico')}>
                 <span className="home-card-icon" aria-hidden="true"><Zap /></span>
-                <span className="home-card-copy"><strong>Evaluaciones físicas</strong><small>Consultá las mediciones y su evolución</small></span><b aria-hidden="true">→</b>
+                <span className="home-card-copy"><strong>Evaluaciones físicas</strong><small>Consultá las mediciones y su evolución</small></span><ChevronRight className="home-card-chevron" aria-hidden="true" />
               </button>
               {authenticated && <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('jugadoras')}>
                 <span className="home-card-icon" aria-hidden="true"><UsersRound /></span>
-                <span className="home-card-copy"><strong>Plantel</strong><small>{players.filter(player => player.active).length} jugadoras activas</small></span><b aria-hidden="true">→</b>
+                <span className="home-card-copy"><strong>Plantel</strong><small>{players.filter(player => player.active).length} jugadoras activas</small></span><ChevronRight className="home-card-chevron" aria-hidden="true" />
               </button>}
             </div>
           </section>
