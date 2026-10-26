@@ -156,11 +156,9 @@ export default function TournamentPanel({ club }) {
                 <article className="match-row" key={`${match.round}-${match.rival}-${index}`}>
                   <span className="match-round">{match.round}</span>
                   <div className="match-row-info">
-                    <div className="match-row-opponent">
-                      <OpponentBadge name={match.rival || ''} size="small" />
-                      <strong>{match.rival || 'Rival pendiente'}</strong>
-                    </div>
-                    <small>{match.fecha || 'Fecha pendiente'} · {match.homeAway || ''}</small>
+                    <OpponentBadge name={match.rival || ''} size="small" />
+                    <strong className="match-row-name">{match.rival || 'Rival pendiente'}</strong>
+                    <small className="match-row-meta">{match.fecha || 'Fecha pendiente'} · {match.homeAway || ''}</small>
                   </div>
                   <b className={`match-result ${match.result || 'pending'}`}>
                     {match.played ? `${match.score} (${match.result === 'win' ? 'Victoria' : match.result === 'draw' ? 'Empate' : 'Derrota'})` : 'Pendiente'}
