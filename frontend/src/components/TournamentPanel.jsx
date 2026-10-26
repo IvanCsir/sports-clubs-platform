@@ -157,8 +157,8 @@ export default function TournamentPanel({ club }) {
                   <span className="match-round">{match.round}</span>
                   <div className="match-row-info">
                     <div className="match-row-opponent">
-                      <strong>{match.rival || 'Rival pendiente'}</strong>
                       <OpponentBadge name={match.rival || ''} size="small" />
+                      <strong>{match.rival || 'Rival pendiente'}</strong>
                     </div>
                     <small>{match.fecha || 'Fecha pendiente'} · {match.homeAway || ''}</small>
                   </div>

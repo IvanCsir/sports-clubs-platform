@@ -475,7 +475,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .match-row { display: grid; grid-template-columns: 74px 1fr auto; gap: 10px; align-items: center; padding: 11px; border: 1px solid #8dd3ff20; border-radius: 10px; background: #ffffff08; }
 .match-round { color: #00a2ff; font-size: .75rem; font-weight: 800; }
 .match-row-info { display: grid; gap: 3px; min-width: 0; }
-.match-row-opponent { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.match-row-opponent { display: flex; align-items: center; justify-content: flex-start; gap: 8px; min-width: 0; }
 .match-row-opponent strong { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .match-row small { font-size: .75rem; }
 .match-result { white-space: nowrap; }

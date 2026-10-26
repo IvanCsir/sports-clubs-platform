@@ -1,7 +1,7 @@
 const CLUB_BADGES = [
   { match: ['murialdo', 'leonardo murialdo'], image: '/escudos-rivales/murialdo.svg' },
   { match: ['los tordos', 'tordos'], image: '/escudos-rivales/los-tordos.png' },
-  { match: ['marista san rafael', 'maristas san rafael', 'maristas de san rafael'], image: '/escudos-rivales/marista-san-rafael-transparente.png' },
+  { match: ['marista san rafael', 'marista s rafael', 'maristas san rafael', 'maristas s rafael', 'maristas de san rafael'], image: '/escudos-rivales/marista-san-rafael-transparente.png' },
   { match: ['marista', 'maristas'], image: '/escudos-rivales/marista.png' },
   { match: ['club aleman', 'aleman'], image: '/escudos-rivales/aleman-transparente.png' },
   { match: ['vistalba'], image: '/escudos-rivales/vistalba-transparente.png' },
@@ -12,7 +12,7 @@ const CLUB_BADGES = [
   { match: ['peumayen'], image: '/escudos-rivales/Peumayen.png' },
   { match: ['liceo'], image: '/escudos-rivales/liceo-transparente.png' },
   { match: ['teque'], image: '/escudos-rivales/images-transparente.png' },
-  { match: ['banco mendoza', 'banco de mendoza', 'cpbm'], image: '/escudos-rivales/banco-mza.png' }
+  { match: ['bco mza', 'banco mza', 'banco mendoza', 'banco de mendoza', 'cpbm'], image: '/escudos-rivales/banco-mza.png' }
 ];
 
 function normalizeClubName(value) {
