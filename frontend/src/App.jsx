@@ -395,6 +395,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   });
 
   const selected = physicalPlayers.find(player => player.id === selectedPlayer);
+  const physicalPlayersWithResults = visiblePlayers.filter(player => Object.keys(player.tests || {}).length > 0).length;
   const latestResult = [...matches].reverse().find(match => match.played) || null;
   const workspaceSections = [
     { id: 'inicio', label: 'Inicio' },
@@ -670,14 +671,19 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               </form>
             )}
             <div className="physical-hero">
-              <span className="kicker">⚡ RENDIMIENTO ATLÉTICO</span>
-              <p>Buscá una jugadora para ver sus mediciones y evolución.</p>
+              <span className="kicker"><Activity aria-hidden="true" /> RENDIMIENTO ATLÉTICO</span>
+              <p>Consultá marcas, intentos y promedios del plantel.</p>
+            </div>
+            <div className="physical-summary" aria-live="polite">
+              <div><UsersRound aria-hidden="true" /><span><strong>{visiblePlayers.length}</strong><small>jugadoras</small></span></div>
+              <div><Activity aria-hidden="true" /><span><strong>{physicalPlayersWithResults}</strong><small>con resultados</small></span></div>
             </div>
             <input
               className="physical-search"
               value={physicalSearch}
               onChange={event => setPhysicalSearch(event.target.value)}
-              placeholder="🔍 Escribí tu nombre o apellido..."
+              aria-label="Buscar jugadora por nombre o apellido"
+              placeholder="Buscar jugadora por nombre o apellido..."
             />
             <div className="physical-filters">
               {[['all', 'Todas'], ['1ra', '1ra División'], ['Inter', 'Intermedia'], ['5ta', '5ta División']].map(([key, label]) => (
@@ -694,13 +700,17 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               ))}
             </div>
             <div className="physical-modes">
-              {[['players', '👤 Jugadoras'], ['averages', '📊 Medias'], ['top10', '🏆 Top 10']].map(([key, label]) => (
+              {[
+                ['players', UsersRound, 'Jugadoras'],
+                ['averages', Activity, 'Promedios'],
+                ['top10', Trophy, 'Top 10']
+              ].map(([key, Icon, label]) => (
                 <button
                   key={key}
                   className={physicalMode === key ? 'active' : ''}
                   onClick={() => setPhysicalMode(key)}
                 >
-                  {label}
+                  <Icon aria-hidden="true" /> {label}
                 </button>
               ))}
             </div>
@@ -730,9 +740,16 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                       <div>
                         <span className="kicker">FICHA ATLÉTICA</span>
                         <h3>{selected.name}</h3>
-                        <span>{selected.filterTag === 'Inter' ? 'Intermedia' : selected.filterTag === '5ta' ? '5ta División' : '1ra División'}</span>
+                        <div className="physical-profile-meta">
+                          <span>{selected.filterTag === 'Inter' ? 'Intermedia' : selected.filterTag === '5ta' ? '5ta División' : '1ra División'}</span>
+                          {selected.evaluatedOn && <span>Última evaluación · {new Date(`${selected.evaluatedOn}T00:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+                        </div>
                       </div>
                       <button className="secondary" onClick={() => setSelectedPlayer(null)}>Cambiar</button>
+                    </div>
+                    <div className="physical-profile-overview">
+                      <strong>{Object.keys(selected.tests || {}).length} de {PHYSICAL_TESTS.length} pruebas con datos</strong>
+                      <span>Comparación de marcas por intento</span>
                     </div>
                     <div className="test-cards">
                       {PHYSICAL_TESTS.map(test => {
@@ -747,14 +764,18 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                               <small>{test.type}</small>
                             </div>
                             <b>{latest ? `${latest.value} ${test.unit}` : 'Sin registros'}</b>
+                            {latest && <small className="test-result-caption">Último intento</small>}
                             <div className="test-rounds">
-                              {[1, 2, 3].map(round => (
-                                <span key={round}>{round}°: {result?.evals.find(item => item.round === round)?.value ?? '—'}</span>
-                              ))}
+                              {[1, 2, 3].map(round => {
+                                const attempt = result?.evals.find(item => item.round === round)?.value;
+                                return (
+                                  <span key={round}><small>Intento {round}</small><strong>{attempt ?? '—'}</strong></span>
+                                );
+                              })}
                             </div>
                             {result?.diff != null && (
                               <em className={result.improved ? 'positive' : 'negative'}>
-                                {result.improved ? '↗' : '↘'} {result.diff > 0 ? '+' : ''}{result.diff} {test.unit}
+                                {result.improved ? '↗' : '↘'} Cambio entre intentos: {result.diff > 0 ? '+' : ''}{result.diff} {test.unit}
                               </em>
                             )}
                           </article>
@@ -781,6 +802,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                       </div>
                       <b>{test.latest === null ? '—' : `${test.latest} ${test.unit}`}</b>
                     </div>
+                    <small className="average-caption">Promedio actual · {visiblePlayers.filter(player => player.tests[test.key]?.evals.at(-1)?.value !== undefined).length} jugadoras</small>
                     <div className="test-rounds">
                       {test.rounds.map((value, index) => (
                         <span key={index}>{index + 1}° eval: {value === null ? '—' : `${value} ${test.unit}`}</span>

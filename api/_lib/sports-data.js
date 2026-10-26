@@ -73,7 +73,7 @@ async function getClubData(slug) {
     if (!player) {
       const filterTag = row.category === 'intermedia' ? 'Inter' : row.category === '5ta' ? '5ta' : '1ra';
       const division = row.category === 'intermedia' ? 'Intermedia' : row.category === '5ta' ? '5ta División' : '1ra División';
-      player = { id: `p_${row.id}`, name: row.display_name, division, rama: row.category || '', divisionLabel: division, filterTag, tests: {} };
+      player = { id: `p_${row.id}`, name: row.display_name, evaluatedOn: row.evaluated_on, division, rama: row.category || '', divisionLabel: division, filterTag, tests: {} };
       physicalByPlayer.set(row.id, player);
     }
     if (row.test_key) {
