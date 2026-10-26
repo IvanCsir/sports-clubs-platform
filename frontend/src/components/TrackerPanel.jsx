@@ -25,8 +25,6 @@ export default function TrackerPanel({
 }) {
   const [matchIndex, setMatchIndex] = useState(-1);
   const [quarter, setQuarter] = useState(1);
-  const [seconds, setSeconds] = useState(900);
-  const [timerRunning, setTimerRunning] = useState(false);
   const [teamView, setTeamView] = useState('home');
   const [password, setPassword] = useState('');
   const [authStatus, setAuthStatus] = useState('');
@@ -41,10 +39,6 @@ export default function TrackerPanel({
   const matchKey = match?.round || 'amistoso';
   const expectedCallupMatchKey = `primera-${matchKey.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   const matchCalledUpPlayers = match && callupMatchKey === expectedCallupMatchKey ? calledUpPlayers : [];
-
-  function formatTime(val) {
-    return `${String(Math.floor(val / 60)).padStart(2, '0')}:${String(val % 60).padStart(2, '0')}`;
-  }
 
   async function login() {
     setAuthStatus('Validando acceso...');
@@ -71,7 +65,6 @@ export default function TrackerPanel({
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
       if (saved.quarter) setQuarter(saved.quarter);
-      if (saved.seconds != null) setSeconds(saved.seconds);
     } catch (_) {}
   }, [storageKey]);
 
@@ -79,24 +72,10 @@ export default function TrackerPanel({
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
-      localStorage.setItem(storageKey, JSON.stringify({ ...saved, quarter, seconds }));
+      delete saved.seconds;
+      localStorage.setItem(storageKey, JSON.stringify({ ...saved, quarter }));
     } catch (_) {}
-  }, [quarter, seconds, storageKey]);
-
-  // Control del cronómetro
-  useEffect(() => {
-    if (!timerRunning) return undefined;
-    const timer = window.setInterval(() => {
-      setSeconds(val => {
-        if (val <= 1) {
-          setTimerRunning(false);
-          return 0;
-        }
-        return val - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [timerRunning]);
+  }, [quarter, storageKey]);
 
   const currentEvents = events.filter(event => (event.matchKey || event.match || 'amistoso') === matchKey);
 
@@ -197,8 +176,6 @@ export default function TrackerPanel({
         setEvents(current => current.filter(event => !removedIds.has(event.id)));
       }).catch(error => setAuthStatus(error.message));
       setQuarter(1);
-      setSeconds(900);
-      setTimerRunning(false);
     }
   };
 
@@ -347,31 +324,11 @@ export default function TrackerPanel({
         </div>
       </div>
 
-      <div className="tracker-clock">
-        <strong>{formatTime(seconds)}</strong>
-        <span>{quarter}° cuarto</span>
-        <button onClick={() => setTimerRunning(val => !val)}>
-          {timerRunning ? '⏸ Pausar' : '▶ Iniciar'}
-        </button>
-        <button
-          onClick={() => {
-            setSeconds(900);
-            setTimerRunning(false);
-          }}
-        >
-          ↺ Reiniciar reloj
-        </button>
-      </div>
-
       <div className="tracker-quarters">
         {[1, 2, 3, 4].map(item => (
           <button
             className={quarter === item ? 'active' : ''}
-            onClick={() => {
-              setQuarter(item);
-              setSeconds(900);
-              setTimerRunning(false);
-            }}
+            onClick={() => setQuarter(item)}
             key={item}
           >
             {item}° cuarto

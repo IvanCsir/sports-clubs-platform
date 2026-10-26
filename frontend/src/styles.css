@@ -71,10 +71,6 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .tracker-toolbar select { flex: 1; min-width: 240px; padding: 12px; color: #eaf6ff; border: 1px solid #8dd3ff40; border-radius: 9px; background: #071d3d; }
 .tracker-toolbar span { font-size: .85rem; }
 .tracker-login { display: flex; gap: 10px; max-width: 520px; }
-.tracker-clock { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 16px 0; padding: 14px; border: 1px solid #00a2ff55; border-radius: 14px; background: #00a2ff12; }
-.tracker-clock strong { min-width: 96px; color: #00a2ff; font-size: 2rem; font-variant-numeric: tabular-nums; text-align: center; }
-.tracker-clock span { color: #b7c9de; font-weight: 800; }
-.tracker-clock button { padding: 9px 12px; color: #b7c9de; border: 1px solid #8dd3ff40; background: #ffffff0d; }
 .tracker-header { justify-content: space-between; padding: 18px; border-radius: 16px; background: #031125; }
 .tracker-header h3 { margin: 8px 0 4px; }
 .tracker-header h3 small { color: #8ca6c1; }
@@ -99,7 +95,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .tracker-event-question { margin: 0; color: #b7c9de; }
 .tracker-event-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (max-width: 520px) { .tracker-event-actions { grid-template-columns: 1fr; } }
-@media (max-width: 680px) { .tracker-grid { grid-template-columns: 1fr; } .tracker-header { align-items: flex-start; } .tracker-total-score { font-size: 2rem; } .tracker-login, .tracker-clock { flex-direction: column; align-items: stretch; } .tracker-clock strong { align-self: center; } }
+@media (max-width: 680px) { .tracker-grid { grid-template-columns: 1fr; } .tracker-header { align-items: flex-start; } .tracker-total-score { font-size: 2rem; } .tracker-login { flex-direction: column; align-items: stretch; } }
 .sync-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 42px; margin: 8px 0 18px; color: #9eb4cc; font-size: .9rem; }
 .sync-status-message { min-width: 0; line-height: 1.35; }
 .refresh { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 7px; padding: 9px 13px; white-space: nowrap; }
