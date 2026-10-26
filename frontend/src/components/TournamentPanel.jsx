@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import OpponentBadge from './OpponentBadge';
 
 export default function TournamentPanel({ club }) {
   const [division, setDivision] = useState('primera');
@@ -154,8 +155,11 @@ export default function TournamentPanel({ club }) {
               matches.map((match, index) => (
                 <article className="match-row" key={`${match.round}-${match.rival}-${index}`}>
                   <span className="match-round">{match.round}</span>
-                  <div>
-                    <strong>{match.rival || 'Rival pendiente'}</strong>
+                  <div className="match-row-info">
+                    <div className="match-row-opponent">
+                      <strong>{match.rival || 'Rival pendiente'}</strong>
+                      <OpponentBadge name={match.rival || ''} size="small" />
+                    </div>
                     <small>{match.fecha || 'Fecha pendiente'} · {match.homeAway || ''}</small>
                   </div>
                   <b className={`match-result ${match.result || 'pending'}`}>

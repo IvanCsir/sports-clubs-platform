@@ -6,7 +6,7 @@ import EstadisticasPanel from './components/EstadisticasPanel';
 import PrecargaModal from './components/PrecargaModal';
 import MatchPreparationPanel from './components/MatchPreparationPanel';
 import PlayerMonitoringPanel from './components/PlayerMonitoringPanel';
-import { getOpponentBadge, getOpponentInitials } from './data/opponent-badges';
+import OpponentBadge from './components/OpponentBadge';
 
 const emptyClub = {
   slug: '',
@@ -52,19 +52,6 @@ function callupMatchesFixture(meta, fixture) {
   ].filter(([fixtureValue]) => fixtureValue);
   return comparisons.length >= 2 && comparisons.every(([fixtureValue, storedValue]) =>
     normalizeMatchValue(fixtureValue) === normalizeMatchValue(storedValue)
-  );
-}
-
-function OpponentBadge({ name }) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const image = getOpponentBadge(name);
-
-  return (
-    <span className="opponent-badge" aria-hidden="true">
-      {image && !imageFailed
-        ? <img src={image} alt="" onError={() => setImageFailed(true)} />
-        : <span>{getOpponentInitials(name)}</span>}
-    </span>
   );
 }
 
