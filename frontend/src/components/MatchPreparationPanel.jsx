@@ -233,8 +233,7 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
     <section className="match-preparation-workspace">
       <header className="preparation-page-header">
         <div><span className="kicker">CUERPO TÉCNICO Y JUGADORAS</span><h2>Plan partido</h2>
-          <p>Videos, foco semanal y jugadas para cada partido.</p></div>
-        {authenticated && <button type="button" className="secondary" onClick={beginNew}>+ Nuevo plan</button>}
+          <p>Elegí un partido del fixture para consultar o preparar su plan.</p></div>
       </header>
       <div className="preparation-category-tabs">
         <button type="button" className={category === 'primera' ? 'active' : ''} onClick={() => setCategory('primera')}>1ra División</button>
@@ -314,8 +313,8 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
       )}
       {!selectedMatch && !editing && (
         <div className="empty-state preparation-empty">
-          <p>{authenticated ? 'No hay partidos disponibles en el fixture. Podés crear un plan manual.' : 'El cuerpo técnico todavía no publicó planes de partido.'}</p>
-          {authenticated && <button type="button" onClick={beginNew}>Crear plan</button>}
+          <p>{authenticated ? 'No hay partidos disponibles en el fixture. Podés cargar un partido manual para preparar su plan.' : 'El cuerpo técnico todavía no publicó planes de partido.'}</p>
+          {authenticated && <button type="button" onClick={beginNew}>Cargar partido manual</button>}
         </div>
       )}
     </section>
