@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
       updatedAt: new Date().toISOString()
     }));
   } catch (error) {
-    res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ error: error.message }));
+    res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ error: 'La configuración del club no está disponible temporalmente.' }));
   }
 };

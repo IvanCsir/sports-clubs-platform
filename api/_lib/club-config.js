@@ -41,11 +41,10 @@ async function readConfiguredClubsAsync() {
     try {
       const clubs = await postgres.listClubs();
       return mergeClubs(readConfiguredClubs(), clubs).map(normalizeClub);
-  
     } catch (err) {
-      console.warn('[Postgres] Base de datos no disponible, usando fallback local:', err.message);
+      console.error('[Postgres] No se pudo leer la configuración de clubes:', err.message);
+      throw new Error('No se pudo acceder a la configuración de clubes.');
     }
-
   }
   if (!supabase.isConfigured()) {
     const local = localClubs.readClubs();
@@ -87,12 +86,12 @@ function normalizeClub(club) {
 
 function getClub(slug) {
   const clubs = mergeClubs(readConfiguredClubs(), supabase.isConfigured() ? [] : localClubs.readClubs()).map(normalizeClub);
-  return clubs.find(club => club.slug === slug) || clubs[0];
+  return slug ? clubs.find(club => club.slug === slug) : undefined;
 }
 
 async function getClubAsync(slug) {
   const clubs = await readConfiguredClubsAsync();
-  return slug ? clubs.find(club => club.slug === slug) : clubs[0];
+  return slug ? clubs.find(club => club.slug === slug) : undefined;
 }
 
 function mergeClubs(baseClubs, additionalClubs) {

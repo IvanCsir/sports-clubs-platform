@@ -32,6 +32,10 @@ module.exports = async function handler(req, res) {
         return json(res, 200, { preparations: await sportsData.getMatchPreparations(slug) });
       }
       if (dataset === 'physical') {
+        const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
+        if (!token || !verifySessionToken(token, club).valid) {
+          return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
+        }
         const data = await sportsData.getClubData(slug);
         return json(res, 200, { physicalPlayers: data.physicalPlayers });
       }

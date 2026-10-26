@@ -94,8 +94,12 @@ module.exports = async function handler(req, res) {
   const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!verifyAdminToken(auth)) return json(res, 401, { error: 'Sesión de administrador inválida o expirada.' });
   if (req.method === 'GET') {
-    const clubs = await readConfiguredClubsAsync();
-    return json(res, 200, { valid: true, clubs: clubs.map(getPublicClub) });
+    try {
+      const clubs = await readConfiguredClubsAsync();
+      return json(res, 200, { valid: true, clubs: clubs.map(getPublicClub) });
+    } catch (_) {
+      return json(res, 503, { error: 'No se pudo cargar la configuración de clubes.' });
+    }
   }
   if (req.method === 'POST') {
     try {
@@ -110,11 +114,12 @@ module.exports = async function handler(req, res) {
         try {
           const saved = await postgres.insertClub(club);
           return json(res, 201, { club: getPublicClub(saved), storage: 'postgres' });
-  
         } catch (err) {
-          console.warn('[Postgres] Error guardando club en BD, usando local:', err.message);
+          console.error('[Postgres] Error guardando club:', err.message);
+          return json(res, err.code === '23505' ? 409 : 503, {
+            error: err.code === '23505' ? 'Ya existe un club con ese identificador.' : 'No se pudo guardar el club en la base de datos.'
+          });
         }
-
       }
       if (supabase.isConfigured()) {
         const rows = await supabase.request('clubs', {
@@ -122,6 +127,9 @@ module.exports = async function handler(req, res) {
           body: JSON.stringify({ slug: club.slug, config: club })
         });
         return json(res, 201, { club: getPublicClub(rows[0].config), storage: 'supabase' });
+      }
+      if (process.env.VERCEL) {
+        return json(res, 503, { error: 'Configurá un almacenamiento persistente antes de agregar clubes.' });
       }
       const saved = localClubs.createClub(club);
       return json(res, 201, { club: getPublicClub(saved), storage: 'local' });
@@ -143,21 +151,28 @@ module.exports = async function handler(req, res) {
           return json(res, 400, { error: 'El secreto del club debe tener al menos 32 bytes.' });
         }
       }
-      const current = (await require('../_lib/club-config').readConfiguredClubsAsync())
-        .find(item => item.slug === body.slug);
+      let configuredClubs;
+      try {
+        configuredClubs = await readConfiguredClubsAsync();
+      } catch (_) {
+        return json(res, 503, { error: 'No se pudo acceder a la configuración de clubes.' });
+      }
+      const current = configuredClubs.find(item => item.slug === body.slug);
       if (!current) return json(res, 404, { error: 'Club no encontrado.' });
       const updated = mergeClub(current, body.club || {});
       if (postgres.isConfigured()) {
         try {
           const saved = await postgres.updateClub(body.slug, updated);
           return json(res, 200, { club: getPublicClub(saved), storage: 'postgres' });
-  
         } catch (err) {
-          console.warn('[Postgres] Error actualizando club en BD, usando local:', err.message);
+          console.error('[Postgres] Error actualizando club:', err.message);
+          return json(res, 503, { error: 'No se pudo guardar el perfil en la base de datos.' });
         }
-
       }
       if (supabase.isConfigured()) return json(res, 501, { error: 'Edición Supabase aún no implementada.' });
+      if (process.env.VERCEL) {
+        return json(res, 503, { error: 'Configurá un almacenamiento persistente antes de editar clubes.' });
+      }
       const saved = localClubs.updateClub(body.slug, updated);
       return json(res, 200, { club: getPublicClub(saved), storage: 'local' });
     } catch (error) {

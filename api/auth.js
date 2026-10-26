@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { getClub, readConfiguredClubsAsync } = require('./_lib/club-config');
+const { readConfiguredClubsAsync } = require('./_lib/club-config');
 
 // Cargar .env en desarrollo local si no se han cargado variables de entorno
 (function loadEnv() {
@@ -89,11 +89,24 @@ module.exports = async function handler(req, res) {
 
   const host = (req.headers && req.headers.host) || 'localhost';
   const urlObj = new URL(req.url || '/', `http://${host}`);
-  const clubs = await readConfiguredClubsAsync();
-  const club = clubs.find(item => item.slug === urlObj.searchParams.get('club')) || clubs[0];
-  if (!club) {
+  let clubs;
+  try {
+    clubs = await readConfiguredClubsAsync();
+  } catch (_) {
     res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ error: 'No hay clubes configurados.' }));
+    res.end(JSON.stringify({ error: 'El servicio de clubes no está disponible temporalmente.' }));
+    return;
+  }
+  const slug = urlObj.searchParams.get('club');
+  if (!slug) {
+    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'Ingresá con el enlace de tu club.' }));
+    return;
+  }
+  const club = clubs.find(item => item.slug === slug);
+  if (!club) {
+    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'Club no encontrado.' }));
     return;
   }
 

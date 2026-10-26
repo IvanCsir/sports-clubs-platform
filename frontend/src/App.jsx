@@ -344,9 +344,12 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   }
 
   async function loadPhysical() {
+    if (!token) return;
     setStatus('Cargando evaluaciones físicas...');
     try {
-      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}&dataset=physical`, { cache: 'no-store' });
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}&dataset=physical`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
+      });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || `Evaluaciones físicas: HTTP ${response.status}`);
       setPhysicalPlayers(payload.physicalPlayers || []);
@@ -396,14 +399,19 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     { id: 'citaciones', label: 'Citaciones' },
     { id: 'preparacion', label: 'Plan partido' },
     { id: 'torneo', label: 'Torneos' },
-    { id: 'fisico', label: 'Evaluaciones físicas' },
     ...(authenticated ? [
+      { id: 'fisico', label: 'Evaluaciones físicas' },
       { id: 'jugadoras', label: 'Plantel' },
       { id: 'dt', label: 'Botonera DT' },
       { id: 'stats', label: 'Estadísticas' }
     ] : [])
   ];
   const selectWorkspaceSection = id => {
+    if (id === 'fisico' && !authenticated) {
+      setStaffLoginError('');
+      setShowStaffLogin(true);
+      return;
+    }
     setView(id);
     setMobileMenuOpen(false);
     if (id === 'fisico') loadPhysical();
@@ -459,9 +467,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           <button className={view === 'citaciones' ? 'active' : ''} onClick={() => selectWorkspaceSection('citaciones')}>Citaciones</button>
           <button className={view === 'preparacion' ? 'active' : ''} onClick={() => selectWorkspaceSection('preparacion')}>Plan partido</button>
           <button className={view === 'torneo' ? 'active' : ''} onClick={() => selectWorkspaceSection('torneo')}>Torneos</button>
-          <button className={view === 'fisico' ? 'active' : ''} onClick={() => selectWorkspaceSection('fisico')}>Evaluaciones físicas</button>
           {authenticated && <>
             <span className="workspace-nav-divider" aria-hidden="true" />
+            <button className={view === 'fisico' ? 'active' : ''} onClick={() => selectWorkspaceSection('fisico')}>Evaluaciones físicas</button>
             <button className={view === 'jugadoras' ? 'active' : ''} onClick={() => selectWorkspaceSection('jugadoras')}>Plantel</button>
             <button className={view === 'dt' ? 'active' : ''} onClick={() => selectWorkspaceSection('dt')}>Botonera DT</button>
             <button className={view === 'stats' ? 'active' : ''} onClick={() => selectWorkspaceSection('stats')}>Estadísticas</button>
@@ -553,10 +561,10 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                 <span className="home-card-icon" aria-hidden="true"><Trophy /></span>
                 <span className="home-card-copy"><strong>Torneos y resultados</strong><small>{latestResult ? `${latestResult.round}: ${latestResult.score} vs ${latestResult.rival}` : 'Fixture y tabla de posiciones'}</small></span><b aria-hidden="true">→</b>
               </button>
-              <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('fisico')}>
+              {authenticated && <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('fisico')}>
                 <span className="home-card-icon" aria-hidden="true"><Zap /></span>
                 <span className="home-card-copy"><strong>Evaluaciones físicas</strong><small>Consultá las mediciones y su evolución</small></span><b aria-hidden="true">→</b>
-              </button>
+              </button>}
               {authenticated && <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('jugadoras')}>
                 <span className="home-card-icon" aria-hidden="true"><UsersRound /></span>
                 <span className="home-card-copy"><strong>Plantel</strong><small>{players.filter(player => player.active).length} jugadoras activas</small></span><b aria-hidden="true">→</b>
