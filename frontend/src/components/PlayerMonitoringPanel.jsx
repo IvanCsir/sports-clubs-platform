@@ -27,6 +27,36 @@ function displayDate(value) {
   return date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
 }
 
+function dateKey(value) {
+  return String(value || '').slice(0, 10);
+}
+
+function average(values) {
+  const numbers = values.map(Number).filter(Number.isFinite);
+  return numbers.length ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length : null;
+}
+
+function WeeklyTrendCard({ title, current, previous, unit, points, maxValue }) {
+  const delta = current === null || previous === null ? null : current - previous;
+  const label = value => value === null ? '—' : `${Math.round(value)}${unit}`;
+  return (
+    <article className="monitoring-trend-card">
+      <div className="monitoring-trend-heading"><h3>{title}</h3>{delta !== null && <span className={delta > 0 ? 'up' : delta < 0 ? 'down' : ''}>{delta > 0 ? '+' : ''}{Math.round(delta)}{unit} vs. semana anterior</span>}</div>
+      <div className="monitoring-trend-summary"><strong>{label(current)}</strong><span>promedio últimos 7 días</span></div>
+      <div className="monitoring-trend-chart" role="img" aria-label={`${title}, últimos siete días`}>
+        {points.map(point => {
+          const height = point.value === null ? 0 : Math.max(8, Math.min(100, point.value / (maxValue || 1) * 100));
+          return <div className="monitoring-trend-day" key={point.date} title={`${displayDate(point.date)}: ${label(point.value)}`}>
+            <div className="monitoring-trend-bar-slot"><span className={point.value === null ? 'empty' : ''} style={{ height: point.value === null ? '4px' : `${height}%` }} /></div>
+            <small>{new Date(`${point.date}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '')}</small>
+          </div>;
+        })}
+      </div>
+      <p className="monitoring-trend-previous">Semana anterior: <b>{label(previous)}</b>{current === null && ' · Sin respuestas suficientes'}</p>
+    </article>
+  );
+}
+
 export default function PlayerMonitoringPanel({ club, authenticated, monitoring = { wellness: [], loads: [] }, onRefresh }) {
   const [players, setPlayers] = useState([]);
   const [playerId, setPlayerId] = useState('');
@@ -71,6 +101,31 @@ export default function PlayerMonitoringPanel({ club, authenticated, monitoring 
   const readinessAverage = wellnessToday.length
     ? Math.round(wellnessToday.reduce((sum, row) => sum + disposition(row), 0) / wellnessToday.length)
     : null;
+  const fortnightDays = Array.from({ length: 14 }, (_, index) => {
+    const day = new Date();
+    day.setHours(12, 0, 0, 0);
+    day.setDate(day.getDate() - 13 + index);
+    return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+  });
+  const previousWeek = new Set(fortnightDays.slice(0, 7));
+  const currentWeek = new Set(fortnightDays.slice(7));
+  const currentWellnessRows = visibleWellness.filter(row => currentWeek.has(dateKey(row.response_date)));
+  const previousWellnessRows = visibleWellness.filter(row => previousWeek.has(dateKey(row.response_date)));
+  const currentLoadRows = visibleLoads.filter(row => currentWeek.has(dateKey(row.training_date)));
+  const previousLoadRows = visibleLoads.filter(row => previousWeek.has(dateKey(row.training_date)));
+  const wellnessTrendPoints = fortnightDays.slice(7).map(day => ({
+    date: day,
+    value: average(visibleWellness.filter(row => dateKey(row.response_date) === day).map(disposition))
+  }));
+  const loadTrendPoints = fortnightDays.slice(7).map(day => ({
+    date: day,
+    value: average(visibleLoads.filter(row => dateKey(row.training_date) === day).map(row => row.load))
+  }));
+  const wellnessWeekAverage = average(currentWellnessRows.map(disposition));
+  const wellnessPreviousAverage = average(previousWellnessRows.map(disposition));
+  const loadWeekAverage = average(currentLoadRows.map(row => row.load));
+  const loadPreviousAverage = average(previousLoadRows.map(row => row.load));
+  const loadChartMax = Math.max(0, ...loadTrendPoints.map(point => point.value || 0));
 
   function onPlayerChange(event) {
     const nextId = event.target.value;
@@ -186,6 +241,13 @@ export default function PlayerMonitoringPanel({ club, authenticated, monitoring 
             <section className="monitoring-card"><h3>Respuestas de wellness de hoy</h3>{wellnessToday.length ? <div className="monitoring-response-list">{wellnessToday.map(row => <div key={row.id}><span><strong>{row.player_name}</strong><small>{CATEGORY_LABELS[row.team_category]} · disposición</small></span><b className={disposition(row) < 60 ? 'alert' : ''}>{disposition(row)}%</b></div>)}</div> : <p>Todavía no hay respuestas de wellness para hoy.</p>}</section>
             <section className="monitoring-card"><h3>Cargas de hoy</h3>{loadsToday.length ? <div className="monitoring-response-list">{loadsToday.map(row => <div key={row.id}><span><strong>{row.player_name}</strong><small>{row.duration_minutes} min · esfuerzo {row.perceived_effort}/10</small></span><b>{row.load} UA</b></div>)}</div> : <p>Todavía no hay cargas registradas hoy.</p>}</section>
           </div>
+          <section className="monitoring-weekly-section">
+            <div className="section-heading"><div><h3>Evolución semanal</h3><p>Últimos 7 días comparados con los 7 anteriores. Se muestran promedios de los registros recibidos.</p></div></div>
+            <div className="monitoring-weekly-grid">
+              <WeeklyTrendCard title="Wellness · disposición" current={wellnessWeekAverage} previous={wellnessPreviousAverage} unit="%" points={wellnessTrendPoints} maxValue={100} />
+              <WeeklyTrendCard title="Carga percibida" current={loadWeekAverage} previous={loadPreviousAverage} unit=" UA" points={loadTrendPoints} maxValue={loadChartMax} />
+            </div>
+          </section>
         </>
       ) : tab === 'wellness' ? (
         <section className="monitoring-card"><div className="section-heading"><div><h3>Registros de wellness</h3><p>La disposición combina métricas de bienestar; es una referencia para el seguimiento, no un diagnóstico.</p></div></div>

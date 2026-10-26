@@ -689,11 +689,31 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .monitoring-player-shortlist > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin-top: 12px; }
 .monitoring-player-shortlist span { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid #8dd3ff20; border-radius: 10px; }
 .monitoring-player-shortlist small { color: #8fa9c4; font-size: .72rem; }
+.monitoring-weekly-section { display: grid; gap: 10px; }
+.monitoring-weekly-section > .section-heading { margin-bottom: 0; }
+.monitoring-weekly-section > .section-heading p { margin: 5px 0 0; color: #9eb4cc; font-size: .84rem; }
+.monitoring-weekly-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.monitoring-trend-card { min-width: 0; padding: 16px; border: 1px solid #8dd3ff2e; border-radius: 14px; background: #ffffff09; }
+.monitoring-trend-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.monitoring-trend-heading h3 { margin: 0; font-size: .95rem; }
+.monitoring-trend-heading span { color: #9eb4cc; text-align: right; font-size: .72rem; }
+.monitoring-trend-summary { display: grid; gap: 2px; margin-top: 12px; }
+.monitoring-trend-summary strong { color: #fff; font-size: 1.55rem; font-variant-numeric: tabular-nums; }
+.monitoring-trend-summary span, .monitoring-trend-previous { color: #8fa9c4; font-size: .75rem; }
+.monitoring-trend-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 7px; align-items: end; margin-top: 12px; }
+.monitoring-trend-day { min-width: 0; display: grid; gap: 5px; justify-items: center; }
+.monitoring-trend-bar-slot { display: flex; align-items: flex-end; width: 100%; height: 76px; padding: 2px; border-radius: 6px; background: #ffffff08; }
+.monitoring-trend-bar-slot span { display: block; width: 100%; min-height: 4px; border-radius: 4px; background: linear-gradient(180deg, #42c5ff, #0083cf); }
+.monitoring-trend-bar-slot span.empty { background: #ffffff20; }
+.monitoring-trend-day small { color: #8fa9c4; font-size: .65rem; text-transform: capitalize; }
+.monitoring-trend-previous { margin: 11px 0 0; }
+.monitoring-trend-previous b { color: #cfe5f9; }
 @media (max-width: 760px) {
   .monitoring-fields { grid-template-columns: 1fr 1fr; }
   .monitoring-fields label:first-child { grid-column: 1 / -1; }
   .monitoring-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .monitoring-dashboard-grid { grid-template-columns: 1fr; }
+  .monitoring-weekly-grid { grid-template-columns: 1fr; }
   .monitoring-hero { align-items: stretch; flex-direction: column; }
   .monitoring-tools { align-items: stretch; flex-direction: column; }
 }
