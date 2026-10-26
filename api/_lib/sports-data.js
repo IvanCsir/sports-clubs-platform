@@ -135,6 +135,101 @@ async function getMatchPreparations(slug) {
   }));
 }
 
+async function getPlayerMonitoring(slug) {
+  const [wellness, loads] = await Promise.all([
+    ensureDb().query(
+      `SELECT w.id, w.player_id, p.display_name AS player_name, w.team_category, w.response_date,
+              w.sleep, w.fatigue, w.muscle_soreness, w.stress, w.mood, w.created_at
+       FROM sc_player_wellness w
+       JOIN sc_players p ON p.id = w.player_id AND p.club_slug = w.club_slug
+       WHERE w.club_slug = $1
+       ORDER BY w.response_date DESC, p.display_name`, [slug]
+    ),
+    ensureDb().query(
+      `SELECT l.id, l.player_id, p.display_name AS player_name, l.team_category, l.training_date,
+              l.duration_minutes, l.perceived_effort,
+              l.duration_minutes * l.perceived_effort AS load, l.created_at
+       FROM sc_player_training_loads l
+       JOIN sc_players p ON p.id = l.player_id AND p.club_slug = l.club_slug
+       WHERE l.club_slug = $1
+       ORDER BY l.training_date DESC, p.display_name`, [slug]
+    )
+  ]);
+  return {
+    wellness: wellness.rows.map(row => ({ ...row, id: String(row.id), playerId: String(row.player_id) })),
+    loads: loads.rows.map(row => ({ ...row, id: String(row.id), playerId: String(row.player_id), load: Number(row.load) }))
+  };
+}
+
+async function getPlayerPortalRoster(slug) {
+  const result = await ensureDb().query(
+    `SELECT p.id, p.display_name AS name,
+            COALESCE(array_agg(t.category ORDER BY t.category) FILTER (WHERE t.category IS NOT NULL), '{}') AS categories
+     FROM sc_players p
+     LEFT JOIN sc_team_players tp ON tp.player_id = p.id
+     LEFT JOIN sc_teams t ON t.id = tp.team_id AND t.club_slug = p.club_slug
+     WHERE p.club_slug = $1 AND p.active = TRUE
+     GROUP BY p.id
+     ORDER BY p.display_name`, [slug]
+  );
+  return result.rows.map(row => ({ id: String(row.id), name: row.name, categories: row.categories || [] }));
+}
+
+async function savePlayerMonitoring(slug, input) {
+  const playerId = Number(input.playerId);
+  const category = String(input.category || '');
+  const date = String(input.date || '');
+  const kind = String(input.kind || '');
+  if (!Number.isSafeInteger(playerId) || playerId <= 0) throw new Error('Seleccioná una jugadora válida.');
+  if (!['primera', 'intermedia', '5ta'].includes(category)) throw new Error('Seleccioná una categoría válida.');
+  const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
+  if (!parsedDate || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) throw new Error('La fecha no es válida.');
+
+  const db = ensureDb();
+  const player = await db.query(
+    `SELECT p.id FROM sc_players p
+     JOIN sc_team_players tp ON tp.player_id = p.id
+     JOIN sc_teams t ON t.id = tp.team_id AND t.club_slug = p.club_slug AND t.category = $3
+     WHERE p.club_slug = $1 AND p.id = $2 AND p.active = TRUE LIMIT 1`, [slug, playerId, category]
+  );
+  if (!player.rowCount) throw new Error('La jugadora no pertenece a esa categoría del club.');
+
+  if (kind === 'wellness') {
+    const metrics = ['sleep', 'fatigue', 'muscleSoreness', 'stress', 'mood'];
+    const values = metrics.map(key => Number(input[key]));
+    if (values.some(value => !Number.isInteger(value) || value < 1 || value > 5)) throw new Error('Completá todas las métricas del wellness.');
+    await db.query(
+      `INSERT INTO sc_player_wellness
+         (club_slug, player_id, team_category, response_date, sleep, fatigue, muscle_soreness, stress, mood)
+       VALUES ($1, $2, $3, $4::date, $5, $6, $7, $8, $9)
+       ON CONFLICT (club_slug, player_id, response_date) DO UPDATE SET
+         team_category = EXCLUDED.team_category, sleep = EXCLUDED.sleep, fatigue = EXCLUDED.fatigue,
+         muscle_soreness = EXCLUDED.muscle_soreness, stress = EXCLUDED.stress, mood = EXCLUDED.mood,
+         created_at = NOW()`, [slug, playerId, category, date, ...values]
+    );
+    return { saved: true, kind };
+  }
+
+  if (kind === 'load') {
+    const minutes = Number(input.durationMinutes);
+    const effort = Number(input.perceivedEffort);
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 360 || !Number.isInteger(effort) || effort < 1 || effort > 10) {
+      throw new Error('Indicá una duración válida y un esfuerzo entre 1 y 10.');
+    }
+    await db.query(
+      `INSERT INTO sc_player_training_loads
+         (club_slug, player_id, team_category, training_date, duration_minutes, perceived_effort)
+       VALUES ($1, $2, $3, $4::date, $5, $6)
+       ON CONFLICT (club_slug, player_id, training_date) DO UPDATE SET
+         team_category = EXCLUDED.team_category, duration_minutes = EXCLUDED.duration_minutes,
+         perceived_effort = EXCLUDED.perceived_effort, created_at = NOW()`,
+      [slug, playerId, category, date, minutes, effort]
+    );
+    return { saved: true, kind, load: minutes * effort };
+  }
+  throw new Error('Tipo de registro inválido.');
+}
+
 async function saveMatchPreparation(slug, input) {
   const db = ensureDb();
   const client = await db.connect();
@@ -439,4 +534,4 @@ async function savePhysicalAssessment(slug, input) {
   }
 }
 
-module.exports = { getClubData, getMatchPreparations, saveMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, savePhysicalAssessment };
+module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getPlayerPortalRoster, savePlayerMonitoring, saveMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, savePhysicalAssessment };

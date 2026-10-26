@@ -5,6 +5,7 @@ import TournamentPanel from './components/TournamentPanel';
 import EstadisticasPanel from './components/EstadisticasPanel';
 import PrecargaModal from './components/PrecargaModal';
 import MatchPreparationPanel from './components/MatchPreparationPanel';
+import PlayerMonitoringPanel from './components/PlayerMonitoringPanel';
 
 const emptyClub = {
   slug: '',
@@ -82,6 +83,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const storageKey = `club_tracker_${club.slug}`;
   const authKey = `club_tracker_auth_${club.slug}`;
   const [events, setEvents] = useState([]);
+  const [monitoring, setMonitoring] = useState({ wellness: [], loads: [] });
 
   const [matches, setMatches] = useState([]);
   const [nextAmhMatch, setNextAmhMatch] = useState(null);
@@ -113,6 +115,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setEvents(payload.events || []);
     setPhysicalPlayers(payload.physicalPlayers || []);
     setPlayers(payload.players || []);
+    setMonitoring(payload.monitoring || { wellness: [], loads: [] });
     if (payload.citations) setData(payload.citations);
   }
 
@@ -161,6 +164,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setEvents([]);
     setPlayers([]);
     setPhysicalPlayers([]);
+    setMonitoring({ wellness: [], loads: [] });
     setSelectedPlayer(null);
     setEditingCallup(false);
     setEditingPhysical(false);
@@ -403,6 +407,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     { id: 'preparacion', label: 'Plan partido' },
     { id: 'torneo', label: 'Torneos' },
     { id: 'fisico', label: 'Evaluaciones físicas' },
+    { id: 'seguimiento', label: 'Seguimiento' },
     ...(authenticated ? [
       { id: 'jugadoras', label: 'Plantel' },
       { id: 'dt', label: 'Botonera DT' },
@@ -413,6 +418,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setView(id);
     setMobileMenuOpen(false);
     if (id === 'fisico') loadPhysical();
+    if (id === 'seguimiento' && authenticated) loadStaffData(token);
     if (id === 'dt') {
       setMatches([]);
       loadMatches('1');
@@ -466,6 +472,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           <button className={view === 'preparacion' ? 'active' : ''} onClick={() => selectWorkspaceSection('preparacion')}>Plan partido</button>
           <button className={view === 'torneo' ? 'active' : ''} onClick={() => selectWorkspaceSection('torneo')}>Torneos</button>
           <button className={view === 'fisico' ? 'active' : ''} onClick={() => selectWorkspaceSection('fisico')}>Evaluaciones físicas</button>
+          <button className={view === 'seguimiento' ? 'active' : ''} onClick={() => selectWorkspaceSection('seguimiento')}>Seguimiento</button>
           {authenticated && <>
             <span className="workspace-nav-divider" aria-hidden="true" />
             <button className={view === 'jugadoras' ? 'active' : ''} onClick={() => selectWorkspaceSection('jugadoras')}>Plantel</button>
@@ -596,6 +603,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           <TournamentPanel club={club} />
         ) : view === 'preparacion' ? (
           <MatchPreparationPanel club={club} authenticated={authenticated} token={token} />
+        ) : view === 'seguimiento' ? (
+          <PlayerMonitoringPanel club={club} authenticated={authenticated} monitoring={monitoring} onRefresh={() => loadStaffData(token)} />
         ) : view === 'jugadoras' ? (
           <section className="physical-card">
             <div className="section-heading">

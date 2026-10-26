@@ -27,7 +27,10 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'GET') {
       const dataset = url.searchParams.get('dataset') || 'citations';
-      if (!['citations', 'physical', 'staff', 'preparations'].includes(dataset)) return json(res, 400, { error: 'Conjunto de datos inválido.' });
+      if (!['citations', 'physical', 'staff', 'preparations', 'player-portal'].includes(dataset)) return json(res, 400, { error: 'Conjunto de datos inválido.' });
+      if (dataset === 'player-portal') {
+        return json(res, 200, { players: await sportsData.getPlayerPortalRoster(slug) });
+      }
       if (dataset === 'preparations') {
         return json(res, 200, { preparations: await sportsData.getMatchPreparations(slug) });
       }
@@ -42,18 +45,31 @@ module.exports = async function handler(req, res) {
           return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
         }
         const data = await sportsData.getClubData(slug);
-        return json(res, 200, { physicalPlayers: data.physicalPlayers, events: data.events, players: data.players || [], citations: data.citations });
+        return json(res, 200, {
+          physicalPlayers: data.physicalPlayers, events: data.events, players: data.players || [], citations: data.citations,
+          monitoring: await sportsData.getPlayerMonitoring(slug)
+        });
       }
       const data = await sportsData.getClubData(slug);
       return json(res, 200, { citations: data.citations });
     }
     if (!['POST', 'DELETE'].includes(req.method)) return json(res, 405, { error: 'Método no permitido.' });
 
+    const body = await readBody(req);
+    if (req.method === 'POST' && body.action === 'save-player-monitoring') {
+      try {
+        return json(res, 200, await sportsData.savePlayerMonitoring(slug, body));
+      } catch (error) {
+        if (/Seleccioná|Completá|Indicá|La fecha|Tipo de registro|no pertenece/.test(error.message)) {
+          return json(res, 400, { error: error.message });
+        }
+        throw error;
+      }
+    }
     const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
     if (!token || !verifySessionToken(token, club).valid) {
       return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
     }
-    const body = await readBody(req);
     if (req.method === 'DELETE' || body.action === 'delete-event') {
       const id = url.searchParams.get('id') || body.id;
       if (!id) return json(res, 400, { error: 'Falta el identificador del evento.' });
