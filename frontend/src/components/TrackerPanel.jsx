@@ -19,7 +19,6 @@ export default function TrackerPanel({
   matches,
   loadMatches,
   authenticated,
-  token,
   onAuthenticate,
   onOpenPrecarga
 }) {
@@ -28,8 +27,6 @@ export default function TrackerPanel({
   const [teamView, setTeamView] = useState('home');
   const [password, setPassword] = useState('');
   const [authStatus, setAuthStatus] = useState('');
-  const [syncStatus, setSyncStatus] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
   const [eventFlow, setEventFlow] = useState(null);
   const [eventFlowError, setEventFlowError] = useState('');
 
@@ -181,41 +178,6 @@ export default function TrackerPanel({
     }
   };
 
-  // Guardado completo del partido en PostgreSQL.
-  async function saveMatch() {
-    setIsSyncing(true);
-    setSyncStatus('Guardando en la base de datos...');
-    try {
-      const payload = {
-        action: 'sync_full_match',
-        round: matchKey,
-        rival: match?.rival || 'Rival',
-        matchState: {
-          round: matchKey,
-          rivalName: match?.rival || 'Rival',
-          quarter,
-          score: { home: score('home'), away: score('away') },
-          events: currentEvents
-        }
-      };
-
-      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: 'replace-match-events', match: payload.round, matchKey, opponent: payload.rival, events: currentEvents })
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'No se pudo guardar el partido.');
-
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setSyncStatus(`✅ Guardado en la base a las ${timeStr} hs`);
-    } catch (err) {
-      setSyncStatus(`❌ Error sincronizando: ${err.message}`);
-    } finally {
-      setIsSyncing(false);
-    }
-  }
-
   const renderTeam = (team, name) => (
     <div className={`tracker-team ${team}`}>
       <h3>{name}</h3>
@@ -291,16 +253,6 @@ export default function TrackerPanel({
         <button className="refresh" onClick={() => loadMatches('1')}>
           Actualizar Fixture
         </button>
-        {authenticated && (
-          <button
-            type="button"
-            className="secondary sync-sheets-btn"
-            onClick={saveMatch}
-            disabled={isSyncing}
-          >
-            {isSyncing ? 'Guardando...' : '☁️ Guardar partido'}
-          </button>
-        )}
         {onOpenPrecarga && (
           <button
             type="button"
@@ -310,7 +262,6 @@ export default function TrackerPanel({
             🏑 Precarga AMH
           </button>
         )}
-        {syncStatus && <span className="sync-sheets-status">{syncStatus}</span>}
       </div>
 
       <div className="tracker-header">

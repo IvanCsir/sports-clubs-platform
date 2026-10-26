@@ -580,7 +580,6 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             matches={matches}
             loadMatches={loadMatches}
             authenticated={authenticated}
-            token={token}
             onOpenPrecarga={() => setShowPrecargaModal(true)}
             onAuthenticate={authenticateStaffWithToken}
           />
