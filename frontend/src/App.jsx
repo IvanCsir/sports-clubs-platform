@@ -361,6 +361,11 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   }, [club.slug]);
 
   const current = data[category] || { players: [], meta: {} };
+  const sortedActivePlayers = [...players]
+    .filter(player => player.active)
+    .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+  const sortedCalledUpPlayers = [...(current.players || [])]
+    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
   const meta = current.meta;
   const callupMatchesNextFixture = callupMatchesFixture(meta, nextAmhMatch);
   const displayedCallTime = nextAmhMatch
@@ -606,7 +611,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               <button type="submit">Agregar jugadora</button>
             </form>
             <div className="players-grid">
-              {players.filter(player => player.active).map(player => (
+              {sortedActivePlayers.map(player => (
                 <div className="player-pill" key={player.id}>
                   {editingPlayerId === player.id ? (
                     <form className="player-edit-form" onSubmit={submitPlayerEdit}>
@@ -869,7 +874,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                     </div>
                     {!authenticated ? <p className="empty-state">Ingresá para elegir entre las jugadoras registradas en este club.</p> : (
                       <div className="callup-player-list">
-                        {players.filter(player => player.active).map(player => (
+                        {sortedActivePlayers.map(player => (
                           <label className="callup-player-option" key={player.id}>
                             <input type="checkbox" checked={callupDraft.split(/\r?\n/).map(name => name.trim()).includes(player.name)} onChange={event => toggleCallupPlayer(player.name, event.target.checked)} />
                             <span>{player.name}<small className="callup-player-categories">{(player.categories || []).map(item => item === 'primera' ? '1ra' : item === 'intermedia' ? 'Intermedia' : item === '5ta' ? '5ta' : item).join(' · ') || 'Sin categoría de plantel'}</small></span>
@@ -886,9 +891,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                   <button type="button" className="secondary" onClick={() => setEditingCallup(false)}>Cancelar</button>
                 </form>
               )}
-              {current.players.length ? (
+              {sortedCalledUpPlayers.length ? (
                 <div className="players-grid">
-                  {current.players.map((player, index) => (
+                  {sortedCalledUpPlayers.map((player, index) => (
                     <div className="player-pill" key={`${player}-${index}`}>{player}</div>
                   ))}
                 </div>

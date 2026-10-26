@@ -38,7 +38,9 @@ export default function TrackerPanel({
   const matchLabel = match?.round || 'PARTIDO MANUAL';
   const matchKey = match?.round || 'amistoso';
   const expectedCallupMatchKey = `primera-${matchKey.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-  const matchCalledUpPlayers = match && callupMatchKey === expectedCallupMatchKey ? calledUpPlayers : [];
+  const matchCalledUpPlayers = match && callupMatchKey === expectedCallupMatchKey
+    ? [...calledUpPlayers].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+    : [];
 
   async function login() {
     setAuthStatus('Validando acceso...');
