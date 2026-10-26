@@ -44,15 +44,47 @@ function normalizeMatchValue(value) {
 function callupMatchesFixture(meta, fixture) {
   if (!fixture) return false;
   const storedRound = meta['fecha n°'] || meta['fecha n'] || meta.fecha || '';
-  const storedDate = meta.dia || meta['día'] || '';
-  const comparisons = [
+  const storedDate = meta.dia || meta['día'] || meta.date || '';
+  const identityComparisons = [
     [fixture.round, storedRound],
-    [fixture.rival, meta.rival],
-    [fixture.fecha, storedDate]
-  ].filter(([fixtureValue]) => fixtureValue);
+    [fixture.rival, meta.rival]
+  ].filter(([fixtureValue, storedValue]) => fixtureValue && storedValue);
+  if (identityComparisons.length === 2) {
+    return identityComparisons.every(([fixtureValue, storedValue]) =>
+      normalizeMatchValue(fixtureValue) === normalizeMatchValue(storedValue)
+    );
+  }
+  const comparisons = [...identityComparisons, [fixture.fecha, storedDate]]
+    .filter(([fixtureValue, storedValue]) => fixtureValue && storedValue);
   return comparisons.length >= 2 && comparisons.every(([fixtureValue, storedValue]) =>
     normalizeMatchValue(fixtureValue) === normalizeMatchValue(storedValue)
   );
+}
+
+function dateOrdinal(year, month, day) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return Math.floor(date.getTime() / 86400000);
+}
+
+function parseCallupDate(value) {
+  const text = String(value || '').trim();
+  const localDate = text.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/);
+  if (localDate) return dateOrdinal(Number(localDate[3]), Number(localDate[2]), Number(localDate[1]));
+  const isoDate = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoDate) return dateOrdinal(Number(isoDate[1]), Number(isoDate[2]), Number(isoDate[3]));
+  return null;
+}
+
+function isCallupExpired(meta) {
+  const matchDate = parseCallupDate(meta?.dia || meta?.['día'] || meta?.date);
+  if (matchDate === null) return false;
+  const todayParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const today = Object.fromEntries(todayParts.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
+  const todayOrdinal = dateOrdinal(today.year, today.month, today.day);
+  return todayOrdinal !== null && todayOrdinal - matchDate > 1;
 }
 
 function ClubWorkspace({ club, onBack, showAdminBack }) {
@@ -88,6 +120,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
 
   const [matches, setMatches] = useState([]);
   const [nextAmhMatch, setNextAmhMatch] = useState(null);
+  const [matchesLoaded, setMatchesLoaded] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [token, setToken] = useState('');
   const [showStaffLogin, setShowStaffLogin] = useState(false);
@@ -97,13 +130,18 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
 
   // Cargar fixture para Botonera y Estadísticas
   async function loadMatches(div = (category === 'intermedia' ? '2' : '1')) {
+    setMatchesLoaded(false);
     try {
       const response = await fetch(`/api/torneo/matches?club=${encodeURIComponent(club.slug)}&division=${div}`, { cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'No se pudo cargar el fixture.');
       setMatches(payload.matches || payload.pendingMatches || []);
       setNextAmhMatch(payload.nextMatch || (payload.pendingMatches && payload.pendingMatches[0]) || null);
-    } catch (_) {}
+    } catch (_) {
+      setNextAmhMatch(null);
+    } finally {
+      setMatchesLoaded(true);
+    }
   }
 
   async function loadStaffData(sessionToken = token) {
@@ -193,7 +231,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   }
 
   function beginCallupEdit() {
-    const currentData = data[category] || { players: [], meta: {} };
+    const currentData = current;
     setCallupDraft((currentData.players || []).join('\n'));
     const meta = currentData.meta || {};
     const fixtureMatchesCurrentCallup = callupMatchesFixture(meta, nextAmhMatch);
@@ -365,7 +403,13 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     loadSheets();
   }, [club.slug]);
 
-  const current = data[category] || { players: [], meta: {} };
+  const storedCallup = data[category] || { players: [], meta: {} };
+  const storedMeta = storedCallup.meta || {};
+  const storedCallupMatchesFixture = callupMatchesFixture(storedMeta, nextAmhMatch);
+  const staleCallup = matchesLoaded
+    ? (nextAmhMatch ? !storedCallupMatchesFixture : isCallupExpired(storedMeta))
+    : (isCallupExpired(storedMeta) && !(nextAmhMatch && storedCallupMatchesFixture));
+  const current = staleCallup ? { players: [], meta: {}, matchKey: '' } : storedCallup;
   const sortedActivePlayers = [...players]
     .filter(player => player.active)
     .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
@@ -869,7 +913,10 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           <>
             <section className="match-card">
               <span className="kicker">{nextAmhMatch?.round || meta['fecha n°'] || meta['fecha'] || 'PRÓXIMO PARTIDO'}</span>
-              <h2>{nextAmhMatch ? `vs ${nextAmhMatch.rival}` : (meta.rival || 'Rival pendiente')}</h2>
+              <div className="home-match-title-row">
+                <h2>vs {nextAmhMatch?.rival || meta.rival || 'Rival pendiente'}</h2>
+                <OpponentBadge key={nextAmhMatch?.rival || meta.rival || ''} name={nextAmhMatch?.rival || meta.rival || ''} />
+              </div>
               <div className="match-details">
                 <span>📅 {nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</span>
                 {displayedCallTime && <span>📣 Citación: {displayedCallTime}</span>}
