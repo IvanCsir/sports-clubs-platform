@@ -6,6 +6,7 @@ import EstadisticasPanel from './components/EstadisticasPanel';
 import PrecargaModal from './components/PrecargaModal';
 import MatchPreparationPanel from './components/MatchPreparationPanel';
 import PlayerMonitoringPanel from './components/PlayerMonitoringPanel';
+import { getOpponentBadge, getOpponentInitials } from './data/opponent-badges';
 
 const emptyClub = {
   slug: '',
@@ -51,6 +52,19 @@ function callupMatchesFixture(meta, fixture) {
   ].filter(([fixtureValue]) => fixtureValue);
   return comparisons.length >= 2 && comparisons.every(([fixtureValue, storedValue]) =>
     normalizeMatchValue(fixtureValue) === normalizeMatchValue(storedValue)
+  );
+}
+
+function OpponentBadge({ name }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const image = getOpponentBadge(name);
+
+  return (
+    <span className="opponent-badge" aria-hidden="true">
+      {image && !imageFailed
+        ? <img src={image} alt="" onError={() => setImageFailed(true)} />
+        : <span>{getOpponentInitials(name)}</span>}
+    </span>
   );
 }
 
@@ -539,10 +553,15 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               <div><span className="kicker">PANEL DEL CLUB</span><h2>Hola, {club.shortName || club.name}</h2><p>Resumen de {category === 'primera' ? '1ra División' : 'Intermedia'}</p></div>
             </header>
             <section className="home-next-match">
-              <div>
+              <div className="home-match-content">
                 <span className="home-match-label"><CalendarClock aria-hidden="true" />{nextAmhMatch?.round || meta['fecha n°'] || meta['fecha'] || 'PRÓXIMO PARTIDO'}</span>
-                <h2>vs {nextAmhMatch?.rival || meta.rival || 'Rival pendiente'}</h2>
-                <p>{nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</p>
+                <div className="home-match-opponent">
+                  <OpponentBadge key={nextAmhMatch?.rival || meta.rival || ''} name={nextAmhMatch?.rival || meta.rival || ''} />
+                  <div className="home-match-title">
+                    <h2>vs {nextAmhMatch?.rival || meta.rival || 'Rival pendiente'}</h2>
+                    <p>{nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</p>
+                  </div>
+                </div>
                 <div className="home-match-facts">
                   {displayedCallTime && <span><Megaphone aria-hidden="true" /> Citación: {displayedCallTime}</span>}
                   <span><Timer aria-hidden="true" /> {displayedMatchTime || 'Horario pendiente de confirmar'}</span>
