@@ -552,13 +552,17 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
    ========================================================================== */
 .stats-panel { margin-top: 20px; padding: clamp(18px, 4vw, 32px); border: 1px solid #8dd3ff33; border-radius: 20px; background: #ffffff09; }
 .stats-hero { margin-bottom: 20px; }
-.stats-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin: 18px 0; }
-.stats-selector-box { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px; }
+.stats-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 12px; margin: 18px 0; }
+.stats-selector-box { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 10px; min-width: 0; }
 .stats-selector-box label { font-size: .85rem; color: #b7c9de; white-space: nowrap; }
-.stats-selector-box select { flex: 1; padding: 11px 12px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #071d3d; }
-.stats-subtabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.stats-selector-box select { width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #071d3d; }
+.stats-subtabs { display: flex; min-width: 0; gap: 8px; flex-wrap: wrap; }
 .stats-subtabs button { color: #b7c9de; border: 1px solid #8dd3ff40; background: #ffffff0d; font-size: .85rem; padding: 9px 14px; }
 .stats-subtabs button.active { color: #031125; background: #00a2ff; }
+@media (max-width: 560px) {
+  .stats-selector-box { grid-template-columns: minmax(0, 1fr); }
+  .stats-selector-box label { white-space: normal; }
+}
 
 .stats-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 18px 0; }
 .stats-summary-card { padding: 16px; border: 1px solid #8dd3ff2e; border-radius: 14px; background: #ffffff0a; display: grid; gap: 4px; }
