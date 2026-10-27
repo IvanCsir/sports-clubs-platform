@@ -259,7 +259,7 @@ module.exports = async function handler(req, res) {
       try {
         return json(res, 200, await sportsData.savePhysicalAssessment(slug, body, seasonName));
       } catch (error) {
-        if (/Una medición|Faltan datos|Seleccioná una jugadora|no pertenece/.test(error.message)) return json(res, 400, { error: error.message });
+        if (/Una medición|Faltan datos|Seleccioná una jugadora|no pertenece|valor inválido/.test(error.message)) return json(res, 400, { error: error.message });
         throw error;
       }
     }

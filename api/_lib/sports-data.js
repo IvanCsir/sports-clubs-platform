@@ -44,7 +44,7 @@ async function ensureSeasonId(slug, seasonName, tournamentKey) {
 
 async function getPhysicalTestDefinitions(slug, includeInactive = false) {
   const result = await ensureDb().query(
-    `SELECT test_key, name, category, unit, direction, decimals, max_attempts, active,
+    `SELECT test_key, name, category, unit, direction, decimals, evaluations_per_year, active,
             (SELECT COUNT(*) FROM sc_physical_test_results r
              JOIN sc_physical_assessments a ON a.id = r.assessment_id
              WHERE a.club_slug = definitions.club_slug AND r.test_key = definitions.test_key) AS data_count
@@ -62,12 +62,12 @@ async function savePhysicalTestDefinition(slug, input) {
   const category = String(input.category || 'personalizada').trim();
   const direction = ['higher', 'lower', 'neutral'].includes(input.direction) ? input.direction : 'neutral';
   const decimals = Number(input.decimals);
-  const maxAttempts = Number(input.maxAttempts);
+  const evaluationsPerYear = Number(input.evaluationsPerYear);
   if (!name || name.length > 80) throw new Error('Indicá un nombre de prueba de hasta 80 caracteres.');
   if (unit.length > 16) throw new Error('La unidad no puede superar los 16 caracteres.');
   if (!category || category.length > 40) throw new Error('Indicá una categoría de hasta 40 caracteres.');
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 3) throw new Error('Los decimales deben estar entre 0 y 3.');
-  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10) throw new Error('La cantidad de evaluaciones anuales debe estar entre 1 y 10.');
+  if (!Number.isInteger(evaluationsPerYear) || evaluationsPerYear < 1 || evaluationsPerYear > 10) throw new Error('La cantidad de evaluaciones anuales debe estar entre 1 y 10.');
   const definitions = await getPhysicalTestDefinitions(slug, true);
   if (definitions.some(test => test.name.localeCompare(name, 'es', { sensitivity: 'base' }) === 0)) {
     throw new Error('Ya existe una prueba con ese nombre. Si está inactiva, podés reactivarla desde el catálogo.');
@@ -76,10 +76,10 @@ async function savePhysicalTestDefinition(slug, input) {
   const key = `custom-${baseKey || 'prueba'}`;
   const inserted = await ensureDb().query(
     `INSERT INTO sc_physical_test_definitions
-       (club_slug, test_key, name, category, unit, direction, decimals, max_attempts)
+       (club_slug, test_key, name, category, unit, direction, decimals, evaluations_per_year)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (club_slug, test_key) DO NOTHING
-     RETURNING test_key`, [slug, key, name, category, unit, direction, decimals, maxAttempts]
+    RETURNING test_key`, [slug, key, name, category, unit, direction, decimals, evaluationsPerYear]
   );
   if (!inserted.rowCount) throw new Error('Ya existe una prueba con ese nombre o clave.');
   return { saved: true, key };
@@ -138,14 +138,10 @@ async function getClubData(slug, seasonName, tournamentKey) {
                 SELECT t.category FROM sc_team_players tp JOIN sc_teams t ON t.id = tp.team_id
                 WHERE tp.player_id = p.id ORDER BY t.category LIMIT 1
               ) t ON TRUE
-              LEFT JOIN LATERAL (
-                SELECT pa.id, pa.evaluated_on FROM sc_physical_assessments pa
-                WHERE pa.player_id = p.id AND pa.season_id = $2
-                ORDER BY pa.evaluated_on DESC NULLS LAST, pa.created_at DESC LIMIT 1
-              ) a ON TRUE
+              LEFT JOIN sc_physical_assessments a ON a.player_id = p.id AND a.season_id = $2
               LEFT JOIN sc_physical_test_results r ON r.assessment_id = a.id
               WHERE p.club_slug = $1 AND p.active = TRUE
-              ORDER BY p.display_name, a.evaluated_on, r.test_key, r.attempt`, [slug, seasonId]),
+              ORDER BY p.display_name, a.evaluated_on NULLS FIRST, a.created_at, r.test_key, r.attempt`, [slug, seasonId]),
       db.query(`SELECT e.id, e.external_id, e.occurred_at, e.quarter, e.team_side,
                      e.event_type, e.player_name, e.details, m.round_label, m.opponent, m.provider_match_id
               FROM sc_match_events e LEFT JOIN sc_matches m ON m.id = e.match_id
@@ -190,14 +186,16 @@ async function getClubData(slug, seasonName, tournamentKey) {
       player = { id: `p_${row.id}`, name: row.display_name, evaluatedOn: row.evaluated_on, division, rama: row.category || '', divisionLabel: division, filterTag, tests: {} };
       physicalByPlayer.set(row.id, player);
     }
+    if (row.evaluated_on && (!player.evaluatedOn || String(row.evaluated_on) > String(player.evaluatedOn))) player.evaluatedOn = row.evaluated_on;
     if (row.test_key) {
       const test = player.tests[row.test_key] || (player.tests[row.test_key] = { evals: [] });
-      test.evals.push({ round: Number(row.attempt), value: Number(row.value), unit: row.unit });
+      test.evals.push({ round: test.evals.length + 1, evaluatedOn: row.evaluated_on, attempt: Number(row.attempt), value: Number(row.value), unit: row.unit });
     }
   }
   for (const player of physicalByPlayer.values()) {
     for (const [key, test] of Object.entries(player.tests)) {
-      test.evals.sort((a, b) => a.round - b.round);
+      test.evals.sort((a, b) => String(a.evaluatedOn || '').localeCompare(String(b.evaluatedOn || '')) || a.attempt - b.attempt);
+      test.evals.forEach((evaluation, index) => { evaluation.round = index + 1; });
       const first = test.evals[0]?.value;
       const last = test.evals.at(-1)?.value;
       test.diff = test.evals.length > 1 ? Number((last - first).toFixed(2)) : null;
@@ -817,10 +815,10 @@ async function savePhysicalAssessment(slug, input, seasonName) {
     }
     for (const result of input.results) {
       const definition = testsByKey.get(String(result.testKey || ''));
-      const attempt = Number(result.attempt);
+      const attempt = Number(result.attempt ?? 1);
       const value = Number(result.value);
-      if (!definition || !Number.isFinite(value) || !Number.isInteger(attempt) || attempt < 1 || attempt > definition.maxAttempts) {
-        throw new Error('Una medición no coincide con las pruebas activas o su cantidad de evaluaciones anuales.');
+      if (!definition || !Number.isFinite(value) || attempt !== 1) {
+        throw new Error('Una medición no coincide con las pruebas activas o contiene un valor inválido.');
       }
       await client.query(
         `INSERT INTO sc_physical_test_results (assessment_id, test_key, attempt, value, unit)

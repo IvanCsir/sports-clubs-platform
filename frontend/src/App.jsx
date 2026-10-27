@@ -34,7 +34,7 @@ function hydratePhysicalTests(tests) {
     ...test,
     type: test.type || test.category || 'Personalizada',
     icon: Activity,
-    maxAttempts: Number(test.maxAttempts || 3),
+    evaluationsPerYear: Number(test.evaluationsPerYear || 3),
     decimals: Number(test.decimals ?? 2)
   }));
 }
@@ -113,7 +113,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [physicalSaveError, setPhysicalSaveError] = useState('');
   const [physicalTests, setPhysicalTests] = useState(PHYSICAL_TESTS);
   const [editingTestCatalog, setEditingTestCatalog] = useState(false);
-  const [testDraft, setTestDraft] = useState({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2, maxAttempts: 3 });
+  const [testDraft, setTestDraft] = useState({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2, evaluationsPerYear: 3 });
   const [testCatalogError, setTestCatalogError] = useState('');
   const [status, setStatus] = useState('Cargando información del club...');
   const [showPrecargaModal, setShowPrecargaModal] = useState(false);
@@ -310,9 +310,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setPhysicalSaveError('');
     const results = Object.entries(physicalDraft.values)
       .map(([key, value]) => {
-        const [testKey, attempt] = key.split(':');
+        const testKey = key;
         const test = physicalTests.find(item => item.key === testKey);
-        return { testKey, attempt: Number(attempt), rawValue: value, value: Number(value), unit: test?.unit || '' };
+        return { testKey, attempt: 1, rawValue: value, value: Number(value), unit: test?.unit || '' };
       }).filter(item => item.rawValue !== '' && Number.isFinite(item.value));
     try {
       const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
@@ -345,7 +345,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'No se pudo agregar la prueba.');
       await loadPhysical();
-      setTestDraft({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2, maxAttempts: 3 });
+      setTestDraft({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2, evaluationsPerYear: 3 });
     } catch (error) { setTestCatalogError(error.message); }
   }
 
@@ -518,8 +518,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
 
   const averages = physicalTests.filter(test => test.active !== false || visiblePlayers.some(player => player.tests[test.key])) .map(test => {
     const values = visiblePlayers.map(player => player.tests[test.key]?.evals.at(-1)?.value).filter(value => value !== undefined);
-    const rounds = Array.from({ length: test.maxAttempts }, (_, index) => index + 1).map(round => {
-      const roundValues = visiblePlayers.map(player => player.tests[test.key]?.evals.find(item => item.round === round)?.value).filter(value => value !== undefined);
+    const rounds = Array.from({ length: test.evaluationsPerYear }, (_, index) => index + 1).map(round => {
+      const roundValues = visiblePlayers.map(player => player.tests[test.key]?.evals[round - 1]?.value).filter(value => value !== undefined);
       return roundValues.length ? Number((roundValues.reduce((sum, value) => sum + value, 0) / roundValues.length).toFixed(test.decimals)) : null;
     });
     return { ...test, latest: values.length ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(test.decimals)) : null, rounds };
@@ -815,7 +815,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                 <div className="physical-test-catalog-list">
                   {physicalTests.filter(test => test.custom).map(test => (
                     <div key={test.key}>
-                      <span><strong>{test.name}{test.active === false ? ' · Inactiva' : ''}</strong><small>{test.category} · {test.unit || 'sin unidad'} · {test.maxAttempts} evaluaciones por año</small></span>
+                      <span><strong>{test.name}{test.active === false ? ' · Inactiva' : ''}</strong><small>{test.category} · {test.unit || 'sin unidad'} · objetivo: {test.evaluationsPerYear} evaluaciones por año</small></span>
                       <div className="physical-test-item-actions">
                         {test.dataCount === 0 && <button type="button" className="secondary" onClick={() => deletePhysicalTest(test.key)}>Eliminar</button>}
                         {test.active === false
@@ -834,7 +834,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                       <option value="fuerza">Fuerza</option><option value="potencia">Potencia</option><option value="velocidad">Velocidad</option><option value="resistencia">Resistencia</option><option value="agilidad">Agilidad</option><option value="movilidad">Movilidad</option><option value="técnica">Técnica</option><option value="personalizada">Otra</option>
                     </select></label>
                     <label>Unidad<input value={testDraft.unit} maxLength={16} placeholder="seg, cm, kg, repeticiones…" onChange={event => setTestDraft(current => ({ ...current, unit: event.target.value }))} /></label>
-                    <label>Evaluaciones que se hacen al año<select value={testDraft.maxAttempts} onChange={event => setTestDraft(current => ({ ...current, maxAttempts: Number(event.target.value) }))}>
+                    <label>Evaluaciones previstas al año<select value={testDraft.evaluationsPerYear} onChange={event => setTestDraft(current => ({ ...current, evaluationsPerYear: Number(event.target.value) }))}>
                       {Array.from({ length: 10 }, (_, index) => index + 1).map(count => <option key={count} value={count}>{count}</option>)}
                     </select></label>
                     <label>Decimales<select value={testDraft.decimals} onChange={event => setTestDraft(current => ({ ...current, decimals: Number(event.target.value) }))}>
@@ -851,6 +851,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             )}
             {editingPhysical && (
               <form className="physical-editor" onSubmit={submitPhysicalAssessment}>
+                <p className="form-hint">Cargá solamente las pruebas que se realizaron en esta fecha. Cada nueva jornada de evaluación se guarda como un registro independiente y se suma al historial.</p>
                 <div className="callup-meta-grid">
                   <label>Jugadora<select value={physicalDraft.playerId} onChange={event => setPhysicalDraft(current => ({ ...current, playerId: event.target.value }))} required>
                     <option value="">Seleccioná una jugadora del plantel</option>
@@ -867,10 +868,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                 <div className="physical-entry-grid">
                   {physicalTests.filter(test => test.active !== false).map(test => (
                     <fieldset key={test.key}><legend>{test.name} ({test.unit || 'sin unidad'})</legend>
-                      {Array.from({ length: test.maxAttempts }, (_, index) => index + 1).map(attempt => {
-                        const key = `${test.key}:${attempt}`;
-                        return <label key={key}>{attempt}° evaluación del año<input type="number" step="any" value={physicalDraft.values[key] || ''} onChange={event => setPhysicalDraft(current => ({ ...current, values: { ...current.values, [key]: event.target.value } }))} /></label>;
-                      })}
+                      <label>Resultado de esta evaluación<input type="number" step="any" value={physicalDraft.values[test.key] || ''} onChange={event => setPhysicalDraft(current => ({ ...current, values: { ...current.values, [test.key]: event.target.value } }))} /></label>
                     </fieldset>
                   ))}
                 </div>
@@ -960,7 +958,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                     </div>
                     <div className="physical-profile-overview">
                       <strong>{Object.keys(selected.tests || {}).length} pruebas con datos</strong>
-                      <span>Comparación de marcas por evaluación anual</span>
+                      <span>Historial de resultados por fecha</span>
                     </div>
                     <div className="test-cards">
                       {physicalTests.filter(test => test.active !== false || selected.tests[test.key]).map(test => {
@@ -977,10 +975,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                             <b>{latest ? `${latest.value} ${test.unit}` : 'Sin registros'}</b>
                             {latest && <small className="test-result-caption">Última evaluación</small>}
                             <div className="test-rounds">
-                              {Array.from({ length: test.maxAttempts }, (_, index) => index + 1).map(round => {
-                                const attempt = result?.evals.find(item => item.round === round)?.value;
+                              {result?.evals.map((evaluation, index) => {
                                 return (
-                                  <span key={round}><small>Evaluación {round}</small><strong>{attempt ?? '—'}</strong></span>
+                                  <span key={`${evaluation.evaluatedOn || 'sin-fecha'}-${index}`}><small>{evaluation.evaluatedOn ? new Date(`${evaluation.evaluatedOn}T00:00:00`).toLocaleDateString('es-AR') : `Evaluación ${index + 1}`}</small><strong>{evaluation.value}</strong></span>
                                 );
                               })}
                             </div>
@@ -1016,7 +1013,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                     <small className="average-caption">Promedio actual · {visiblePlayers.filter(player => player.tests[test.key]?.evals.at(-1)?.value !== undefined).length} jugadoras</small>
                     <div className="test-rounds">
                       {test.rounds.map((value, index) => (
-                        <span key={index}>Evaluación {index + 1}: {value === null ? '—' : `${value} ${test.unit}`}</span>
+                        <span key={index}>Evaluación {index + 1} · promedio: {value === null ? '—' : `${value} ${test.unit}`}</span>
                       ))}
                     </div>
                   </article>
