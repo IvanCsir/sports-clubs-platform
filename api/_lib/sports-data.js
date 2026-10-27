@@ -5,7 +5,7 @@ function ensureDb() {
   return postgres.getPool();
 }
 
-async function ensureSeasonId(slug, seasonName) {
+async function ensureSeasonId(slug, seasonName, tournamentKey) {
   const name = String(seasonName || new Date().getFullYear()).trim().slice(0, 60) || String(new Date().getFullYear());
   const db = ensureDb();
   const client = await db.connect();
@@ -24,6 +24,13 @@ async function ensureSeasonId(slug, seasonName) {
     for (const table of ['sc_matches', 'sc_physical_assessments', 'sc_player_wellness', 'sc_player_training_loads']) {
       await client.query(`UPDATE ${table} SET season_id = $2 WHERE club_slug = $1 AND season_id IS NULL`, [slug, season.id]);
     }
+    if (tournamentKey !== undefined) {
+      const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
+      await client.query(
+        `UPDATE sc_matches SET tournament_key = $3
+         WHERE club_slug = $1 AND season_id = $2 AND tournament_key IS NULL`, [slug, season.id, competitionKey]
+      );
+    }
     await client.query('COMMIT');
     return season.id;
   } catch (error) {
@@ -34,9 +41,10 @@ async function ensureSeasonId(slug, seasonName) {
   }
 }
 
-async function getClubData(slug, seasonName) {
+async function getClubData(slug, seasonName, tournamentKey) {
   const db = ensureDb();
-  const seasonId = await ensureSeasonId(slug, seasonName);
+  const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
+  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
   const [callups, assessments, events, roster] = await Promise.all([
     db.query(`SELECT t.category, m.provider_match_id AS callup_match_key, m.round_label, m.opponent, m.home_away, m.date_label,
                      m.call_time, m.match_time, m.venue, m.opponent_logo_url,
@@ -46,9 +54,9 @@ async function getClubData(slug, seasonName) {
               LEFT JOIN sc_matches m ON m.id = c.match_id
               LEFT JOIN sc_callup_players cp ON cp.callup_id = c.id
               LEFT JOIN sc_players p ON p.id = cp.player_id
-              WHERE t.club_slug = $1 AND (c.id IS NULL OR m.season_id = $2)
+              WHERE t.club_slug = $1 AND (c.id IS NULL OR (m.season_id = $2 AND m.tournament_key = $3))
               GROUP BY t.category, m.id, c.updated_at
-              ORDER BY c.updated_at DESC NULLS LAST`, [slug, seasonId]),
+              ORDER BY c.updated_at DESC NULLS LAST`, [slug, seasonId, competitionKey]),
     db.query(`SELECT p.id, p.display_name, t.category, a.evaluated_on,
                      r.test_key, r.attempt, r.value, r.unit
               FROM sc_players p
@@ -67,7 +75,8 @@ async function getClubData(slug, seasonName) {
       db.query(`SELECT e.id, e.external_id, e.occurred_at, e.quarter, e.team_side,
                      e.event_type, e.player_name, e.details, m.round_label, m.opponent, m.provider_match_id
               FROM sc_match_events e LEFT JOIN sc_matches m ON m.id = e.match_id
-              WHERE e.club_slug = $1 AND m.season_id = $2 ORDER BY e.occurred_at, e.id`, [slug, seasonId]),
+              WHERE e.club_slug = $1 AND m.season_id = $2 AND m.tournament_key = $3
+              ORDER BY e.occurred_at, e.id`, [slug, seasonId, competitionKey]),
     db.query(`SELECT p.id, p.display_name, p.active,
                      COALESCE(array_agg(DISTINCT t.category ORDER BY t.category)
                        FILTER (WHERE t.category IS NOT NULL), '{}') AS categories
@@ -145,15 +154,16 @@ async function getClubData(slug, seasonName) {
   };
 }
 
-async function getMatchPreparations(slug, seasonName) {
-  const seasonId = await ensureSeasonId(slug, seasonName);
+async function getMatchPreparations(slug, seasonName, tournamentKey) {
+  const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
+  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
   const result = await ensureDb().query(
     `SELECT t.category, m.provider_match_id AS match_key, m.round_label, m.opponent,
             m.home_away, m.date_label, m.preparation, m.updated_at
      FROM sc_matches m
      JOIN sc_teams t ON t.id = m.team_id AND t.club_slug = m.club_slug
-     WHERE m.club_slug = $1 AND m.provider = 'preparation' AND m.season_id = $2
-     ORDER BY m.updated_at DESC`, [slug, seasonId]
+     WHERE m.club_slug = $1 AND m.provider = 'preparation' AND m.season_id = $2 AND m.tournament_key = $3
+     ORDER BY m.updated_at DESC`, [slug, seasonId, competitionKey]
   );
   return result.rows.map(row => ({
     category: row.category,
@@ -192,6 +202,62 @@ async function getPlayerMonitoring(slug, seasonName) {
     wellness: wellness.rows.map(row => ({ ...row, id: String(row.id), playerId: String(row.player_id) })),
     loads: loads.rows.map(row => ({ ...row, id: String(row.id), playerId: String(row.player_id), load: Number(row.load) }))
   };
+}
+
+async function getTournamentStats(slug, seasonName, tournamentKey, tournamentName) {
+  const activeSeasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
+  const activeTournamentKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
+  const activeKey = `${activeSeasonId}:${activeTournamentKey}`;
+  const result = await ensureDb().query(
+    `SELECT s.id AS season_id, s.name AS season_name, m.tournament_key, m.tournament_name,
+            m.provider_match_id, m.round_label, m.opponent,
+            e.id, e.external_id, e.occurred_at, e.quarter, e.team_side,
+            e.event_type, e.player_name, e.details
+     FROM sc_matches m
+     JOIN sc_seasons s ON s.id = m.season_id
+     JOIN sc_match_events e ON e.match_id = m.id
+     WHERE m.club_slug = $1 AND m.provider = 'tracker'
+     ORDER BY s.created_at DESC, s.name DESC, m.tournament_name, e.occurred_at, e.id`, [slug]
+  );
+  const tournaments = new Map();
+  for (const row of result.rows) {
+    const key = `${row.season_id}:${row.tournament_key || 'general'}`;
+    if (!tournaments.has(key)) {
+      const name = row.tournament_name || row.tournament_key || 'Torneo';
+      tournaments.set(key, {
+        key,
+        name,
+        seasonName: row.season_name,
+        label: `${name} · Temporada ${row.season_name}`,
+        events: []
+      });
+    }
+    tournaments.get(key).events.push({
+      ...(row.details || {}),
+      id: row.external_id || String(row.id),
+      match: row.round_label || 'amistoso',
+      matchKey: row.provider_match_id || undefined,
+      opponent: row.opponent || undefined,
+      quarter: Number(row.quarter),
+      team: row.team_side,
+      type: row.event_type,
+      player: row.player_name || undefined,
+      at: row.occurred_at
+    });
+  }
+  if (!tournaments.has(activeKey)) {
+    const name = tournamentName || activeTournamentKey;
+    tournaments.set(activeKey, {
+      key: activeKey,
+      name,
+      seasonName: String(seasonName || new Date().getFullYear()),
+      label: `${name} · Temporada ${seasonName || new Date().getFullYear()}`,
+      events: []
+    });
+  }
+  const options = [...tournaments.values()];
+  options.sort((a, b) => a.key === activeKey ? -1 : b.key === activeKey ? 1 : b.seasonName.localeCompare(a.seasonName, 'es', { numeric: true }));
+  return { tournaments: options, activeKey };
 }
 
 async function getPlayerPortalRoster(slug) {
@@ -264,9 +330,10 @@ async function savePlayerMonitoring(slug, input, seasonName) {
   throw new Error('Tipo de registro inválido.');
 }
 
-async function saveMatchPreparation(slug, input, seasonName) {
+async function saveMatchPreparation(slug, input, seasonName, tournamentKey, tournamentName) {
   const db = ensureDb();
-  const seasonId = await ensureSeasonId(slug, seasonName);
+  const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
+  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -277,15 +344,16 @@ async function saveMatchPreparation(slug, input, seasonName) {
     );
     const result = await client.query(
       `INSERT INTO sc_matches (club_slug, team_id, provider, provider_match_id, round_label,
-                               opponent, home_away, date_label, preparation, season_id)
-       VALUES ($1, $2, 'preparation', $3, $4, $5, $6, $7, $8::jsonb, $9)
-       ON CONFLICT (club_slug, team_id, provider, provider_match_id, season_id) DO UPDATE SET
+                               opponent, home_away, date_label, preparation, season_id, tournament_key, tournament_name)
+       VALUES ($1, $2, 'preparation', $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11)
+       ON CONFLICT (club_slug, team_id, provider, provider_match_id, season_id, tournament_key) DO UPDATE SET
          round_label = EXCLUDED.round_label, opponent = EXCLUDED.opponent,
          home_away = EXCLUDED.home_away, date_label = EXCLUDED.date_label,
-         preparation = EXCLUDED.preparation, updated_at = NOW()
+         preparation = EXCLUDED.preparation, tournament_name = EXCLUDED.tournament_name, updated_at = NOW()
        RETURNING id`,
       [slug, teamResult.rows[0].id, input.matchKey, input.round, input.opponent,
-        input.homeAway || 'Local', input.date || '', JSON.stringify(input.preparation), seasonId]
+        input.homeAway || 'Local', input.date || '', JSON.stringify(input.preparation), seasonId, competitionKey,
+        tournamentName || competitionKey]
     );
     await client.query('COMMIT');
     return { id: String(result.rows[0].id), matchKey: input.matchKey };
@@ -371,12 +439,13 @@ async function updatePlayer(slug, input) {
   }
 }
 
-async function saveCallup(slug, input, seasonName) {
+async function saveCallup(slug, input, seasonName, tournamentKey, tournamentName) {
   const players = [...new Set((input.players || []).map(name => String(name).trim()).filter(Boolean))];
   if (players.length > 60 || players.some(name => name.length > 120)) throw new Error('La convocatoria supera los límites permitidos.');
   if (!String(input.matchKey || '').trim()) throw new Error('Falta identificar el partido de la convocatoria.');
   const db = ensureDb();
-  const seasonId = await ensureSeasonId(slug, seasonName);
+  const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
+  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -388,16 +457,17 @@ async function saveCallup(slug, input, seasonName) {
     const teamId = teamResult.rows[0].id;
     const matchResult = await client.query(
       `INSERT INTO sc_matches (club_slug, team_id, provider, provider_match_id, round_label, opponent,
-                           home_away, date_label, call_time, match_time, venue, opponent_logo_url, season_id)
-       VALUES ($1, $2, 'club-data', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       ON CONFLICT (club_slug, team_id, provider, provider_match_id, season_id) DO UPDATE SET
+                           home_away, date_label, call_time, match_time, venue, opponent_logo_url, season_id, tournament_key, tournament_name)
+       VALUES ($1, $2, 'club-data', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       ON CONFLICT (club_slug, team_id, provider, provider_match_id, season_id, tournament_key) DO UPDATE SET
          round_label = EXCLUDED.round_label, opponent = EXCLUDED.opponent, home_away = EXCLUDED.home_away,
          date_label = EXCLUDED.date_label, call_time = EXCLUDED.call_time, match_time = EXCLUDED.match_time,
-         venue = EXCLUDED.venue, opponent_logo_url = EXCLUDED.opponent_logo_url, updated_at = NOW()
+          venue = EXCLUDED.venue, opponent_logo_url = EXCLUDED.opponent_logo_url,
+          tournament_name = EXCLUDED.tournament_name, updated_at = NOW()
        RETURNING id`,
        [slug, teamId, input.matchKey || 'current', input.round || 'Amistoso', input.opponent || 'Rival',
         input.homeAway || 'Local', input.date || '', input.callTime || '', input.matchTime || '',
-         input.venue || '', input.opponentLogoUrl || '', seasonId]
+         input.venue || '', input.opponentLogoUrl || '', seasonId, competitionKey, tournamentName || competitionKey]
     );
     const matchId = matchResult.rows[0].id;
     const callupResult = await client.query(
@@ -417,8 +487,9 @@ async function saveCallup(slug, input, seasonName) {
     const rosterByName = new Map(roster.rows.map(player => [player.display_name, player.id]));
     await client.query(
       `DELETE FROM sc_callups c USING sc_matches m
-       WHERE c.match_id = m.id AND c.team_id = $1 AND c.id <> $2 AND m.season_id = $3`,
-      [teamId, callupId, seasonId]
+       WHERE c.match_id = m.id AND c.team_id = $1 AND c.id <> $2
+         AND m.season_id = $3 AND m.tournament_key = $4`,
+      [teamId, callupId, seasonId, competitionKey]
     );
     await client.query('DELETE FROM sc_callup_players WHERE callup_id = $1', [callupId]);
     for (const [position, displayName] of players.entries()) {
@@ -435,19 +506,21 @@ async function saveCallup(slug, input, seasonName) {
   }
 }
 
-async function saveEvent(slug, input, seasonName) {
+async function saveEvent(slug, input, seasonName, tournamentKey, tournamentName) {
   const db = ensureDb();
-  const seasonId = await ensureSeasonId(slug, seasonName);
+  const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
+  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
   const client = await db.connect();
   try {
     await client.query('BEGIN');
     const round = String(input.match || 'Amistoso');
     const matchKey = String(input.matchKey || round.toLowerCase().replace(/[^a-z0-9]+/g, '_'));
     const matchResult = await client.query(
-      `INSERT INTO sc_matches (club_slug, provider, provider_match_id, round_label, opponent, season_id)
-       VALUES ($1, 'tracker', $2, $3, $4, $5)
-       ON CONFLICT (club_slug, team_id, provider, provider_match_id, season_id) DO UPDATE SET round_label = EXCLUDED.round_label
-       RETURNING id`, [slug, matchKey, round, input.opponent || 'Rival', seasonId]
+      `INSERT INTO sc_matches (club_slug, provider, provider_match_id, round_label, opponent, season_id, tournament_key, tournament_name)
+       VALUES ($1, 'tracker', $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (club_slug, team_id, provider, provider_match_id, season_id, tournament_key) DO UPDATE SET
+         round_label = EXCLUDED.round_label, tournament_name = EXCLUDED.tournament_name
+       RETURNING id`, [slug, matchKey, round, input.opponent || 'Rival', seasonId, competitionKey, tournamentName || competitionKey]
     );
     const event = input.event || input;
     const result = await client.query(
@@ -473,21 +546,23 @@ async function saveEvent(slug, input, seasonName) {
   }
 }
 
-async function replaceMatchEvents(slug, input, seasonName) {
+async function replaceMatchEvents(slug, input, seasonName, tournamentKey, tournamentName) {
   if (input.events.length > 1000) throw new Error('El partido supera el máximo de incidencias permitido.');
   const db = ensureDb();
-  const seasonId = await ensureSeasonId(slug, seasonName);
+  const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
+  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
   const client = await db.connect();
   try {
     await client.query('BEGIN');
     const round = String(input.match || 'Amistoso');
     const matchKey = String(input.matchKey || round.toLowerCase().replace(/[^a-z0-9]+/g, '_'));
     const matchResult = await client.query(
-      `INSERT INTO sc_matches (club_slug, provider, provider_match_id, round_label, opponent, season_id)
-       VALUES ($1, 'tracker', $2, $3, $4, $5)
-       ON CONFLICT (club_slug, team_id, provider, provider_match_id, season_id) DO UPDATE SET
-         round_label = EXCLUDED.round_label, opponent = EXCLUDED.opponent, updated_at = NOW()
-       RETURNING id`, [slug, matchKey, round, input.opponent || 'Rival', seasonId]
+      `INSERT INTO sc_matches (club_slug, provider, provider_match_id, round_label, opponent, season_id, tournament_key, tournament_name)
+       VALUES ($1, 'tracker', $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (club_slug, team_id, provider, provider_match_id, season_id, tournament_key) DO UPDATE SET
+         round_label = EXCLUDED.round_label, opponent = EXCLUDED.opponent,
+         tournament_name = EXCLUDED.tournament_name, updated_at = NOW()
+       RETURNING id`, [slug, matchKey, round, input.opponent || 'Rival', seasonId, competitionKey, tournamentName || competitionKey]
     );
     const matchId = matchResult.rows[0].id;
     const eventIds = input.events.map(event => String(event.id || '')).filter(Boolean);
@@ -577,4 +652,4 @@ async function savePhysicalAssessment(slug, input, seasonName) {
   }
 }
 
-module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getPlayerPortalRoster, savePlayerMonitoring, saveMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, savePhysicalAssessment };
+module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getTournamentStats, getPlayerPortalRoster, savePlayerMonitoring, saveMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, savePhysicalAssessment };

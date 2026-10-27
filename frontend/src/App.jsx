@@ -117,6 +117,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const storageKey = `club_tracker_${club.slug}`;
   const authKey = `club_tracker_auth_${club.slug}`;
   const [events, setEvents] = useState([]);
+  const [tournamentStats, setTournamentStats] = useState({ tournaments: [], activeKey: '' });
   const [monitoring, setMonitoring] = useState({ wellness: [], loads: [] });
 
   const [matches, setMatches] = useState([]);
@@ -153,6 +154,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar los datos del cuerpo técnico.');
     setEvents(payload.events || []);
+    setTournamentStats(payload.tournamentStats || { tournaments: [], activeKey: '' });
     setPhysicalPlayers(payload.physicalPlayers || []);
     setPlayers(payload.players || []);
     setMonitoring(payload.monitoring || { wellness: [], loads: [] });
@@ -202,6 +204,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setToken('');
     setAuthenticated(false);
     setEvents([]);
+    setTournamentStats({ tournaments: [], activeKey: '' });
     setPlayers([]);
     setPhysicalPlayers([]);
     setMonitoring({ wellness: [], loads: [] });
@@ -480,7 +483,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           <div>
             <span className="kicker">{club.shortName}</span>
             <h1>{club.teamName}</h1>
-            <p>{club.sport} · Temporada {club.season?.name || new Date().getFullYear()}</p>
+            <p>{club.sport} · Temporada {club.season?.name || new Date().getFullYear()}{club.tournament?.name ? ` · ${club.tournament.name}` : ''}</p>
           </div>
           <div className="workspace-header-actions">
             {authenticated ? (
@@ -648,6 +651,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           <EstadisticasPanel
             club={club}
             events={events}
+            tournaments={tournamentStats.tournaments}
+            activeTournamentKey={tournamentStats.activeKey}
             matches={matches}
             authenticated={authenticated}
             onAuthenticate={authenticateStaffWithToken}

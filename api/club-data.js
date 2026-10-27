@@ -25,6 +25,8 @@ module.exports = async function handler(req, res) {
     const club = slug ? await getClubAsync(slug) : null;
     if (!club) return json(res, 404, { error: 'Club no encontrado.' });
     const seasonName = club.season?.name || String(new Date().getFullYear());
+    const tournamentKey = club.tournament?.tournamentId || 'general';
+    const tournamentName = club.tournament?.name || tournamentKey;
 
     if (req.method === 'GET') {
       const dataset = url.searchParams.get('dataset') || 'citations';
@@ -33,11 +35,11 @@ module.exports = async function handler(req, res) {
         return json(res, 200, { players: await sportsData.getPlayerPortalRoster(slug) });
       }
       if (dataset === 'preparations') {
-        return json(res, 200, { preparations: await sportsData.getMatchPreparations(slug, seasonName) });
+        return json(res, 200, { preparations: await sportsData.getMatchPreparations(slug, seasonName, tournamentKey) });
       }
       if (dataset === 'physical') {
         // Las evaluaciones son públicas para que las jugadoras puedan consultarlas desde el enlace del club.
-        const data = await sportsData.getClubData(slug, seasonName);
+        const data = await sportsData.getClubData(slug, seasonName, tournamentKey);
         return json(res, 200, { physicalPlayers: data.physicalPlayers });
       }
       if (dataset === 'staff') {
@@ -45,13 +47,14 @@ module.exports = async function handler(req, res) {
         if (!token || !verifySessionToken(token, club).valid) {
           return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
         }
-        const data = await sportsData.getClubData(slug, seasonName);
+        const data = await sportsData.getClubData(slug, seasonName, tournamentKey);
         return json(res, 200, {
           physicalPlayers: data.physicalPlayers, events: data.events, players: data.players || [], citations: data.citations,
-          monitoring: await sportsData.getPlayerMonitoring(slug, seasonName)
+          monitoring: await sportsData.getPlayerMonitoring(slug, seasonName),
+          tournamentStats: await sportsData.getTournamentStats(slug, seasonName, tournamentKey, tournamentName)
         });
       }
-      const data = await sportsData.getClubData(slug, seasonName);
+      const data = await sportsData.getClubData(slug, seasonName, tournamentKey);
       return json(res, 200, { citations: data.citations });
     }
     if (!['POST', 'DELETE'].includes(req.method)) return json(res, 405, { error: 'Método no permitido.' });
@@ -101,7 +104,7 @@ module.exports = async function handler(req, res) {
     if (body.action === 'save-callup') {
       if (!['primera', 'intermedia'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
       if (!Array.isArray(body.players) || body.players.length > 60) return json(res, 400, { error: 'La lista de jugadoras no es válida.' });
-      return json(res, 200, await sportsData.saveCallup(slug, body, seasonName));
+      return json(res, 200, await sportsData.saveCallup(slug, body, seasonName, tournamentKey, tournamentName));
     }
     if (body.action === 'save-preparation') {
       if (!['primera', 'intermedia'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
@@ -146,16 +149,16 @@ module.exports = async function handler(req, res) {
       const saved = await sportsData.saveMatchPreparation(slug, {
         ...body,
         preparation: { focus: String(preparation.focus || '').trim(), videoUrls, plays }
-      }, seasonName);
+      }, seasonName, tournamentKey, tournamentName);
       return json(res, 200, saved);
     }
     if (body.action === 'save-event') {
       if (!body.event || !body.event.id) return json(res, 400, { error: 'El evento debe incluir un identificador.' });
-      return json(res, 200, await sportsData.saveEvent(slug, body, seasonName));
+      return json(res, 200, await sportsData.saveEvent(slug, body, seasonName, tournamentKey, tournamentName));
     }
     if (body.action === 'replace-match-events') {
       if (!Array.isArray(body.events) || body.events.length > 1000) return json(res, 400, { error: 'La lista de eventos no es válida.' });
-      return json(res, 200, await sportsData.replaceMatchEvents(slug, body, seasonName));
+      return json(res, 200, await sportsData.replaceMatchEvents(slug, body, seasonName, tournamentKey, tournamentName));
     }
     if (body.action === 'save-physical-assessment') {
       if (!String(body.name || '').trim() || !Array.isArray(body.results) || body.results.length > 27) {

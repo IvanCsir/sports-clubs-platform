@@ -1,27 +1,41 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Goal, Zap, Shield, Timer } from 'lucide-react';
 import { calculateQuarterStats } from '../utils/statsCalculator';
 
 export default function EstadisticasPanel({
   club,
   events = [],
+  tournaments = [],
+  activeTournamentKey = '',
   matches = [],
   authenticated,
   onAuthenticate
 }) {
   const [selectedMatch, setSelectedMatch] = useState('all');
+  const [selectedTournamentKey, setSelectedTournamentKey] = useState(activeTournamentKey);
   const [activeTab, setActiveTab] = useState('quarters'); // 'quarters' | 'trends' | 'timeline'
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (activeTournamentKey) setSelectedTournamentKey(activeTournamentKey);
+  }, [activeTournamentKey]);
+
+  useEffect(() => {
+    setSelectedMatch('all');
+  }, [selectedTournamentKey]);
+
+  const selectedTournament = tournaments.find(tournament => tournament.key === selectedTournamentKey);
+  const tournamentEvents = selectedTournament ? selectedTournament.events : events;
+
   // Filtrar eventos por partido seleccionado
   const filteredEvents = selectedMatch === 'all'
-    ? events
-    : events.filter(e => (e.match || 'amistoso') === selectedMatch);
+    ? tournamentEvents
+    : tournamentEvents.filter(e => (e.match || 'amistoso') === selectedMatch);
 
   // Obtener partidos únicos presentes en las incidencias
-  const matchOptions = Array.from(new Set(events.map(e => e.match || 'amistoso')));
+  const matchOptions = Array.from(new Set(tournamentEvents.map(e => e.match || 'amistoso')));
 
   // Calcular estadísticas
   const { quarters, insights, halves } = calculateQuarterStats(filteredEvents);
@@ -77,7 +91,7 @@ export default function EstadisticasPanel({
 
   const homeName = club.shortName || club.name;
   const awayName = selectedMatch !== 'all'
-    ? (matches.find(m => m.round === selectedMatch)?.rival || 'Rival')
+    ? (tournamentEvents.find(e => (e.match || 'amistoso') === selectedMatch)?.opponent || matches.find(m => m.round === selectedMatch)?.rival || 'Rival')
     : 'Rivales (Acumulado)';
 
   return (
@@ -88,6 +102,21 @@ export default function EstadisticasPanel({
         <p>Análisis de efectividad en ingresos al área, córners cortos y evolución durante el partido.</p>
       </div>
 
+      {tournaments.length > 0 && (
+        <div className="stats-tournament-picker">
+          <label htmlFor="select-stats-tournament">Torneo</label>
+          <select
+            id="select-stats-tournament"
+            value={selectedTournamentKey || activeTournamentKey}
+            onChange={event => setSelectedTournamentKey(event.target.value)}
+          >
+            {tournaments.map(tournament => (
+              <option key={tournament.key} value={tournament.key}>{tournament.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="stats-toolbar">
         <div className="stats-selector-box">
           <label htmlFor="select-stats-match">Seleccionar partido a analizar:</label>
@@ -96,11 +125,13 @@ export default function EstadisticasPanel({
             value={selectedMatch}
             onChange={e => setSelectedMatch(e.target.value)}
           >
-            <option value="all">🌟 Todos los partidos (Acumulado General - {events.length} incidencias)</option>
+            <option value="all">🌟 Todos los partidos (Acumulado General - {tournamentEvents.length} incidencias)</option>
             {matchOptions.map(key => {
-              const count = events.filter(e => (e.match || 'amistoso') === key).length;
+              const count = tournamentEvents.filter(e => (e.match || 'amistoso') === key).length;
+              const eventMatch = tournamentEvents.find(e => (e.match || 'amistoso') === key);
               const matchObj = matches.find(m => m.round === key);
-              const label = matchObj ? `${key} vs ${matchObj.rival}` : key;
+              const rival = eventMatch?.opponent || matchObj?.rival;
+              const label = rival ? `${key} vs ${rival}` : key;
               return (
                 <option key={key} value={key}>
                   {label} ({count} incidencias)
