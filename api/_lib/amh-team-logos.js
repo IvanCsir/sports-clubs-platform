@@ -34,11 +34,29 @@ function normalizeTeamName(value) {
   return normalized;
 }
 
-function requestBuffer(url, headers = {}, redirects = 0) {
+function mergeCookies(currentCookies, setCookieHeaders = []) {
+  const cookies = new Map();
+  for (const cookie of currentCookies) {
+    const pair = String(cookie).split(';', 1)[0];
+    const separator = pair.indexOf('=');
+    if (separator > 0) cookies.set(pair.slice(0, separator).trim(), pair.slice(separator + 1).trim());
+  }
+  for (const cookie of setCookieHeaders || []) {
+    const pair = String(cookie).split(';', 1)[0];
+    const separator = pair.indexOf('=');
+    if (separator > 0) cookies.set(pair.slice(0, separator).trim(), pair.slice(separator + 1).trim());
+  }
+  return [...cookies].map(([name, value]) => `${name}=${value}`);
+}
+
+function requestBuffer(url, headers = {}, redirects = 0, cookies = []) {
   return new Promise((resolve, reject) => {
     const parsedUrl = new URL(url);
     const client = parsedUrl.protocol === 'https:' ? https : http;
-    const request = client.get(parsedUrl, { headers }, response => {
+    const requestHeaders = { ...headers };
+    if (cookies.length) requestHeaders.Cookie = cookies.join('; ');
+    const request = client.get(parsedUrl, { headers: requestHeaders }, response => {
+      const responseCookies = mergeCookies(cookies, response.headers['set-cookie']);
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location && redirects < 3) {
         response.resume();
         const redirectUrl = new URL(response.headers.location, parsedUrl);
@@ -46,16 +64,19 @@ function requestBuffer(url, headers = {}, redirects = 0) {
           reject(new Error('AMH redirigió la solicitud del escudo a otro origen.'));
           return;
         }
-        resolve(requestBuffer(redirectUrl.toString(), headers, redirects + 1));
+        resolve(requestBuffer(redirectUrl.toString(), headers, redirects + 1, responseCookies));
         return;
       }
 
       const chunks = [];
       let size = 0;
-      response.on('data', chunk => chunks.push(chunk));
       response.on('data', chunk => {
         size += chunk.length;
-        if (size > 5 * 1024 * 1024) request.destroy(new Error('El escudo de AMH supera el tamaño permitido.'));
+        if (size > 5 * 1024 * 1024) {
+          request.destroy(new Error('El escudo de AMH supera el tamaño permitido.'));
+          return;
+        }
+        chunks.push(chunk);
       });
       response.on('end', () => {
         const body = Buffer.concat(chunks);
@@ -63,13 +84,24 @@ function requestBuffer(url, headers = {}, redirects = 0) {
           reject(new Error(`AMH respondió ${response.statusCode} al solicitar el escudo.`));
           return;
         }
-        resolve({ body, headers: response.headers });
+        resolve({ body, headers: response.headers, cookies: responseCookies });
       });
     });
 
     request.setTimeout(10000, () => request.destroy(new Error('Timeout consultando el escudo en AMH.')));
     request.on('error', reject);
   });
+}
+
+function resolveImageContentType(body, declaredType) {
+  const type = String(declaredType || '').split(';')[0].toLowerCase();
+  if (type.startsWith('image/')) return type;
+  if (body.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return 'image/png';
+  if (body[0] === 0xff && body[1] === 0xd8 && body[2] === 0xff) return 'image/jpeg';
+  if (body.subarray(0, 6).toString('ascii').match(/^GIF8[79]a$/)) return 'image/gif';
+  if (body.subarray(0, 4).toString('ascii') === 'RIFF' && body.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp';
+  if (/^\s*(?:<\?xml[^>]*>\s*)?<svg\b/i.test(body.subarray(0, 512).toString('utf8'))) return 'image/svg+xml';
+  return '';
 }
 
 function decodeHtml(value) {
@@ -130,14 +162,12 @@ async function fetchTeamLogo(tournament, division, teamName) {
   const imageUrl = findLogoSource(standings.body.toString('utf8'), teamName, standingsUrl);
   if (!imageUrl) return null;
 
-  const cookies = (standings.headers['set-cookie'] || []).map(cookie => cookie.split(';')[0]).filter(Boolean).join('; ');
   const image = await requestBuffer(imageUrl, {
     'User-Agent': 'SportsClubsPlatform/1.0',
-    Referer: standingsUrl,
-    ...(cookies ? { Cookie: cookies } : {})
-  });
-  const contentType = String(image.headers['content-type'] || '').split(';')[0].toLowerCase();
-  if (!contentType.startsWith('image/')) throw new Error('AMH no devolvió un archivo de imagen para el escudo.');
+    Referer: standingsUrl
+  }, 0, standings.cookies);
+  const contentType = resolveImageContentType(image.body, image.headers['content-type']);
+  if (!contentType) throw new Error('AMH no devolvió un archivo de imagen para el escudo.');
 
   const result = { body: image.body, contentType, expiresAt: Date.now() + CACHE_TTL_MS };
   if (logoCache.size >= MAX_CACHE_ITEMS) logoCache.delete(logoCache.keys().next().value);
