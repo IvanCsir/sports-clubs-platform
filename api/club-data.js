@@ -91,6 +91,12 @@ module.exports = async function handler(req, res) {
       return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
     }
     if (req.method === 'DELETE' || body.action === 'delete-event') {
+      if (Array.isArray(body.ids)) {
+        if (!body.ids.length || body.ids.length > 1000 || body.ids.some(id => !String(id || '').trim() || String(id).length > 180)) {
+          return json(res, 400, { error: 'La lista de eventos a eliminar no es válida.' });
+        }
+        return json(res, 200, { deleted: await sportsData.deleteEvents(slug, body.ids) });
+      }
       const id = url.searchParams.get('id') || body.id;
       if (!id) return json(res, 400, { error: 'Falta el identificador del evento.' });
       return json(res, 200, { deleted: await sportsData.deleteEvent(slug, id) });

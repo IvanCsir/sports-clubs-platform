@@ -226,9 +226,10 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   }
 
   async function removeTrackerEvent(id) {
+    const isBatch = Array.isArray(id);
     const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
       method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ id })
+      body: JSON.stringify(isBatch ? { ids: id } : { id })
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || 'No se pudo eliminar el evento.');
@@ -642,6 +643,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             onPersistEvent={persistTrackerEvent}
             onDeleteEvent={removeTrackerEvent}
             matches={matches}
+            nextMatch={nextAmhMatch}
             loadMatches={loadMatches}
             authenticated={authenticated}
             onOpenPrecarga={() => setShowPrecargaModal(true)}

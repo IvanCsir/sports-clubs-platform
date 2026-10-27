@@ -109,7 +109,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .tracker-event-question { margin: 0; color: #b7c9de; }
 .tracker-event-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (max-width: 520px) { .tracker-event-actions { grid-template-columns: 1fr; } }
-@media (max-width: 680px) { .tracker-grid { grid-template-columns: 1fr; } .tracker-header { align-items: flex-start; } .tracker-total-score { font-size: 2rem; } .tracker-login { flex-direction: column; align-items: stretch; } }
+@media (max-width: 680px) { .tracker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tracker-header { align-items: flex-start; } .tracker-total-score { font-size: 2rem; } .tracker-login { flex-direction: column; align-items: stretch; } }
 .sync-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 42px; margin: 8px 0 18px; color: #9eb4cc; font-size: .9rem; }
 .sync-status-message { min-width: 0; line-height: 1.35; }
 .refresh { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 7px; padding: 9px 13px; white-space: nowrap; }
@@ -171,6 +171,14 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .tracker-cards button { min-width: 54px; min-height: 40px; border: 1px solid #b7d5f21c; border-radius: 10px; }
 .tracker-actions { gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #b7d5f218; }
 .tracker-actions button { min-height: 42px; border-radius: 10px; }
+.tracker-actions button:disabled { opacity: .5; cursor: not-allowed; }
+.tracker-save-status { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; padding: 11px 13px; border: 1px solid #43c98a38; border-radius: 11px; color: #baf3d4; background: #43c98a0d; }
+.tracker-save-status > span { display: grid; flex: 0 0 20px; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: #061b16; background: #65dda5; font-size: .78rem; font-weight: 900; }
+.tracker-save-status > div { display: grid; gap: 3px; min-width: 0; }
+.tracker-save-status strong { font-size: .84rem; font-weight: 700; }
+.tracker-save-status small { color: #ffb5b5; overflow-wrap: anywhere; }
+.tracker-save-status.is-error { border-color: #ff737360; color: #ffd1d1; background: #b4232314; }
+.tracker-save-status.is-error > span { color: #fff; background: #df5555; }
 .tracker-feed { margin-top: 24px; padding: 17px; border: 1px solid #b7d5f21a; border-radius: 16px; background: #ffffff05; }
 .tracker-feed h3 { margin: 0 0 8px; font-size: .95rem; }
 .tracker-feed > div { grid-template-columns: 82px minmax(90px, .7fr) minmax(0, 1.5fr); align-items: center; gap: 10px; padding: 12px 2px; }
@@ -188,7 +196,17 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
   .tracker-quarters button { min-width: 0; padding: 10px 5px; font-size: .8rem; }
   .tracker-team-view { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tracker-team-view button { overflow: hidden; padding-inline: 6px; text-overflow: ellipsis; }
-  .tracker-team > button { min-height: 68px; }
+  .tracker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .tracker-team { min-width: 0; padding: 10px; }
+  .tracker-team h3 { overflow-wrap: anywhere; font-size: .76rem; line-height: 1.25; }
+  .tracker-score { font-size: 1.9rem; }
+  .tracker-team > button { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 4px; min-height: 66px; padding: 8px 6px; }
+  .tracker-team > button span svg { width: 16px; height: 16px; }
+  .tracker-team > button strong { font-size: .72rem; line-height: 1.15; }
+  .tracker-team > button small { font-size: .62rem; line-height: 1.2; }
+  .tracker-team > button b { font-size: .82rem; }
+  .tracker-cards { gap: 4px; font-size: .72rem; }
+  .tracker-cards button { min-width: 36px; padding: 6px 4px; }
   .tracker-actions button { flex: 1 1 145px; }
 }
 @media (max-width: 420px) {

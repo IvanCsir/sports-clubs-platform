@@ -614,6 +614,15 @@ async function deleteEvent(slug, id) {
   return result.rowCount > 0;
 }
 
+async function deleteEvents(slug, ids) {
+  const externalIds = [...new Set(ids.map(id => String(id)))];
+  const result = await ensureDb().query(
+    'DELETE FROM sc_match_events WHERE club_slug = $1 AND external_id = ANY($2::text[])',
+    [slug, externalIds]
+  );
+  return result.rowCount;
+}
+
 async function savePhysicalAssessment(slug, input, seasonName) {
   if (!input.name || !Array.isArray(input.results)) throw new Error('Faltan datos de la evaluación.');
   const db = ensureDb();
@@ -666,4 +675,4 @@ async function savePhysicalAssessment(slug, input, seasonName) {
   }
 }
 
-module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getTournamentStats, getPlayerPortalRoster, savePlayerMonitoring, saveMatchPreparation, deleteMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, savePhysicalAssessment };
+module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getTournamentStats, getPlayerPortalRoster, savePlayerMonitoring, saveMatchPreparation, deleteMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, deleteEvents, savePhysicalAssessment };

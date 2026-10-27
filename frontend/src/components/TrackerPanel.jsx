@@ -17,6 +17,7 @@ export default function TrackerPanel({
   onPersistEvent,
   onDeleteEvent,
   matches,
+  nextMatch,
   loadMatches,
   authenticated,
   onAuthenticate,
@@ -29,6 +30,8 @@ export default function TrackerPanel({
   const [authStatus, setAuthStatus] = useState('');
   const [eventFlow, setEventFlow] = useState(null);
   const [eventFlowError, setEventFlowError] = useState('');
+  const [savingEvent, setSavingEvent] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('');
 
   const storageKey = `club_tracker_${club.slug}`;
   const match = matches[matchIndex];
@@ -67,6 +70,18 @@ export default function TrackerPanel({
     } catch (_) {}
   }, [storageKey]);
 
+  useEffect(() => {
+    if (!matches.length) {
+      setMatchIndex(-1);
+      return;
+    }
+    const nextIndex = nextMatch
+      ? matches.findIndex(item => item.round === nextMatch.round && item.rival === nextMatch.rival && item.fecha === nextMatch.fecha)
+      : -1;
+    setMatchIndex(nextIndex >= 0 ? nextIndex : matches.findIndex(item => !item.played));
+    setSaveStatus('');
+  }, [matches, nextMatch]);
+
   // Persistir en localStorage
   useEffect(() => {
     try {
@@ -86,7 +101,11 @@ export default function TrackerPanel({
   const count = (team, type) =>
     currentEvents.filter(event => event.team === team && event.type === type).length;
 
-  const addEvent = async (team, type, details = {}) => {
+  const addEvent = async (team, type, details = {}, actionId = '') => {
+    if (savingEvent) return false;
+    setSavingEvent(true);
+    setSaveStatus('Guardando incidencia...');
+    setAuthStatus('');
     const newEvent = {
       id: `${Date.now()}-${Math.random()}`,
       match: matchKey,
@@ -95,15 +114,20 @@ export default function TrackerPanel({
       team,
       type,
       ...details,
+      actionId: actionId || details.actionId || `action-${Date.now()}-${Math.random()}`,
       at: new Date().toISOString()
     };
     try {
       await onPersistEvent(newEvent, match?.rival);
       setEvents(current => [...current, newEvent]);
+      setSaveStatus(`Guardado en la base de datos · ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`);
       return true;
     } catch (error) {
+      setSaveStatus('No se pudo guardar la incidencia.');
       setAuthStatus(error.message);
       return false;
+    } finally {
+      setSavingEvent(false);
     }
   };
 
@@ -125,6 +149,7 @@ export default function TrackerPanel({
     setEventFlow({
       team,
       type,
+      actionId: `action-${Date.now()}-${Math.random()}`,
       step: type === 'fieldGoal' ? 'scorer' : type === 'corner' && team === 'home' ? 'generator' : 'outcome',
       generatedBy: '',
       scorer: ''
@@ -144,7 +169,7 @@ export default function TrackerPanel({
     }
     if (eventFlow.step === 'outcome') {
       if (!eventFlow.goal) {
-        const saved = await addEvent(eventFlow.team, eventFlow.type, eventFlow.generatedBy ? { generatedBy: eventFlow.generatedBy } : {});
+        const saved = await addEvent(eventFlow.team, eventFlow.type, eventFlow.generatedBy ? { generatedBy: eventFlow.generatedBy } : {}, eventFlow.actionId);
         if (saved) setEventFlow(null);
         return;
       }
@@ -156,25 +181,55 @@ export default function TrackerPanel({
       return;
     }
     if (eventFlow.type !== 'fieldGoal') {
-      const attemptSaved = await addEvent(eventFlow.team, eventFlow.type, eventFlow.generatedBy ? { generatedBy: eventFlow.generatedBy } : {});
+      const attemptSaved = await addEvent(eventFlow.team, eventFlow.type, eventFlow.generatedBy ? { generatedBy: eventFlow.generatedBy } : {}, eventFlow.actionId);
       if (!attemptSaved) return;
     }
     const details = {
       player: eventFlow.scorer.trim(),
+      actionId: eventFlow.actionId,
       ...(eventFlow.generatedBy ? { generatedBy: eventFlow.generatedBy } : {})
     };
-    const goalSaved = await addEvent(eventFlow.team, eventFlow.type === 'fieldGoal' ? 'fieldGoal' : `${eventFlow.type}Goal`, details);
+    const goalSaved = await addEvent(eventFlow.team, eventFlow.type === 'fieldGoal' ? 'fieldGoal' : `${eventFlow.type}Goal`, details, eventFlow.actionId);
     if (goalSaved) setEventFlow(null);
   };
 
   const resetMatch = () => {
     if (window.confirm('¿Reiniciar los datos de este partido?')) {
       const removed = currentEvents;
-      Promise.all(removed.map(event => onDeleteEvent(event.id))).then(() => {
+      if (!removed.length) return;
+      setSavingEvent(true);
+      setSaveStatus('Eliminando incidencias del partido...');
+      onDeleteEvent(removed.map(event => event.id)).then(() => {
         const removedIds = new Set(removed.map(event => event.id));
         setEvents(current => current.filter(event => !removedIds.has(event.id)));
-      }).catch(error => setAuthStatus(error.message));
-      setQuarter(1);
+        setSaveStatus('Partido reiniciado y cambios guardados.');
+        setQuarter(1);
+      }).catch(error => {
+        setSaveStatus('No se pudieron eliminar las incidencias.');
+        setAuthStatus(error.message);
+      }).finally(() => setSavingEvent(false));
+    }
+  };
+
+  const undoLastAction = async () => {
+    const lastEvent = currentEvents.at(-1);
+    if (!lastEvent || savingEvent) return;
+    const actionEvents = lastEvent.actionId
+      ? currentEvents.filter(event => event.actionId === lastEvent.actionId)
+      : [lastEvent];
+    setSavingEvent(true);
+    setAuthStatus('');
+    setSaveStatus('Deshaciendo la última acción...');
+    try {
+      await onDeleteEvent(actionEvents.map(event => event.id));
+      const removedIds = new Set(actionEvents.map(event => event.id));
+      setEvents(current => current.filter(event => !removedIds.has(event.id)));
+      setSaveStatus('Última acción eliminada y cambio guardado.');
+    } catch (error) {
+      setSaveStatus('No se pudo deshacer la última acción.');
+      setAuthStatus(error.message);
+    } finally {
+      setSavingEvent(false);
     }
   };
 
@@ -186,6 +241,7 @@ export default function TrackerPanel({
         <button
           key={type}
           onClick={() => beginAction(team, type)}
+          disabled={savingEvent}
         >
           <span><Icon /></span>
           <strong>{label}</strong>
@@ -196,7 +252,7 @@ export default function TrackerPanel({
       <div className="tracker-cards">
         <span>Tarjetas</span>
         {['green', 'yellow', 'red'].map(card => (
-          <button key={card} onClick={() => beginAction(team, card)}>
+          <button key={card} onClick={() => beginAction(team, card)} disabled={savingEvent}>
             {card === 'green' ? '🟩' : card === 'yellow' ? '🟨' : '🟥'} {count(team, card)}
           </button>
         ))}
@@ -242,7 +298,7 @@ export default function TrackerPanel({
       </div>
 
       <div className="tracker-toolbar">
-        <select value={matchIndex} onChange={event => setMatchIndex(Number(event.target.value))}>
+        <select value={matchIndex} onChange={event => { setMatchIndex(Number(event.target.value)); setSaveStatus(''); setAuthStatus(''); setEventFlow(null); }}>
           <option value={-1}>Amistoso / partido manual</option>
           {matches.map((item, index) => (
             <option value={index} key={`${item.round}-${index}`}>
@@ -263,6 +319,13 @@ export default function TrackerPanel({
           </button>
         )}
       </div>
+
+      {(saveStatus || authStatus) && (
+        <div className={`tracker-save-status ${authStatus ? 'is-error' : ''}`} role={authStatus ? 'alert' : 'status'} aria-live="polite">
+          <span aria-hidden="true">{authStatus ? '!' : saveStatus.startsWith('Guardado') || saveStatus.startsWith('Última acción eliminada') || saveStatus.startsWith('Partido reiniciado') ? '✓' : '•'}</span>
+          <div>{saveStatus && <strong>{saveStatus}</strong>}{authStatus && <small>{authStatus}</small>}</div>
+        </div>
+      )}
 
       <div className="tracker-header">
         <div>
@@ -312,17 +375,12 @@ export default function TrackerPanel({
 
       <div className="tracker-actions">
         <button onClick={async () => {
-          const lastEvent = currentEvents.at(-1);
-          if (!lastEvent) return;
-          try {
-            await onDeleteEvent(lastEvent.id);
-            setEvents(current => current.filter(event => event.id !== lastEvent.id));
-          } catch (error) { setAuthStatus(error.message); }
-        }}>
-          ↩ Deshacer última jugada
+          await undoLastAction();
+        }} disabled={!currentEvents.length || savingEvent}>
+          {savingEvent ? 'Guardando...' : '↩ Deshacer última acción'}
         </button>
         <button onClick={() => setTeamView('both')}>📊 Vista Ambos Equipos</button>
-        <button onClick={resetMatch}>🔄 Nuevo partido</button>
+        <button onClick={resetMatch} disabled={savingEvent}>🔄 Nuevo partido</button>
       </div>
 
       <div className="tracker-feed">
@@ -357,19 +415,19 @@ export default function TrackerPanel({
                 <h2>{eventFlow.type === 'stroke' ? 'Penal' : 'Córner corto'}</h2>
                 <p className="tracker-event-question">¿Terminó en gol?</p>
                 <div className="tracker-event-actions">
-                  <button type="button" onClick={async () => {
+                  <button type="button" disabled={savingEvent} onClick={async () => {
                     if (eventFlow.team === 'away') {
-                      const attemptSaved = await addEvent(eventFlow.team, eventFlow.type);
+                      const attemptSaved = await addEvent(eventFlow.team, eventFlow.type, {}, eventFlow.actionId);
                       if (attemptSaved) {
-                        const goalSaved = await addEvent(eventFlow.team, `${eventFlow.type}Goal`);
+                        const goalSaved = await addEvent(eventFlow.team, `${eventFlow.type}Goal`, {}, eventFlow.actionId);
                         if (goalSaved) setEventFlow(null);
                       }
                     } else {
                       setEventFlow(current => ({ ...current, goal: true, step: 'scorer' }));
                     }
                   }}>Sí, fue gol</button>
-                  <button type="button" className="secondary" onClick={async () => {
-                    const saved = await addEvent(eventFlow.team, eventFlow.type, eventFlow.generatedBy ? { generatedBy: eventFlow.generatedBy } : {});
+                  <button type="button" className="secondary" disabled={savingEvent} onClick={async () => {
+                    const saved = await addEvent(eventFlow.team, eventFlow.type, eventFlow.generatedBy ? { generatedBy: eventFlow.generatedBy } : {}, eventFlow.actionId);
                     if (saved) setEventFlow(null);
                   }}>No</button>
                 </div>
@@ -384,7 +442,7 @@ export default function TrackerPanel({
               </>
             )}
             {eventFlowError && <p className="message error">{eventFlowError}</p>}
-            {eventFlow.step !== 'outcome' && <button type="submit">Continuar</button>}
+            {eventFlow.step !== 'outcome' && <button type="submit" disabled={savingEvent}>{savingEvent ? 'Guardando...' : 'Continuar'}</button>}
             <button type="button" className="secondary" onClick={() => { setEventFlow(null); setEventFlowError(''); }}>Cancelar</button>
           </form>
         </div>
