@@ -1052,6 +1052,15 @@ function App() {
   const [workspaceClub, setWorkspaceClub] = useState(null);
   const [workspaceAdminOrigin, setWorkspaceAdminOrigin] = useState(false);
 
+  useEffect(() => {
+    const favicon = document.querySelector('link[rel~="icon"]');
+    if (!favicon) return;
+    favicon.href = workspaceClub?.logoUrl || '/escudo-regatas-andino.png';
+    favicon.type = workspaceClub?.logoUrl?.startsWith('data:image/')
+      ? workspaceClub.logoUrl.slice(5, workspaceClub.logoUrl.indexOf(';'))
+      : '';
+  }, [workspaceClub]);
+
   async function loadClubs() {
     setLoading(true);
     try {
