@@ -4,6 +4,7 @@ body { margin: 0; min-width: 320px; }
 button, input { font: inherit; }
 button { border: 0; border-radius: 10px; padding: 11px 16px; font-weight: 800; cursor: pointer; background: #00a2ff; color: #031125; }
 .portal { min-height: 100vh; padding: 32px 18px; background: radial-gradient(circle at 15% 10%, #00a2ff33, transparent 35%), linear-gradient(145deg, #020817, #071d3d 60%, #031125); }
+.club-bootstrap { display: grid; min-height: 100vh; place-items: center; padding: 20px; color: #9eb4cc; background: radial-gradient(circle at 15% 10%, #00a2ff22, transparent 35%), linear-gradient(145deg, #020817, #071d3d 60%, #031125); }
 .shell { width: min(760px, 100%); margin: 0 auto; padding: clamp(28px, 6vw, 56px); border: 1px solid #8dd3ff3d; border-radius: 28px; background: #030d2dd1; box-shadow: 0 24px 80px #00000059; }
 .kicker { color: #00a2ff; font-size: .75rem; font-weight: 800; letter-spacing: .18em; }
 h1 { margin: 12px 0 8px; font-size: clamp(2rem, 7vw, 3.5rem); }

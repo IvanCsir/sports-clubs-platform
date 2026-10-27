@@ -1037,6 +1037,7 @@ async function api(path, options) {
 
 function App() {
   const isAdminRoute = window.location.pathname.replace(/\/+$/, '') === '/admin';
+  const requestedSlug = !isAdminRoute ? new URLSearchParams(window.location.search).get('club') : null;
   const [clubs, setClubs] = useState([]);
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(emptyClub);
@@ -1064,7 +1065,6 @@ function App() {
         return;
       }
 
-      const requestedSlug = new URLSearchParams(window.location.search).get('club');
       setClubs([]);
       if (!requestedSlug) {
         setWorkspaceClub(null);
@@ -1261,6 +1261,14 @@ function App() {
     reader.readAsDataURL(file);
   }
 
+  if (!isAdminRoute && requestedSlug && loading && !workspaceClub) {
+    return (
+      <main className="club-bootstrap" role="status" aria-live="polite">
+        <span>Abriendo el club...</span>
+      </main>
+    );
+  }
+
   if (workspaceClub) {
     return (
       <ClubWorkspace
@@ -1323,7 +1331,7 @@ function App() {
             )}
           </div>
         )}
-        {loading ? (
+        {isAdminRoute && loading ? (
           <p>Cargando clubes...</p>
         ) : (isAdminRoute && adminToken) && (
           <div className="club-list">
