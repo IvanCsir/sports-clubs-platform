@@ -372,6 +372,20 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     } catch (error) { setTestCatalogError(error.message); }
   }
 
+  async function deletePhysicalTest(testKey) {
+    setTestCatalogError('');
+    try {
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'delete-physical-test', testKey })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo eliminar la prueba.');
+      await loadPhysical();
+    } catch (error) { setTestCatalogError(error.message); }
+  }
+
   async function submitPlayer(event) {
     event.preventDefault();
     setPlayerError('');
@@ -794,9 +808,12 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                   {physicalTests.filter(test => test.custom).map(test => (
                     <div key={test.key}>
                       <span><strong>{test.name}{test.active === false ? ' · Inactiva' : ''}</strong><small>{test.category} · {test.unit || 'sin unidad'} · {test.maxAttempts} evaluaciones por año</small></span>
-                      {test.active === false
-                        ? <button type="button" className="secondary" onClick={() => reactivatePhysicalTest(test.key)}>Reactivar</button>
-                        : <button type="button" className="secondary" onClick={() => deactivatePhysicalTest(test.key)}>Desactivar</button>}
+                      <div className="physical-test-item-actions">
+                        {test.dataCount === 0 && <button type="button" className="secondary" onClick={() => deletePhysicalTest(test.key)}>Eliminar</button>}
+                        {test.active === false
+                          ? <button type="button" className="secondary" onClick={() => reactivatePhysicalTest(test.key)}>Reactivar</button>
+                          : test.dataCount > 0 && <button type="button" className="secondary" onClick={() => deactivatePhysicalTest(test.key)}>Desactivar</button>}
+                      </div>
                     </div>
                   ))}
                   {!physicalTests.some(test => test.custom) && <p className="empty-state">Todavía no agregaste pruebas personalizadas.</p>}

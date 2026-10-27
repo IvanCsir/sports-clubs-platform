@@ -44,8 +44,12 @@ async function ensureSeasonId(slug, seasonName, tournamentKey) {
 
 async function getPhysicalTestDefinitions(slug, includeInactive = false) {
   const result = await ensureDb().query(
-    `SELECT test_key, name, category, unit, direction, decimals, max_attempts, active
+    `SELECT test_key, name, category, unit, direction, decimals, max_attempts, active,
+            (SELECT COUNT(*) FROM sc_physical_test_results r
+             JOIN sc_physical_assessments a ON a.id = r.assessment_id
+             WHERE a.club_slug = definitions.club_slug AND r.test_key = definitions.test_key) AS data_count
      FROM sc_physical_test_definitions
+     AS definitions
      WHERE club_slug = $1 AND ($2::boolean OR active = TRUE)
      ORDER BY name`, [slug, includeInactive]
   );
@@ -95,6 +99,19 @@ async function reactivatePhysicalTestDefinition(slug, testKey) {
      WHERE club_slug = $1 AND test_key = $2 AND active = FALSE`, [slug, testKey]
   );
   return { reactivated: result.rowCount > 0 };
+}
+
+async function deletePhysicalTestDefinition(slug, testKey) {
+  const result = await ensureDb().query(
+    `DELETE FROM sc_physical_test_definitions d
+     WHERE d.club_slug = $1 AND d.test_key = $2
+       AND NOT EXISTS (
+         SELECT 1 FROM sc_physical_test_results r
+         JOIN sc_physical_assessments a ON a.id = r.assessment_id
+         WHERE a.club_slug = d.club_slug AND r.test_key = d.test_key
+       )`, [slug, testKey]
+  );
+  return { deleted: result.rowCount > 0 };
 }
 
 async function getClubData(slug, seasonName, tournamentKey) {
@@ -805,4 +822,4 @@ async function savePhysicalAssessment(slug, input, seasonName) {
   }
 }
 
-module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getSeasonBackup, getTournamentStats, getPlayerPortalRoster, getPhysicalTestDefinitions, savePhysicalTestDefinition, deactivatePhysicalTestDefinition, reactivatePhysicalTestDefinition, savePlayerMonitoring, saveMatchPreparation, deleteMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, deleteEvents, savePhysicalAssessment };
+module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getSeasonBackup, getTournamentStats, getPlayerPortalRoster, getPhysicalTestDefinitions, savePhysicalTestDefinition, deactivatePhysicalTestDefinition, reactivatePhysicalTestDefinition, deletePhysicalTestDefinition, savePlayerMonitoring, saveMatchPreparation, deleteMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, deleteEvents, savePhysicalAssessment };

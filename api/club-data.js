@@ -149,6 +149,12 @@ module.exports = async function handler(req, res) {
       if (!String(body.testKey || '').trim()) return json(res, 400, { error: 'Seleccioná una prueba válida.' });
       return json(res, 200, await sportsData.reactivatePhysicalTestDefinition(slug, body.testKey));
     }
+    if (body.action === 'delete-physical-test') {
+      if (!String(body.testKey || '').trim()) return json(res, 400, { error: 'Seleccioná una prueba válida.' });
+      const result = await sportsData.deletePhysicalTestDefinition(slug, body.testKey);
+      if (!result.deleted) return json(res, 409, { error: 'La prueba ya tiene mediciones y no se puede eliminar. Desactivala para conservar su historial.' });
+      return json(res, 200, result);
+    }
     if (body.action === 'update-player') {
       if (!String(body.name || '').trim() || String(body.name).trim().length > 120) {
         return json(res, 400, { error: 'Ingresá un nombre de hasta 120 caracteres.' });

@@ -10,7 +10,8 @@ function mapDefinition(row) {
     decimals: Number(row.decimals ?? 2),
     maxAttempts: Number(row.max_attempts ?? 3),
     custom: true,
-    active: row.active !== false
+    active: row.active !== false,
+    dataCount: Number(row.data_count || 0)
   };
 }
 
