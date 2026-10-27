@@ -44,7 +44,7 @@ async function ensureSeasonId(slug, seasonName, tournamentKey) {
 
 async function getPhysicalTestDefinitions(slug, includeInactive = false) {
   const result = await ensureDb().query(
-    `SELECT test_key, name, category, unit, direction, decimals, evaluations_per_year, active,
+    `SELECT test_key, name, category, unit, direction, decimals, active,
             (SELECT COUNT(*) FROM sc_physical_test_results r
              JOIN sc_physical_assessments a ON a.id = r.assessment_id
              WHERE a.club_slug = definitions.club_slug AND r.test_key = definitions.test_key) AS data_count
@@ -62,12 +62,10 @@ async function savePhysicalTestDefinition(slug, input) {
   const category = String(input.category || 'personalizada').trim();
   const direction = ['higher', 'lower', 'neutral'].includes(input.direction) ? input.direction : 'neutral';
   const decimals = Number(input.decimals);
-  const evaluationsPerYear = Number(input.evaluationsPerYear);
   if (!name || name.length > 80) throw new Error('Indicá un nombre de prueba de hasta 80 caracteres.');
   if (unit.length > 16) throw new Error('La unidad no puede superar los 16 caracteres.');
   if (!category || category.length > 40) throw new Error('Indicá una categoría de hasta 40 caracteres.');
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 3) throw new Error('Los decimales deben estar entre 0 y 3.');
-  if (!Number.isInteger(evaluationsPerYear) || evaluationsPerYear < 1 || evaluationsPerYear > 10) throw new Error('La cantidad de evaluaciones anuales debe estar entre 1 y 10.');
   const definitions = await getPhysicalTestDefinitions(slug, true);
   if (definitions.some(test => test.name.localeCompare(name, 'es', { sensitivity: 'base' }) === 0)) {
     throw new Error('Ya existe una prueba con ese nombre. Si está inactiva, podés reactivarla desde el catálogo.');
@@ -76,10 +74,10 @@ async function savePhysicalTestDefinition(slug, input) {
   const key = `custom-${baseKey || 'prueba'}`;
   const inserted = await ensureDb().query(
     `INSERT INTO sc_physical_test_definitions
-       (club_slug, test_key, name, category, unit, direction, decimals, evaluations_per_year)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       (club_slug, test_key, name, category, unit, direction, decimals)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (club_slug, test_key) DO NOTHING
-    RETURNING test_key`, [slug, key, name, category, unit, direction, decimals, evaluationsPerYear]
+     RETURNING test_key`, [slug, key, name, category, unit, direction, decimals]
   );
   if (!inserted.rowCount) throw new Error('Ya existe una prueba con ese nombre o clave.');
   return { saved: true, key };

@@ -34,7 +34,6 @@ function hydratePhysicalTests(tests) {
     ...test,
     type: test.type || test.category || 'Personalizada',
     icon: Activity,
-    evaluationsPerYear: Number(test.evaluationsPerYear || 3),
     decimals: Number(test.decimals ?? 2)
   }));
 }
@@ -113,7 +112,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [physicalSaveError, setPhysicalSaveError] = useState('');
   const [physicalTests, setPhysicalTests] = useState(PHYSICAL_TESTS);
   const [editingTestCatalog, setEditingTestCatalog] = useState(false);
-  const [testDraft, setTestDraft] = useState({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2, evaluationsPerYear: 3 });
+  const [testDraft, setTestDraft] = useState({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2 });
   const [testCatalogError, setTestCatalogError] = useState('');
   const [status, setStatus] = useState('Cargando información del club...');
   const [showPrecargaModal, setShowPrecargaModal] = useState(false);
@@ -345,7 +344,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'No se pudo agregar la prueba.');
       await loadPhysical();
-      setTestDraft({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2, evaluationsPerYear: 3 });
+      setTestDraft({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2 });
     } catch (error) { setTestCatalogError(error.message); }
   }
 
@@ -518,7 +517,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
 
   const averages = physicalTests.filter(test => test.active !== false || visiblePlayers.some(player => player.tests[test.key])) .map(test => {
     const values = visiblePlayers.map(player => player.tests[test.key]?.evals.at(-1)?.value).filter(value => value !== undefined);
-    const rounds = Array.from({ length: test.evaluationsPerYear }, (_, index) => index + 1).map(round => {
+    const maxRecordedRounds = Math.max(0, ...visiblePlayers.map(player => player.tests[test.key]?.evals.length || 0));
+    const rounds = Array.from({ length: maxRecordedRounds }, (_, index) => index + 1).map(round => {
       const roundValues = visiblePlayers.map(player => player.tests[test.key]?.evals[round - 1]?.value).filter(value => value !== undefined);
       return roundValues.length ? Number((roundValues.reduce((sum, value) => sum + value, 0) / roundValues.length).toFixed(test.decimals)) : null;
     });
@@ -815,7 +815,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                 <div className="physical-test-catalog-list">
                   {physicalTests.filter(test => test.custom).map(test => (
                     <div key={test.key}>
-                      <span><strong>{test.name}{test.active === false ? ' · Inactiva' : ''}</strong><small>{test.category} · {test.unit || 'sin unidad'} · objetivo: {test.evaluationsPerYear} evaluaciones por año</small></span>
+                      <span><strong>{test.name}{test.active === false ? ' · Inactiva' : ''}</strong><small>{test.category} · {test.unit || 'sin unidad'}</small></span>
                       <div className="physical-test-item-actions">
                         {test.dataCount === 0 && <button type="button" className="secondary" onClick={() => deletePhysicalTest(test.key)}>Eliminar</button>}
                         {test.active === false
@@ -834,9 +834,6 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                       <option value="fuerza">Fuerza</option><option value="potencia">Potencia</option><option value="velocidad">Velocidad</option><option value="resistencia">Resistencia</option><option value="agilidad">Agilidad</option><option value="movilidad">Movilidad</option><option value="técnica">Técnica</option><option value="personalizada">Otra</option>
                     </select></label>
                     <label>Unidad<input value={testDraft.unit} maxLength={16} placeholder="seg, cm, kg, repeticiones…" onChange={event => setTestDraft(current => ({ ...current, unit: event.target.value }))} /></label>
-                    <label>Evaluaciones previstas al año<select value={testDraft.evaluationsPerYear} onChange={event => setTestDraft(current => ({ ...current, evaluationsPerYear: Number(event.target.value) }))}>
-                      {Array.from({ length: 10 }, (_, index) => index + 1).map(count => <option key={count} value={count}>{count}</option>)}
-                    </select></label>
                     <label>Decimales<select value={testDraft.decimals} onChange={event => setTestDraft(current => ({ ...current, decimals: Number(event.target.value) }))}>
                       {[0, 1, 2, 3].map(count => <option key={count} value={count}>{count}</option>)}
                     </select></label>
