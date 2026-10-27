@@ -26,6 +26,28 @@ function fixtureKey(category, round, opponent, date) {
   return [category, round, opponent, date].map(normalizePart).filter(Boolean).join('-').slice(0, 180);
 }
 
+function fixtureDateOrdinal(value) {
+  const text = String(value || '').trim();
+  const localDate = text.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})/);
+  const isoDate = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  const [, day, month, year] = localDate
+    ? [null, Number(localDate[1]), Number(localDate[2]), Number(localDate[3])]
+    : isoDate
+      ? [null, Number(isoDate[3]), Number(isoDate[2]), Number(isoDate[1])]
+      : [];
+  if (!day || !month || !year) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return Math.floor(date.getTime() / 86400000);
+}
+
+function todayDateOrdinal() {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date()).filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
+  return Math.floor(Date.UTC(parts.year, parts.month - 1, parts.day) / 86400000);
+}
+
 function getVideoEmbed(value) {
   try {
     const url = new URL(value);
@@ -231,15 +253,26 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
         });
       }
     }
-    return [...byKey.values()];
+    return [...byKey.values()].sort((a, b) => {
+      const aDate = fixtureDateOrdinal(a.date);
+      const bDate = fixtureDateOrdinal(b.date);
+      if (aDate === null) return bDate === null ? 0 : 1;
+      if (bDate === null) return -1;
+      return aDate - bDate;
+    });
   }, [fixtures, preparations, category]);
 
   const visibleOptions = authenticated
     ? options
     : options.filter(option => preparations.some(item => item.category === category && item.matchKey === option.matchKey));
+  const todayOrdinal = todayDateOrdinal();
+  const defaultMatch = visibleOptions.find(match => !match.played && fixtureDateOrdinal(match.date) >= todayOrdinal)
+    || visibleOptions.find(match => !match.played)
+    || visibleOptions[0]
+    || null;
   const selectedMatch = creating
     ? { ...matchDraft, category, matchKey: fixtureKey(category, matchDraft.round, matchDraft.opponent, matchDraft.date) }
-    : visibleOptions.find(match => match.matchKey === selectedKey) || visibleOptions.find(match => !match.played) || visibleOptions[0] || null;
+    : visibleOptions.find(match => match.matchKey === selectedKey) || defaultMatch;
   const selectedRecord = !creating && selectedMatch
     ? preparations.find(item => item.category === category && item.matchKey === selectedMatch.matchKey)
     : null;
