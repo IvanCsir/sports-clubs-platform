@@ -34,7 +34,11 @@ function getVideoEmbed(value) {
       const pathId = url.pathname.match(/\/file\/d\/([A-Za-z0-9_-]+)/)?.[1];
       const fileId = pathId || url.searchParams.get('id');
       if (!fileId || !/^[A-Za-z0-9_-]+$/.test(fileId)) return null;
-      return { src: `https://drive.google.com/file/d/${fileId}/preview`, provider: 'Drive' };
+      return {
+        src: `https://drive.google.com/file/d/${fileId}/preview`,
+        playbackSrc: `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`,
+        provider: 'Drive',
+      };
     }
 
     if (['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com', 'youtu.be', 'www.youtu.be'].includes(hostname)) {
@@ -49,6 +53,35 @@ function getVideoEmbed(value) {
   } catch (_) {
     return null;
   }
+}
+
+function PreparationVideoPlayer({ videoEmbed, title }) {
+  const [directPlaybackFailed, setDirectPlaybackFailed] = useState(false);
+
+  if (videoEmbed.provider === 'Drive' && !directPlaybackFailed) {
+    return (
+      <video
+        className="preparation-video-native"
+        src={videoEmbed.playbackSrc}
+        title={title}
+        controls
+        playsInline
+        preload="metadata"
+        onError={() => setDirectPlaybackFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <iframe
+      src={videoEmbed.src}
+      title={title}
+      loading="lazy"
+      allow="autoplay; encrypted-media; picture-in-picture"
+      allowFullScreen
+      referrerPolicy="strict-origin-when-cross-origin"
+    />
+  );
 }
 
 function cleanRichTextHtml(value) {
@@ -438,13 +471,10 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
                   <article className="preparation-video-item" key={url + index}>
                     <h4 className="preparation-video-title">{video.title || `Video de referencia ${index + 1}`}</h4>
                     <div className={`preparation-video-frame preparation-video-frame-${videoEmbed.provider.toLowerCase()}`}>
-                      <iframe
-                        src={videoEmbed.src}
+                      <PreparationVideoPlayer
+                        key={url}
+                        videoEmbed={videoEmbed}
                         title={`Video de referencia ${index + 1} · ${videoEmbed.provider}`}
-                        loading="lazy"
-                        allow="autoplay; encrypted-media; picture-in-picture"
-                        allowFullScreen
-                        referrerPolicy="strict-origin-when-cross-origin"
                       />
                     </div>
                     <a href={url} target="_blank" rel="noreferrer">Abrir video {index + 1} en {videoEmbed.provider}</a>

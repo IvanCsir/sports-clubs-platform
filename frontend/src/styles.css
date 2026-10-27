@@ -352,6 +352,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .preparation-video-frame-drive { aspect-ratio: 4 / 3; }
 .preparation-video-frame-youtube { aspect-ratio: 16 / 9; }
 .preparation-video-frame iframe { position: absolute; inset: 0; display: block; width: 100%; max-width: 100%; min-width: 0; height: 100%; border: 0; }
+.preparation-video-native { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; background: #020b19; }
 .preparation-video-item > a { justify-content: center; }
 .preparation-video-editor { display: grid; gap: 12px; }
 .preparation-video-editor-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
