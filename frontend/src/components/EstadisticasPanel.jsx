@@ -96,26 +96,28 @@ export default function EstadisticasPanel({
 
   return (
     <section className="stats-panel">
-      <div className="stats-hero">
-        <span className="kicker">ESTADÍSTICAS DT · {homeName}</span>
-        <h2>Rendimiento táctico por cuartos</h2>
-        <p>Análisis de efectividad en ingresos al área, córners cortos y evolución durante el partido.</p>
-      </div>
-
-      {tournaments.length > 0 && (
-        <div className="stats-tournament-picker">
-          <label htmlFor="select-stats-tournament">Torneo</label>
-          <select
-            id="select-stats-tournament"
-            value={selectedTournamentKey || activeTournamentKey}
-            onChange={event => setSelectedTournamentKey(event.target.value)}
-          >
-            {tournaments.map(tournament => (
-              <option key={tournament.key} value={tournament.key}>{tournament.label}</option>
-            ))}
-          </select>
+      <div className="stats-heading-row">
+        <div className="stats-hero">
+          <span className="kicker">ESTADÍSTICAS DT · {homeName}</span>
+          <h2>Rendimiento táctico por cuartos</h2>
+          <p>Análisis de efectividad en ingresos al área, córners cortos y evolución durante el partido.</p>
         </div>
-      )}
+
+        {tournaments.length > 0 && (
+          <div className="stats-tournament-picker">
+            <label htmlFor="select-stats-tournament">Torneo</label>
+            <select
+              id="select-stats-tournament"
+              value={selectedTournamentKey || activeTournamentKey}
+              onChange={event => setSelectedTournamentKey(event.target.value)}
+            >
+              {tournaments.map(tournament => (
+                <option key={tournament.key} value={tournament.key}>{tournament.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       <div className="stats-toolbar">
         <div className="stats-selector-box">
