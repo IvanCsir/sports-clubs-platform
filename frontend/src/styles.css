@@ -349,6 +349,8 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .preparation-video-item { display: grid; gap: 8px; width: 100%; max-width: 100%; min-width: 0; }
 .preparation-video-title { margin: 0; font-size: 1rem; color: #edf6ff; }
 .preparation-video-frame { position: relative; width: 100%; max-width: 100%; min-width: 0; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid #8dd3ff30; border-radius: 12px; background: #020b19; }
+.preparation-video-frame-drive { aspect-ratio: 4 / 3; }
+.preparation-video-frame-youtube { aspect-ratio: 16 / 9; }
 .preparation-video-frame iframe { position: absolute; inset: 0; display: block; width: 100%; max-width: 100%; min-width: 0; height: 100%; border: 0; }
 .preparation-video-item > a { justify-content: center; }
 .preparation-video-editor { display: grid; gap: 12px; }
@@ -521,7 +523,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 @media (max-width: 560px) {
   .match-preparation-card { padding: 14px; }
   .preparation-videos { width: 100%; min-width: 0; }
-  .preparation-video-frame { width: 100%; aspect-ratio: 16 / 9; }
+  .preparation-video-frame { width: calc(100% + 28px); max-width: none; margin-inline: -14px; }
   .home-next-match { align-items: stretch; flex-direction: column; }
   .home-next-match > button { width: 100%; }
   .home-dashboard-grid { grid-template-columns: 1fr; }

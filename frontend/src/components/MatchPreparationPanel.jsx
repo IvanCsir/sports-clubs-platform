@@ -437,7 +437,7 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
                 return videoEmbed ? (
                   <article className="preparation-video-item" key={url + index}>
                     <h4 className="preparation-video-title">{video.title || `Video de referencia ${index + 1}`}</h4>
-                    <div className="preparation-video-frame">
+                    <div className={`preparation-video-frame preparation-video-frame-${videoEmbed.provider.toLowerCase()}`}>
                       <iframe
                         src={videoEmbed.src}
                         title={`Video de referencia ${index + 1} · ${videoEmbed.provider}`}
