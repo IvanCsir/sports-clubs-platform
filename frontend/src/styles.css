@@ -643,6 +643,11 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .stats-summary-card span { font-size: .72rem; color: #00a2ff; font-weight: 800; letter-spacing: .08em; }
 .stats-summary-card strong { font-size: 1.8rem; color: #fff; font-variant-numeric: tabular-nums; }
 .stats-summary-card small { color: #9eb4cc; font-size: .8rem; }
+.stats-player-contributions { margin-top: 18px; padding: clamp(14px, 3vw, 22px); border: 1px solid #8dd3ff25; border-radius: 16px; background: #ffffff06; }
+.stats-player-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.stats-player-heading h3 { margin: 0; color: #edf6ff; font-size: 1.05rem; }
+.stats-player-heading p { margin: 5px 0 0; color: #9eb4cc; font-size: .85rem; }
+.stats-player-table { min-width: 680px; }
 
 .tactical-insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 20px 0; }
 .insight-card { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 1px solid #8dd3ff2e; border-radius: 14px; background: linear-gradient(135deg, #00a2ff14, #ffffff08); }

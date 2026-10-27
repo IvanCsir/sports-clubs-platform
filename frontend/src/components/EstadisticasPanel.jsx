@@ -2,6 +2,37 @@ import { useEffect, useState } from 'react';
 import { Goal, Zap, Shield, Timer } from 'lucide-react';
 import { calculateQuarterStats } from '../utils/statsCalculator';
 
+function calculatePlayerContributions(events) {
+  const players = new Map();
+  const generatedCornerActions = new Set();
+  const getPlayer = name => {
+    const displayName = String(name || '').trim();
+    if (!displayName) return null;
+    const key = displayName.toLocaleLowerCase('es');
+    if (!players.has(key)) players.set(key, { name: displayName, fieldGoals: 0, cornerGoals: 0, strokeGoals: 0, cornersGenerated: 0 });
+    return players.get(key);
+  };
+
+  for (const event of events) {
+    if (event.team !== 'home') continue;
+    const goalField = { fieldGoal: 'fieldGoals', cornerGoal: 'cornerGoals', strokeGoal: 'strokeGoals' }[event.type];
+    if (goalField && event.player) getPlayer(event.player)[goalField]++;
+
+    if (event.type === 'corner' && event.generatedBy) {
+      const actionKey = event.actionId ? `action:${event.actionId}` : `event:${event.id}`;
+      if (generatedCornerActions.has(actionKey)) continue;
+      generatedCornerActions.add(actionKey);
+      getPlayer(event.generatedBy).cornersGenerated++;
+    }
+  }
+
+  return [...players.values()].sort((a, b) => {
+    const aGoals = a.fieldGoals + a.cornerGoals + a.strokeGoals;
+    const bGoals = b.fieldGoals + b.cornerGoals + b.strokeGoals;
+    return bGoals - aGoals || b.cornersGenerated - a.cornersGenerated || a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
+  });
+}
+
 export default function EstadisticasPanel({
   club,
   events = [],
@@ -33,6 +64,7 @@ export default function EstadisticasPanel({
   const filteredEvents = selectedMatch === 'all'
     ? tournamentEvents
     : tournamentEvents.filter(e => (e.match || 'amistoso') === selectedMatch);
+  const playerContributions = calculatePlayerContributions(filteredEvents);
 
   // Obtener partidos únicos presentes en las incidencias
   const matchOptions = Array.from(new Set(tournamentEvents.map(e => e.match || 'amistoso')));
@@ -161,6 +193,12 @@ export default function EstadisticasPanel({
             onClick={() => setActiveTab('timeline')}
           >
             <Timer aria-hidden="true" /> Cronología ({filteredEvents.length})
+          </button>
+          <button
+            className={activeTab === 'players' ? 'active' : ''}
+            onClick={() => setActiveTab('players')}
+          >
+            👥 Jugadoras
           </button>
         </div>
       </div>
@@ -362,6 +400,52 @@ export default function EstadisticasPanel({
                   </small>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'players' && (
+        <div className="stats-tab-content">
+          <div className="stats-player-contributions">
+            <div className="stats-player-heading">
+              <div>
+                <h3>Goles y córners generados por jugadora</h3>
+                <p>Se aplican los filtros de torneo y partido seleccionados.</p>
+              </div>
+            </div>
+            {playerContributions.length ? (
+              <div className="stats-table-wrap">
+                <table className="stats-quarter-table stats-player-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Jugadora</th>
+                      <th scope="col">Gol de jugada</th>
+                      <th scope="col">Gol de corto</th>
+                      <th scope="col">Gol de penal</th>
+                      <th scope="col">Goles</th>
+                      <th scope="col">Cortos generados</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {playerContributions.map(player => {
+                      const totalGoals = player.fieldGoals + player.cornerGoals + player.strokeGoals;
+                      return (
+                        <tr key={player.name}>
+                          <td><strong>{player.name}</strong></td>
+                          <td>{player.fieldGoals}</td>
+                          <td>{player.cornerGoals}</td>
+                          <td>{player.strokeGoals}</td>
+                          <td className="stat-highlight">{totalGoals}</td>
+                          <td>{player.cornersGenerated}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="empty-state">Todavía no hay goles o córners generados con jugadoras identificadas en este filtro.</p>
             )}
           </div>
         </div>
