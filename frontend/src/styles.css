@@ -814,3 +814,12 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
   .home-match-title-row { gap: 12px; }
   .opponent-badge { flex-basis: 62px; width: 62px; height: 62px; }
 }
+.season-backup-content { display: grid; gap: 16px; }
+.season-backup-content ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; margin: 0; padding-left: 22px; color: #d5e4f6; }
+.season-backup-note { margin: 0; color: #9eb4cc; font-size: .9rem; line-height: 1.55; }
+.season-backup-success { margin: 0; color: #86efac; }
+.season-backup-content button { display: inline-flex; width: fit-content; align-items: center; justify-content: center; gap: 9px; }
+@media (max-width: 640px) {
+  .season-backup-content ul { grid-template-columns: 1fr; }
+  .season-backup-content button { width: 100%; }
+}

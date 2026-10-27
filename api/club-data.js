@@ -46,7 +46,7 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'GET') {
       const dataset = url.searchParams.get('dataset') || 'citations';
-      if (!['citations', 'physical', 'staff', 'preparations', 'player-portal'].includes(dataset)) return json(res, 400, { error: 'Conjunto de datos inválido.' });
+      if (!['citations', 'physical', 'staff', 'preparations', 'player-portal', 'backup'].includes(dataset)) return json(res, 400, { error: 'Conjunto de datos inválido.' });
       if (dataset === 'player-portal') {
         return json(res, 200, { players: await sportsData.getPlayerPortalRoster(slug) });
       }
@@ -57,6 +57,31 @@ module.exports = async function handler(req, res) {
         // Las evaluaciones son públicas para que las jugadoras puedan consultarlas desde el enlace del club.
         const data = await sportsData.getClubData(slug, seasonName, tournamentKey);
         return json(res, 200, { physicalPlayers: data.physicalPlayers });
+      }
+      if (dataset === 'backup') {
+        const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
+        if (!token || !verifySessionToken(token, club).valid) {
+          return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
+        }
+        const backup = await sportsData.getSeasonBackup(slug, seasonName, tournamentKey);
+        return json(res, 200, {
+          format: 'sports-clubs-platform-season-backup',
+          version: 1,
+          club: {
+            slug: club.slug,
+            name: club.name,
+            shortName: club.shortName,
+            sport: club.sport,
+            teamName: club.teamName,
+            season: { name: seasonName },
+            tournament: club.tournament ? {
+              name: club.tournament.name,
+              tournamentId: club.tournament.tournamentId,
+              division: club.tournament.division
+            } : null
+          },
+          ...backup
+        });
       }
       if (dataset === 'staff') {
         const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();

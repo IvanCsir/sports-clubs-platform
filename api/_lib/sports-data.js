@@ -204,6 +204,69 @@ async function getPlayerMonitoring(slug, seasonName) {
   };
 }
 
+async function getSeasonBackup(slug, seasonName, tournamentKey) {
+  const db = ensureDb();
+  const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
+  const [roster, matches, callups, physicalAssessments, trackerEvents, monitoring] = await Promise.all([
+    db.query(`SELECT p.id, p.display_name AS name, p.active,
+                    COALESCE(array_agg(DISTINCT t.category ORDER BY t.category)
+                      FILTER (WHERE t.category IS NOT NULL), '{}') AS categories
+             FROM sc_players p
+             LEFT JOIN sc_team_players tp ON tp.player_id = p.id
+             LEFT JOIN sc_teams t ON t.id = tp.team_id AND t.club_slug = p.club_slug
+             WHERE p.club_slug = $1 GROUP BY p.id ORDER BY p.display_name`, [slug]),
+    db.query(`SELECT id, team_id, provider, provider_match_id AS match_key, round_label AS round,
+                    opponent, home_away AS home_away, starts_at, date_label AS date,
+                    call_time, match_time, venue, opponent_logo_url, status,
+                    tournament_key, tournament_name, preparation, created_at, updated_at
+             FROM sc_matches WHERE club_slug = $1 AND season_id = $2
+             ORDER BY starts_at NULLS LAST, date_label, created_at`, [slug, seasonId]),
+    db.query(`SELECT c.id, t.category, m.provider, m.provider_match_id AS match_key,
+                    m.round_label AS round, m.opponent, m.home_away AS home_away,
+                    m.date_label AS date, m.call_time, m.match_time, m.venue,
+                    m.tournament_key, m.tournament_name, c.notes, c.updated_at,
+                    COALESCE(json_agg(json_build_object('id', p.id, 'name', p.display_name, 'position', cp.position)
+                      ORDER BY cp.position) FILTER (WHERE p.id IS NOT NULL), '[]'::json) AS players
+             FROM sc_callups c
+             JOIN sc_matches m ON m.id = c.match_id
+             JOIN sc_teams t ON t.id = c.team_id
+             LEFT JOIN sc_callup_players cp ON cp.callup_id = c.id
+             LEFT JOIN sc_players p ON p.id = cp.player_id
+             WHERE m.club_slug = $1 AND m.season_id = $2
+             GROUP BY c.id, t.category, m.id
+             ORDER BY m.starts_at NULLS LAST, m.date_label, t.category`, [slug, seasonId]),
+    db.query(`SELECT a.id, a.player_id, p.display_name AS player_name, a.evaluated_on,
+                    a.source_key, a.source_data, a.created_at,
+                    COALESCE(json_agg(json_build_object('test', r.test_key, 'attempt', r.attempt,
+                      'value', r.value, 'unit', r.unit) ORDER BY r.test_key, r.attempt)
+                      FILTER (WHERE r.assessment_id IS NOT NULL), '[]'::json) AS results
+             FROM sc_physical_assessments a
+             JOIN sc_players p ON p.id = a.player_id
+             LEFT JOIN sc_physical_test_results r ON r.assessment_id = a.id
+             WHERE a.club_slug = $1 AND a.season_id = $2
+             GROUP BY a.id, p.display_name ORDER BY a.evaluated_on, p.display_name`, [slug, seasonId]),
+    db.query(`SELECT e.id, e.external_id, e.match_id, e.occurred_at, e.quarter,
+                    e.team_side, e.event_type, e.player_name, e.details,
+                    m.provider_match_id AS match_key, m.round_label AS round, m.opponent,
+                    m.tournament_key, m.tournament_name
+             FROM sc_match_events e
+             JOIN sc_matches m ON m.id = e.match_id
+             WHERE e.club_slug = $1 AND m.season_id = $2 AND m.provider = 'tracker'
+             ORDER BY m.tournament_key, e.occurred_at, e.id`, [slug, seasonId]),
+    getPlayerMonitoring(slug, seasonName)
+  ]);
+  return {
+    season: String(seasonName || new Date().getFullYear()),
+    exportedAt: new Date().toISOString(),
+    players: roster.rows.map(row => ({ ...row, id: String(row.id) })),
+    matches: matches.rows,
+    callups: callups.rows,
+    physicalAssessments: physicalAssessments.rows,
+    trackerEvents: trackerEvents.rows,
+    monitoring
+  };
+}
+
 async function getTournamentStats(slug, seasonName, tournamentKey, tournamentName) {
   const activeSeasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
   const activeTournamentKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
@@ -675,4 +738,4 @@ async function savePhysicalAssessment(slug, input, seasonName) {
   }
 }
 
-module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getTournamentStats, getPlayerPortalRoster, savePlayerMonitoring, saveMatchPreparation, deleteMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, deleteEvents, savePhysicalAssessment };
+module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getSeasonBackup, getTournamentStats, getPlayerPortalRoster, savePlayerMonitoring, saveMatchPreparation, deleteMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, deleteEvents, savePhysicalAssessment };

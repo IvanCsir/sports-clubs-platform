@@ -7,6 +7,7 @@ import PrecargaModal from './components/PrecargaModal';
 import MatchPreparationPanel from './components/MatchPreparationPanel';
 import PlayerMonitoringPanel from './components/PlayerMonitoringPanel';
 import OpponentBadge from './components/OpponentBadge';
+import SeasonBackupPanel from './components/SeasonBackupPanel';
 
 const emptyClub = {
   slug: '',
@@ -467,7 +468,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     ...(authenticated ? [
       { id: 'jugadoras', label: 'Plantel' },
       { id: 'dt', label: 'Botonera DT' },
-      { id: 'stats', label: 'Estadísticas' }
+      { id: 'stats', label: 'Estadísticas' },
+      { id: 'respaldo', label: 'Respaldo' }
     ] : [])
   ];
   const selectWorkspaceSection = id => {
@@ -535,6 +537,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             <button className={view === 'jugadoras' ? 'active' : ''} onClick={() => selectWorkspaceSection('jugadoras')}>Plantel</button>
             <button className={view === 'dt' ? 'active' : ''} onClick={() => selectWorkspaceSection('dt')}>Botonera DT</button>
             <button className={view === 'stats' ? 'active' : ''} onClick={() => selectWorkspaceSection('stats')}>Estadísticas</button>
+            <button className={view === 'respaldo' ? 'active' : ''} onClick={() => selectWorkspaceSection('respaldo')}>Respaldo</button>
           </>}
         </nav>
         {mobileMenuOpen && (
@@ -666,6 +669,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             authenticated={authenticated}
             onAuthenticate={authenticateStaffWithToken}
           />
+        ) : view === 'respaldo' && authenticated ? (
+          <SeasonBackupPanel club={club} token={token} />
         ) : view === 'torneo' ? (
           <TournamentPanel club={club} />
         ) : view === 'preparacion' ? (
