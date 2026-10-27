@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, CalendarClock, ChevronRight, ClipboardList, Dumbbell, Goal, HeartPulse, MapPin, Megaphone, Timer, Trophy, UsersRound, Wind, Zap, PersonStanding, Target } from 'lucide-react';
+import { Activity, CalendarClock, ChevronRight, ClipboardList, Goal, MapPin, Megaphone, Timer, Trophy, UsersRound, Zap } from 'lucide-react';
 import TrackerPanel from './components/TrackerPanel';
 import TournamentPanel from './components/TournamentPanel';
 import EstadisticasPanel from './components/EstadisticasPanel';
@@ -27,27 +27,15 @@ const emptyClub = {
   seasonName: String(new Date().getFullYear())
 };
 
-const PHYSICAL_TESTS = [
-  { key: 'broadJump', name: 'Broad Jump', type: 'Salto horizontal', category: 'potencia', unit: 'm', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: PersonStanding, decimals: 2, cols: [3, 4, 5] },
-  { key: 'cmj', name: 'CMJ', type: 'Salto vertical', category: 'potencia', unit: 'cm', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: Zap, decimals: 1, cols: [6, 7, 8] },
-  { key: 'agility', name: 'Test 5-10-5', type: 'Agilidad', category: 'agilidad', unit: 'seg', direction: 'lower', higherIsBetter: false, maxAttempts: 3, icon: Timer, decimals: 2, cols: [9, 10, 11] },
-  { key: 'sprint', name: 'Velocidad 40 mts', type: 'Velocidad', category: 'velocidad', unit: 'seg', direction: 'lower', higherIsBetter: false, maxAttempts: 3, icon: Wind, decimals: 2, cols: [12, 13, 14] },
-  { key: 'yoyo', name: 'Yo-Yo Test', type: 'Resistencia', category: 'resistencia', unit: 'm', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: HeartPulse, decimals: 0, cols: [15, 16, 17] },
-  { key: 'bench', name: 'Press de banca', type: 'Fuerza superior', category: 'fuerza', unit: 'kg', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: Dumbbell, decimals: 1, cols: [18, 19, 20] },
-  { key: 'deadlift', name: 'Peso muerto', type: 'Cadena posterior', category: 'fuerza', unit: 'kg', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: Dumbbell, decimals: 1, cols: [21, 22, 23] },
-  { key: 'squat', name: 'Sentadilla', type: 'Fuerza inferior', category: 'fuerza', unit: 'kg', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: Activity, decimals: 1, cols: [24, 25, 26] },
-  { key: 'platform', name: 'Plataforma', type: 'Potencia', category: 'potencia', unit: '', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: Target, decimals: 1, cols: [27, 28, 29] }
-];
+const PHYSICAL_TESTS = [];
 
 function hydratePhysicalTests(tests) {
-  const fallbackByKey = new Map(PHYSICAL_TESTS.map(test => [test.key, test]));
-  return (tests?.length ? tests : PHYSICAL_TESTS).map(test => ({
-    ...fallbackByKey.get(test.key),
+  return (tests || []).map(test => ({
     ...test,
-    type: test.type || test.category || fallbackByKey.get(test.key)?.type || 'Personalizada',
-    icon: fallbackByKey.get(test.key)?.icon || Activity,
-    maxAttempts: Number(test.maxAttempts || fallbackByKey.get(test.key)?.maxAttempts || 3),
-    decimals: Number(test.decimals ?? fallbackByKey.get(test.key)?.decimals ?? 2)
+    type: test.type || test.category || 'Personalizada',
+    icon: Activity,
+    maxAttempts: Number(test.maxAttempts || 3),
+    decimals: Number(test.decimals ?? 2)
   }));
 }
 
@@ -805,7 +793,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                 <div className="physical-test-catalog-list">
                   {physicalTests.filter(test => test.custom).map(test => (
                     <div key={test.key}>
-                      <span><strong>{test.name}{test.active === false ? ' · Inactiva' : ''}</strong><small>{test.category} · {test.unit || 'sin unidad'} · {test.maxAttempts} intentos</small></span>
+                      <span><strong>{test.name}{test.active === false ? ' · Inactiva' : ''}</strong><small>{test.category} · {test.unit || 'sin unidad'} · {test.maxAttempts} evaluaciones por año</small></span>
                       {test.active === false
                         ? <button type="button" className="secondary" onClick={() => reactivatePhysicalTest(test.key)}>Reactivar</button>
                         : <button type="button" className="secondary" onClick={() => deactivatePhysicalTest(test.key)}>Desactivar</button>}
@@ -821,7 +809,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                       <option value="fuerza">Fuerza</option><option value="potencia">Potencia</option><option value="velocidad">Velocidad</option><option value="resistencia">Resistencia</option><option value="agilidad">Agilidad</option><option value="movilidad">Movilidad</option><option value="técnica">Técnica</option><option value="personalizada">Otra</option>
                     </select></label>
                     <label>Unidad<input value={testDraft.unit} maxLength={16} placeholder="seg, cm, kg, repeticiones…" onChange={event => setTestDraft(current => ({ ...current, unit: event.target.value }))} /></label>
-                    <label>Cantidad de intentos<select value={testDraft.maxAttempts} onChange={event => setTestDraft(current => ({ ...current, maxAttempts: Number(event.target.value) }))}>
+                    <label>Evaluaciones que se hacen al año<select value={testDraft.maxAttempts} onChange={event => setTestDraft(current => ({ ...current, maxAttempts: Number(event.target.value) }))}>
                       {Array.from({ length: 10 }, (_, index) => index + 1).map(count => <option key={count} value={count}>{count}</option>)}
                     </select></label>
                     <label>Decimales<select value={testDraft.decimals} onChange={event => setTestDraft(current => ({ ...current, decimals: Number(event.target.value) }))}>
@@ -850,18 +838,21 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                     <fieldset key={test.key}><legend>{test.name} ({test.unit || 'sin unidad'})</legend>
                       {Array.from({ length: test.maxAttempts }, (_, index) => index + 1).map(attempt => {
                         const key = `${test.key}:${attempt}`;
-                        return <label key={key}>{attempt}° intento<input type="number" step="any" value={physicalDraft.values[key] || ''} onChange={event => setPhysicalDraft(current => ({ ...current, values: { ...current.values, [key]: event.target.value } }))} /></label>;
+                        return <label key={key}>{attempt}° evaluación del año<input type="number" step="any" value={physicalDraft.values[key] || ''} onChange={event => setPhysicalDraft(current => ({ ...current, values: { ...current.values, [key]: event.target.value } }))} /></label>;
                       })}
                     </fieldset>
                   ))}
                 </div>
+                {!physicalTests.some(test => test.active !== false) && (
+                  <p className="empty-state">Todavía no hay pruebas activas. <button type="button" className="inline-link" onClick={() => { setEditingPhysical(false); setEditingTestCatalog(true); }}>Agregá las pruebas que van a evaluar.</button></p>
+                )}
                 {physicalSaveError && <p className="message error">{physicalSaveError}</p>}
-                <button type="submit">Guardar mediciones en la base</button>
+                <button type="submit" disabled={!physicalTests.some(test => test.active !== false)}>Guardar evaluación en la base</button>
               </form>
             )}
             <div className="physical-hero">
               <span className="kicker"><Activity aria-hidden="true" /> RENDIMIENTO ATLÉTICO</span>
-              <p>Consultá marcas, intentos y promedios del plantel.</p>
+              <p>Consultá las evaluaciones anuales, marcas y promedios del plantel.</p>
             </div>
             <div className="physical-summary" aria-live="polite">
               <div><UsersRound aria-hidden="true" /><span><strong>{visiblePlayers.length}</strong><small>jugadoras</small></span></div>
@@ -938,7 +929,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                     </div>
                     <div className="physical-profile-overview">
                       <strong>{Object.keys(selected.tests || {}).length} pruebas con datos</strong>
-                      <span>Comparación de marcas por intento</span>
+                      <span>Comparación de marcas por evaluación anual</span>
                     </div>
                     <div className="test-cards">
                       {physicalTests.filter(test => test.active !== false || selected.tests[test.key]).map(test => {
@@ -953,18 +944,18 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                               <small>{test.type}</small>
                             </div>
                             <b>{latest ? `${latest.value} ${test.unit}` : 'Sin registros'}</b>
-                            {latest && <small className="test-result-caption">Último intento</small>}
+                            {latest && <small className="test-result-caption">Última evaluación</small>}
                             <div className="test-rounds">
                               {Array.from({ length: test.maxAttempts }, (_, index) => index + 1).map(round => {
                                 const attempt = result?.evals.find(item => item.round === round)?.value;
                                 return (
-                                  <span key={round}><small>Intento {round}</small><strong>{attempt ?? '—'}</strong></span>
+                                  <span key={round}><small>Evaluación {round}</small><strong>{attempt ?? '—'}</strong></span>
                                 );
                               })}
                             </div>
                             {result?.diff != null && (
                               <em className={result.improved ? 'positive' : 'negative'}>
-                                {result.improved === null ? '' : result.improved ? '↗ ' : '↘ '}Diferencia entre intentos: {result.diff > 0 ? '+' : ''}{result.diff} {test.unit}
+                                {result.improved === null ? '' : result.improved ? '↗ ' : '↘ '}Diferencia entre evaluaciones: {result.diff > 0 ? '+' : ''}{result.diff} {test.unit}
                               </em>
                             )}
                           </article>
@@ -994,7 +985,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                     <small className="average-caption">Promedio actual · {visiblePlayers.filter(player => player.tests[test.key]?.evals.at(-1)?.value !== undefined).length} jugadoras</small>
                     <div className="test-rounds">
                       {test.rounds.map((value, index) => (
-                        <span key={index}>Intento {index + 1}: {value === null ? '—' : `${value} ${test.unit}`}</span>
+                        <span key={index}>Evaluación {index + 1}: {value === null ? '—' : `${value} ${test.unit}`}</span>
                       ))}
                     </div>
                   </article>

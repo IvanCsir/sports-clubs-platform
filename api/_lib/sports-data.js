@@ -1,5 +1,5 @@
 const postgres = require('./postgres');
-const { DEFAULT_PHYSICAL_TESTS, mapDefinition } = require('./physical-tests');
+const { mapDefinition } = require('./physical-tests');
 
 function ensureDb() {
   if (!postgres.isConfigured()) throw new Error('DATABASE_URL no está configurada.');
@@ -49,13 +49,7 @@ async function getPhysicalTestDefinitions(slug, includeInactive = false) {
      WHERE club_slug = $1 AND ($2::boolean OR active = TRUE)
      ORDER BY name`, [slug, includeInactive]
   );
-  const defaults = DEFAULT_PHYSICAL_TESTS.map(test => ({
-    ...test,
-    higherIsBetter: test.direction === 'higher' ? true : test.direction === 'lower' ? false : null,
-    custom: false,
-    active: true
-  }));
-  return [...defaults, ...result.rows.map(mapDefinition)];
+  return result.rows.map(mapDefinition);
 }
 
 async function savePhysicalTestDefinition(slug, input) {
@@ -69,10 +63,10 @@ async function savePhysicalTestDefinition(slug, input) {
   if (unit.length > 16) throw new Error('La unidad no puede superar los 16 caracteres.');
   if (!category || category.length > 40) throw new Error('Indicá una categoría de hasta 40 caracteres.');
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 3) throw new Error('Los decimales deben estar entre 0 y 3.');
-  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10) throw new Error('La cantidad de intentos debe estar entre 1 y 10.');
-  const definitions = await getPhysicalTestDefinitions(slug);
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10) throw new Error('La cantidad de evaluaciones anuales debe estar entre 1 y 10.');
+  const definitions = await getPhysicalTestDefinitions(slug, true);
   if (definitions.some(test => test.name.localeCompare(name, 'es', { sensitivity: 'base' }) === 0)) {
-    throw new Error('Ya existe una prueba con ese nombre.');
+    throw new Error('Ya existe una prueba con ese nombre. Si está inactiva, podés reactivarla desde el catálogo.');
   }
   const baseKey = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 56);
   const key = `custom-${baseKey || 'prueba'}`;
@@ -793,7 +787,7 @@ async function savePhysicalAssessment(slug, input, seasonName) {
       const attempt = Number(result.attempt);
       const value = Number(result.value);
       if (!definition || !Number.isFinite(value) || !Number.isInteger(attempt) || attempt < 1 || attempt > definition.maxAttempts) {
-        throw new Error('Una medición no coincide con las pruebas activas o su cantidad de intentos.');
+        throw new Error('Una medición no coincide con las pruebas activas o su cantidad de evaluaciones anuales.');
       }
       await client.query(
         `INSERT INTO sc_physical_test_results (assessment_id, test_key, attempt, value, unit)

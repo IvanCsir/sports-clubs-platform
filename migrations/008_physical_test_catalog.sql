@@ -16,3 +16,10 @@ CREATE TABLE IF NOT EXISTS sc_physical_test_definitions (
 
 CREATE INDEX IF NOT EXISTS sc_physical_test_definitions_club_active_idx
   ON sc_physical_test_definitions (club_slug, active, name);
+
+-- No hay mediciones cargadas aún: quitar las pruebas fijas anteriores del catálogo.
+DELETE FROM sc_physical_test_results
+WHERE test_key IN ('broadJump', 'cmj', 'agility', 'sprint', 'yoyo', 'bench', 'deadlift', 'squat', 'platform');
+
+DELETE FROM sc_physical_test_definitions
+WHERE test_key IN ('broadJump', 'cmj', 'agility', 'sprint', 'yoyo', 'bench', 'deadlift', 'squat', 'platform');

@@ -142,11 +142,11 @@ module.exports = async function handler(req, res) {
       }
     }
     if (body.action === 'deactivate-physical-test') {
-      if (!String(body.testKey || '').startsWith('custom-')) return json(res, 400, { error: 'Solo se pueden desactivar pruebas personalizadas.' });
+      if (!String(body.testKey || '').trim()) return json(res, 400, { error: 'Seleccioná una prueba válida.' });
       return json(res, 200, await sportsData.deactivatePhysicalTestDefinition(slug, body.testKey));
     }
     if (body.action === 'reactivate-physical-test') {
-      if (!String(body.testKey || '').startsWith('custom-')) return json(res, 400, { error: 'Solo se pueden reactivar pruebas personalizadas.' });
+      if (!String(body.testKey || '').trim()) return json(res, 400, { error: 'Seleccioná una prueba válida.' });
       return json(res, 200, await sportsData.reactivatePhysicalTestDefinition(slug, body.testKey));
     }
     if (body.action === 'update-player') {
