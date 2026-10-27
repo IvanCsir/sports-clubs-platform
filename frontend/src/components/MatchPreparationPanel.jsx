@@ -191,6 +191,9 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
   const [status, setStatus] = useState('Cargando el plan del partido...');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   async function loadPreparations() {
     try {
@@ -232,6 +235,7 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
     setSelectedKey('');
     setEditing(false);
     setCreating(false);
+    setConfirmDelete(false);
   }, [category]);
 
   const options = useMemo(() => {
@@ -381,6 +385,34 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
     }
   }
 
+  async function deletePreparation() {
+    if (!authenticated || !token || !selectedMatch || !selectedRecord) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      const response = await fetch('/api/club-data?club=' + encodeURIComponent(club.slug), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'delete-preparation', category, matchKey: selectedMatch.matchKey })
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        const message = payload.error === 'Acción de persistencia desconocida.'
+          ? 'El servidor todavía no tiene la opción de eliminar planes. Volvé a desplegar la versión actualizada.'
+          : payload.error || 'No se pudo eliminar el plan del partido.';
+        throw new Error(message);
+      }
+      setPreparations(current => current.filter(item => item.category !== category || item.matchKey !== selectedMatch.matchKey));
+      setSelectedKey(selectedMatch.matchKey);
+      setConfirmDelete(false);
+      setStatus('Plan del partido eliminado. Podés volver a crearlo desde este partido.');
+    } catch (deleteFailure) {
+      setDeleteError(deleteFailure.message);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function updatePlayList(plays) {
     setDraft(current => ({ ...current, plays }));
   }
@@ -472,7 +504,20 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
         </form>
       ) : canView ? (
         <div className="match-preparation-card">
-          {authenticated && <div className="preparation-view-actions"><button type="button" className="secondary" onClick={beginEdit}>Editar plan</button></div>}
+          {authenticated && <div className="preparation-view-actions">
+            <button type="button" className="secondary" onClick={beginEdit}>Editar plan</button>
+            <button type="button" className="secondary preparation-delete-button" onClick={() => { setConfirmDelete(true); setDeleteError(''); }}>Eliminar plan</button>
+          </div>}
+          {authenticated && confirmDelete && (
+            <div className="preparation-delete-confirm" role="alertdialog" aria-label="Confirmar eliminación del plan">
+              <p>¿Eliminar el plan de {selectedMatch.round} · {selectedMatch.opponent}? Se borrarán su foco, videos y jugadas.</p>
+              {deleteError && <p className="message error" role="alert">{deleteError}</p>}
+              <div>
+                <button type="button" className="preparation-delete-button" onClick={deletePreparation} disabled={deleting}>{deleting ? 'Eliminando...' : 'Sí, eliminar plan'}</button>
+                <button type="button" className="secondary" onClick={() => { setConfirmDelete(false); setDeleteError(''); }} disabled={deleting}>Cancelar</button>
+              </div>
+            </div>
+          )}
           {selectedRecord.preparation.focus && <div className="match-preparation-focus" dangerouslySetInnerHTML={{ __html: cleanRichTextHtml(selectedRecord.preparation.focus) }} />}
           {getPreparationVideos(selectedRecord.preparation).length > 0 && (
             <div className="preparation-videos">

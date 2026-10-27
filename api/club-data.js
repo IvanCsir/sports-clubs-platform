@@ -122,6 +122,14 @@ module.exports = async function handler(req, res) {
       if (!Array.isArray(body.players) || body.players.length > 60) return json(res, 400, { error: 'La lista de jugadoras no es válida.' });
       return json(res, 200, await sportsData.saveCallup(slug, body, seasonName, tournamentKey, tournamentName));
     }
+    if (body.action === 'delete-preparation') {
+      if (!['primera', 'intermedia'].includes(body.category) || !String(body.matchKey || '').trim() || String(body.matchKey).length > 180) {
+        return json(res, 400, { error: 'El plan seleccionado no es válido.' });
+      }
+      return json(res, 200, {
+        deleted: await sportsData.deleteMatchPreparation(slug, body, seasonName, tournamentKey)
+      });
+    }
     if (body.action === 'save-preparation') {
       if (!['primera', 'intermedia'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
       if (!String(body.matchKey || '').trim() || String(body.matchKey).length > 180 ||

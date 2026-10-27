@@ -409,6 +409,11 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .preparation-form > label small, .preparation-copy-row span { color: #9eb4cc; font-size: .8rem; }
 .preparation-copy-row, .preparation-form-actions, .preparation-view-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
 .preparation-copy-row button, .preparation-form-actions button, .preparation-view-actions button { padding: 9px 12px; }
+.preparation-delete-button { color: #ffd1d1 !important; border-color: #ff737360 !important; background: #b423231c !important; }
+.preparation-delete-confirm { display: grid; gap: 10px; margin: 12px 0; padding: 14px; border: 1px solid #ff737360; border-radius: 12px; background: #b4232314; }
+.preparation-delete-confirm p { margin: 0; }
+.preparation-delete-confirm > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.preparation-delete-confirm button { padding: 9px 12px; }
 .preparation-editor-plays { display: grid; gap: 12px; }
 .preparation-editor-plays h3 { margin: 0; }
 .preparation-editor-plays p { margin: 5px 0 0; color: #9eb4cc; font-size: .85rem; }

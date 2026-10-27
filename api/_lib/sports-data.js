@@ -365,6 +365,20 @@ async function saveMatchPreparation(slug, input, seasonName, tournamentKey, tour
   }
 }
 
+async function deleteMatchPreparation(slug, input, seasonName, tournamentKey) {
+  const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
+  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
+  const result = await ensureDb().query(
+    `DELETE FROM sc_matches m
+     USING sc_teams t
+     WHERE m.club_slug = $1 AND m.team_id = t.id AND t.club_slug = m.club_slug
+       AND t.category = $2 AND m.provider = 'preparation' AND m.provider_match_id = $3
+       AND m.season_id = $4 AND m.tournament_key = $5`,
+    [slug, input.category, input.matchKey, seasonId, competitionKey]
+  );
+  return result.rowCount > 0;
+}
+
 async function savePlayer(slug, input) {
   const name = String(input.name || '').trim().replace(/\s+/g, ' ');
   const category = String(input.category || '');
@@ -652,4 +666,4 @@ async function savePhysicalAssessment(slug, input, seasonName) {
   }
 }
 
-module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getTournamentStats, getPlayerPortalRoster, savePlayerMonitoring, saveMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, savePhysicalAssessment };
+module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getTournamentStats, getPlayerPortalRoster, savePlayerMonitoring, saveMatchPreparation, deleteMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, savePhysicalAssessment };
