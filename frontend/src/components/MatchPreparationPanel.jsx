@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Italic, List, ListOrdered, Underline } from 'lucide-react';
 import TacticalPlays from './TacticalPlays';
 
 const emptyPreparation = () => ({ focus: '', videos: [{ title: '', url: '' }], plays: [] });
@@ -48,6 +49,78 @@ function getVideoEmbed(value) {
   } catch (_) {
     return null;
   }
+}
+
+function cleanRichTextHtml(value) {
+  const allowed = new Set(['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'div']);
+  const template = document.createElement('template');
+  template.innerHTML = String(value || '');
+  const output = document.createElement('div');
+  const copyNode = (node, parent) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parent.appendChild(document.createTextNode(node.nodeValue || ''));
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = node.tagName.toLowerCase();
+    if (!allowed.has(tag)) {
+      [...node.childNodes].forEach(child => copyNode(child, parent));
+      return;
+    }
+    const cleanElement = document.createElement(tag);
+    if (['p', 'div'].includes(tag) && ['left', 'center', 'right', 'justify'].includes(node.style.textAlign)) {
+      cleanElement.style.textAlign = node.style.textAlign;
+    }
+    [...node.childNodes].forEach(child => copyNode(child, cleanElement));
+    parent.appendChild(cleanElement);
+  };
+  [...template.content.childNodes].forEach(node => copyNode(node, output));
+  return output.innerHTML;
+}
+
+function RichTextEditor({ value, onChange }) {
+  const editorRef = useRef(null);
+  const commands = [
+    ['bold', Bold, 'Negrita'], ['italic', Italic, 'Cursiva'], ['underline', Underline, 'Subrayado'],
+    ['insertUnorderedList', List, 'Lista con viñetas'], ['insertOrderedList', ListOrdered, 'Lista numerada'],
+    ['justifyLeft', AlignLeft, 'Alinear a la izquierda'], ['justifyCenter', AlignCenter, 'Centrar'],
+    ['justifyRight', AlignRight, 'Alinear a la derecha'], ['justifyFull', AlignJustify, 'Justificar']
+  ];
+
+  useEffect(() => {
+    if (editorRef.current && document.activeElement !== editorRef.current) {
+      const cleanValue = cleanRichTextHtml(value);
+      if (editorRef.current.innerHTML !== cleanValue) editorRef.current.innerHTML = cleanValue;
+    }
+  }, [value]);
+
+  function runCommand(command) {
+    editorRef.current?.focus();
+    document.execCommand(command, false);
+    if (editorRef.current) onChange(editorRef.current.innerHTML);
+  }
+
+  return (
+    <div className="rich-text-editor">
+      <div className="rich-text-toolbar" role="toolbar" aria-label="Formato del foco semanal">
+        {commands.map(([command, Icon, label]) => (
+          <button key={command} type="button" title={label} aria-label={label}
+            onMouseDown={event => event.preventDefault()} onClick={() => runCommand(command)}>
+            <Icon size={17} aria-hidden="true" />
+          </button>
+        ))}
+      </div>
+      <div
+        ref={editorRef}
+        className="rich-text-content"
+        contentEditable
+        role="textbox"
+        aria-multiline="true"
+        aria-label="Foco de la semana"
+        onInput={event => onChange(event.currentTarget.innerHTML)}
+      />
+    </div>
+  );
 }
 
 function fromFixture(category, match) {
@@ -313,7 +386,7 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
             </div>
           )}
           <label>Foco de la semana
-            <textarea rows="3" maxLength="1500" placeholder="Qué queremos trabajar o recordar" value={draft.focus} onChange={event => setDraft(current => ({ ...current, focus: event.target.value }))} />
+            <RichTextEditor value={draft.focus} onChange={focus => setDraft(current => ({ ...current, focus }))} />
           </label>
           <div className="preparation-video-editor">
             <div className="preparation-video-editor-heading">
@@ -354,7 +427,7 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
       ) : canView ? (
         <div className="match-preparation-card">
           {authenticated && <div className="preparation-view-actions"><button type="button" className="secondary" onClick={beginEdit}>Editar plan</button></div>}
-          {selectedRecord.preparation.focus && <p className="match-preparation-focus">{selectedRecord.preparation.focus}</p>}
+          {selectedRecord.preparation.focus && <div className="match-preparation-focus" dangerouslySetInnerHTML={{ __html: cleanRichTextHtml(selectedRecord.preparation.focus) }} />}
           {getPreparationVideos(selectedRecord.preparation).length > 0 && (
             <div className="preparation-videos">
               {getPreparationVideos(selectedRecord.preparation).map((video, index) => {

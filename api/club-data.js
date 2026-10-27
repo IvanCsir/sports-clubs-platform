@@ -7,6 +7,22 @@ function json(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function sanitizeFocusHtml(value) {
+  const allowed = new Set(['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'div']);
+  return String(value || '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<(script|style|iframe|object|svg|math|noscript)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+    .replace(/<\/?([a-z][a-z0-9]*)\b([^>]*)>/gi, (match, rawTag, attributes) => {
+      const tag = rawTag.toLowerCase();
+      if (!allowed.has(tag)) return '';
+      if (match.startsWith('</')) return tag === 'br' ? '' : `</${tag}>`;
+      if (!['p', 'div'].includes(tag)) return `<${tag}>`;
+      const style = attributes.match(/\bstyle\s*=\s*(["'])(.*?)\1/i)?.[2] || '';
+      const alignment = style.match(/(?:^|;)\s*text-align\s*:\s*(left|center|right|justify)\s*(?:;|$)/i)?.[1]?.toLowerCase();
+      return alignment ? `<${tag} style="text-align: ${alignment}">` : `<${tag}>`;
+    });
+}
+
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   const raw = await new Promise((resolve, reject) => {
@@ -117,7 +133,9 @@ module.exports = async function handler(req, res) {
       const plays = preparation.plays || [];
       const videoUrls = preparation.videoUrls || [];
       const videosInput = preparation.videos || videoUrls;
-      if (String(preparation.focus || '').length > 1500 ||
+      const focus = sanitizeFocusHtml(preparation.focus);
+      const focusText = focus.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ');
+      if (focus.length > 10000 || focusText.length > 1500 ||
           !Array.isArray(videoUrls) || videoUrls.length > 10 ||
           !Array.isArray(videosInput) || videosInput.length > 10 ||
           !Array.isArray(plays) || plays.length > 12 ||
@@ -157,7 +175,7 @@ module.exports = async function handler(req, res) {
       const saved = await sportsData.saveMatchPreparation(slug, {
         ...body,
         preparation: {
-          focus: String(preparation.focus || '').trim(),
+          focus,
           videos,
           videoUrls: videos.map(video => video.url),
           plays

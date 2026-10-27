@@ -334,6 +334,15 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .match-preparation-card { display: grid; gap: 14px; margin: 10px 0 24px; padding: 20px; border: 1px solid #8dd3ff33; border-radius: 18px; background: #ffffff09; }
 .match-preparation-card h2, .preparation-board h3 { margin: 0; }
 .match-preparation-focus { margin: 0; color: #d7e8f8; line-height: 1.55; white-space: pre-wrap; }
+.match-preparation-focus p, .match-preparation-focus div { margin: 0 0 8px; }
+.match-preparation-focus ul, .match-preparation-focus ol { margin: 6px 0; padding-left: 24px; }
+.rich-text-editor { overflow: hidden; border: 1px solid #8dd3ff40; border-radius: 10px; background: #071d3d; }
+.rich-text-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px; border-bottom: 1px solid #8dd3ff30; background: #ffffff08; }
+.rich-text-toolbar button { display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid transparent; border-radius: 7px; color: #c8d9eb; background: transparent; }
+.rich-text-toolbar button:hover, .rich-text-toolbar button:focus-visible { border-color: #8dd3ff55; color: #fff; background: #00a2ff30; }
+.rich-text-content { min-height: 120px; padding: 12px; color: #eaf6ff; line-height: 1.55; outline: none; }
+.rich-text-content:empty::before { content: 'Qué queremos trabajar o recordar'; color: #8299b4; pointer-events: none; }
+.rich-text-content ul, .rich-text-content ol { padding-left: 24px; }
 .preparation-videos { display: grid; gap: 8px; }
 .preparation-videos a { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid #8dd3ff30; border-radius: 10px; color: #8dd3ff; background: #ffffff08; text-decoration: none; }
 .preparation-videos a span { color: #9eb4cc; font-size: .78rem; }
