@@ -116,19 +116,27 @@ module.exports = async function handler(req, res) {
       const preparation = body.preparation || {};
       const plays = preparation.plays || [];
       const videoUrls = preparation.videoUrls || [];
+      const videosInput = preparation.videos || videoUrls;
       if (String(preparation.focus || '').length > 1500 ||
           !Array.isArray(videoUrls) || videoUrls.length > 10 ||
+          !Array.isArray(videosInput) || videosInput.length > 10 ||
           !Array.isArray(plays) || plays.length > 12 ||
           Buffer.byteLength(JSON.stringify(preparation), 'utf8') > 180000) {
         return json(res, 400, { error: 'La preparación supera los límites permitidos.' });
       }
-      for (const value of videoUrls) {
+      const videos = [];
+      for (const item of videosInput) {
+        const title = typeof item === 'string' ? '' : String(item?.title || '').trim();
+        const value = String(typeof item === 'string' ? item : item?.url || '').trim();
+        if (!value) continue;
+        if (title.length > 100) return json(res, 400, { error: 'El título de un video supera el máximo permitido.' });
         try {
-          const url = new URL(String(value));
-          if (!['http:', 'https:'].includes(url.protocol) || String(value).length > 1000) throw new Error();
+          const url = new URL(value);
+          if (!['http:', 'https:'].includes(url.protocol) || value.length > 1000) throw new Error();
         } catch (_) {
           return json(res, 400, { error: 'Cada video debe tener un enlace web válido.' });
         }
+        videos.push({ title, url: value });
       }
       for (const play of plays) {
         if (!play || String(play.title || '').trim().length > 80 || !Array.isArray(play.frames) || play.frames.length > 30) {
@@ -148,7 +156,12 @@ module.exports = async function handler(req, res) {
       }
       const saved = await sportsData.saveMatchPreparation(slug, {
         ...body,
-        preparation: { focus: String(preparation.focus || '').trim(), videoUrls, plays }
+        preparation: {
+          focus: String(preparation.focus || '').trim(),
+          videos,
+          videoUrls: videos.map(video => video.url),
+          plays
+        }
       }, seasonName, tournamentKey, tournamentName);
       return json(res, 200, saved);
     }

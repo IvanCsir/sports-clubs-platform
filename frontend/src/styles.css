@@ -337,6 +337,21 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .preparation-videos { display: grid; gap: 8px; }
 .preparation-videos a { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid #8dd3ff30; border-radius: 10px; color: #8dd3ff; background: #ffffff08; text-decoration: none; }
 .preparation-videos a span { color: #9eb4cc; font-size: .78rem; }
+.preparation-video-item { display: grid; gap: 8px; min-width: 0; }
+.preparation-video-title { margin: 0; font-size: 1rem; color: #edf6ff; }
+.preparation-video-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid #8dd3ff30; border-radius: 12px; background: #020b19; }
+.preparation-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.preparation-video-item > a { justify-content: center; }
+.preparation-video-editor { display: grid; gap: 12px; }
+.preparation-video-editor-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.preparation-video-editor-heading h3 { margin: 0 0 4px; }
+.preparation-video-editor-heading small { color: #9eb4cc; }
+.preparation-video-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto; align-items: end; gap: 12px; padding: 12px; border: 1px solid #8dd3ff30; border-radius: 10px; background: #ffffff06; }
+@media (max-width: 700px) {
+  .preparation-video-fields { grid-template-columns: minmax(0, 1fr); }
+  .preparation-video-fields > button { justify-self: start; }
+  .preparation-video-editor-heading { align-items: flex-start; flex-direction: column; }
+}
 .preparation-board { display: grid; justify-items: start; gap: 10px; }
 .tactical-board { display: grid; gap: 10px; width: min(100%, 640px); }
 .tactical-board-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }

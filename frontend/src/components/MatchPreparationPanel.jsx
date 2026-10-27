@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import TacticalPlays from './TacticalPlays';
 
-const emptyPreparation = () => ({ focus: '', videoUrls: '', plays: [] });
+const emptyPreparation = () => ({ focus: '', videos: [{ title: '', url: '' }], plays: [] });
+
+function getPreparationVideos(preparation) {
+  if (Array.isArray(preparation?.videos)) {
+    return preparation.videos.map(video => typeof video === 'string'
+      ? { title: '', url: video }
+      : { title: video.title || '', url: video.url || '' });
+  }
+  return (preparation?.videoUrls || []).map(url => ({ title: '', url }));
+}
 
 function normalizePart(value) {
   return String(value || '')
@@ -14,6 +23,31 @@ function normalizePart(value) {
 
 function fixtureKey(category, round, opponent, date) {
   return [category, round, opponent, date].map(normalizePart).filter(Boolean).join('-').slice(0, 180);
+}
+
+function getVideoEmbed(value) {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    if (['drive.google.com', 'www.drive.google.com'].includes(hostname)) {
+      const pathId = url.pathname.match(/\/file\/d\/([A-Za-z0-9_-]+)/)?.[1];
+      const fileId = pathId || url.searchParams.get('id');
+      if (!fileId || !/^[A-Za-z0-9_-]+$/.test(fileId)) return null;
+      return { src: `https://drive.google.com/file/d/${fileId}/preview`, provider: 'Drive' };
+    }
+
+    if (['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com', 'youtu.be', 'www.youtu.be'].includes(hostname)) {
+      const pathId = url.pathname.match(/\/(?:embed|shorts|live)\/([A-Za-z0-9_-]{11})/)?.[1];
+      const videoId = hostname.endsWith('youtu.be')
+        ? url.pathname.split('/').filter(Boolean)[0]
+        : url.searchParams.get('v') || pathId;
+      if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null;
+      return { src: `https://www.youtube-nocookie.com/embed/${videoId}`, provider: 'YouTube' };
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
 }
 
 function fromFixture(category, match) {
@@ -29,9 +63,10 @@ function fromFixture(category, match) {
 }
 
 function toDraft(preparation) {
+  const videos = getPreparationVideos(preparation);
   return {
     focus: preparation?.focus || '',
-    videoUrls: (preparation?.videoUrls || []).join('\n'),
+    videos: videos.length ? videos : [{ title: '', url: '' }],
     plays: Array.isArray(preparation?.plays) ? JSON.parse(JSON.stringify(preparation.plays)) : []
   };
 }
@@ -173,10 +208,12 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
     }
     const preparation = {
       focus: draft.focus.trim(),
-      videoUrls: draft.videoUrls.split(/\r?\n/).map(url => url.trim()).filter(Boolean),
+      videos: draft.videos
+        .map(video => ({ title: String(video.title || '').trim(), url: String(video.url || '').trim() }))
+        .filter(video => video.url),
       plays: draft.plays
     };
-    if (!preparation.focus && !preparation.videoUrls.length && !preparation.plays.length) {
+    if (!preparation.focus && !preparation.videos.length && !preparation.plays.length) {
       setError('Agregá un foco, un video o al menos una jugada antes de guardar.');
       return;
     }
@@ -194,7 +231,7 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
           opponent: matchDraft.opponent.trim(),
           homeAway: matchDraft.homeAway,
           date: matchDraft.date.trim(),
-          preparation
+          preparation: { ...preparation, videoUrls: preparation.videos.map(video => video.url) }
         })
       });
       const payload = await response.json();
@@ -278,10 +315,32 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
           <label>Foco de la semana
             <textarea rows="3" maxLength="1500" placeholder="Qué queremos trabajar o recordar" value={draft.focus} onChange={event => setDraft(current => ({ ...current, focus: event.target.value }))} />
           </label>
-          <label>Videos de referencia
-            <textarea rows="3" placeholder="Pegá un enlace por línea (YouTube, Drive u otro sitio)" value={draft.videoUrls} onChange={event => setDraft(current => ({ ...current, videoUrls: event.target.value }))} />
-            <small>Se guardan enlaces; los videos no se suben a la aplicación.</small>
-          </label>
+          <div className="preparation-video-editor">
+            <div className="preparation-video-editor-heading">
+              <div><h3>Videos de referencia</h3><small>Se guardan enlaces; los videos no se suben a la aplicación.</small></div>
+              <button type="button" className="secondary" onClick={() => setDraft(current => ({ ...current, videos: [...current.videos, { title: '', url: '' }] }))} disabled={draft.videos.length >= 10}>Agregar video</button>
+            </div>
+            {draft.videos.map((video, index) => (
+              <div className="preparation-video-fields" key={index}>
+                <label>Título del video
+                  <input maxLength="100" value={video.title} placeholder={`Video ${index + 1}`} onChange={event => setDraft(current => ({
+                    ...current,
+                    videos: current.videos.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item)
+                  }))} />
+                </label>
+                <label>Enlace de Drive o YouTube
+                  <input type="url" maxLength="1000" value={video.url} placeholder="https://..." onChange={event => setDraft(current => ({
+                    ...current,
+                    videos: current.videos.map((item, itemIndex) => itemIndex === index ? { ...item, url: event.target.value } : item)
+                  }))} />
+                </label>
+                <button type="button" className="secondary" aria-label={`Quitar video ${index + 1}`} onClick={() => setDraft(current => ({
+                  ...current,
+                  videos: current.videos.filter((_, itemIndex) => itemIndex !== index)
+                }))}>Quitar</button>
+              </div>
+            ))}
+          </div>
           <div className="preparation-editor-plays">
             <div><h3>Jugadas tácticas</h3><p>Creá varias jugadas y agregá pasos para mostrar el movimiento.</p></div>
             <TacticalPlays plays={draft.plays} onChange={updatePlayList} editable />
@@ -296,11 +355,34 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
         <div className="match-preparation-card">
           {authenticated && <div className="preparation-view-actions"><button type="button" className="secondary" onClick={beginEdit}>Editar plan</button></div>}
           {selectedRecord.preparation.focus && <p className="match-preparation-focus">{selectedRecord.preparation.focus}</p>}
-          {(selectedRecord.preparation.videoUrls || []).length > 0 && (
+          {getPreparationVideos(selectedRecord.preparation).length > 0 && (
             <div className="preparation-videos">
-              {selectedRecord.preparation.videoUrls.map((url, index) => (
-                <a key={url + index} href={url} target="_blank" rel="noreferrer">▶ Ver video {index + 1}<span>{(() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return 'Abrir enlace'; } })()}</span></a>
-              ))}
+              {getPreparationVideos(selectedRecord.preparation).map((video, index) => {
+                const { url } = video;
+                const videoEmbed = getVideoEmbed(url);
+                const sourceName = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return 'Abrir enlace'; } })();
+                return videoEmbed ? (
+                  <article className="preparation-video-item" key={url + index}>
+                    <h4 className="preparation-video-title">{video.title || `Video de referencia ${index + 1}`}</h4>
+                    <div className="preparation-video-frame">
+                      <iframe
+                        src={videoEmbed.src}
+                        title={`Video de referencia ${index + 1} · ${videoEmbed.provider}`}
+                        loading="lazy"
+                        allow="autoplay; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                        referrerPolicy="strict-origin-when-cross-origin"
+                      />
+                    </div>
+                    <a href={url} target="_blank" rel="noreferrer">Abrir video {index + 1} en {videoEmbed.provider}</a>
+                  </article>
+                ) : (
+                  <article className="preparation-video-item" key={url + index}>
+                    <h4 className="preparation-video-title">{video.title || `Video de referencia ${index + 1}`}</h4>
+                    <a href={url} target="_blank" rel="noreferrer">▶ Ver video {index + 1}<span>{sourceName}</span></a>
+                  </article>
+                );
+              })}
             </div>
           )}
           <TacticalPlays plays={selectedRecord.preparation.plays || []} />
