@@ -253,13 +253,13 @@ module.exports = async function handler(req, res) {
       return json(res, 200, await sportsData.replaceMatchEvents(slug, body, seasonName, tournamentKey, tournamentName));
     }
     if (body.action === 'save-physical-assessment') {
-      if (!String(body.name || '').trim() || !Array.isArray(body.results) || !body.results.length || body.results.length > 500) {
+      if ((!body.playerId && !String(body.name || '').trim()) || !Array.isArray(body.results) || !body.results.length || body.results.length > 500) {
         return json(res, 400, { error: 'Completá la jugadora y los resultados de la evaluación.' });
       }
       try {
         return json(res, 200, await sportsData.savePhysicalAssessment(slug, body, seasonName));
       } catch (error) {
-        if (/Una medición|Faltan datos/.test(error.message)) return json(res, 400, { error: error.message });
+        if (/Una medición|Faltan datos|Seleccioná una jugadora|no pertenece/.test(error.message)) return json(res, 400, { error: error.message });
         throw error;
       }
     }

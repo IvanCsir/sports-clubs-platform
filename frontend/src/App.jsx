@@ -109,7 +109,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [callupMetaDraft, setCallupMetaDraft] = useState({});
   const [callupError, setCallupError] = useState('');
   const [editingPhysical, setEditingPhysical] = useState(false);
-  const [physicalDraft, setPhysicalDraft] = useState({ name: '', category: 'primera', evaluatedOn: '', values: {} });
+  const [physicalDraft, setPhysicalDraft] = useState({ playerId: '', category: 'primera', evaluatedOn: '', values: {} });
   const [physicalSaveError, setPhysicalSaveError] = useState('');
   const [physicalTests, setPhysicalTests] = useState(PHYSICAL_TESTS);
   const [editingTestCatalog, setEditingTestCatalog] = useState(false);
@@ -318,13 +318,18 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: 'save-physical-assessment', ...physicalDraft, results })
+        body: JSON.stringify({
+          action: 'save-physical-assessment',
+          ...physicalDraft,
+          name: physicalAssessmentPlayers.find(player => String(player.id) === String(physicalDraft.playerId))?.name || '',
+          results
+        })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'No se pudo guardar la evaluación.');
       await loadStaffData(token);
       setEditingPhysical(false);
-      setPhysicalDraft({ name: '', category: 'primera', evaluatedOn: '', values: {} });
+      setPhysicalDraft({ playerId: '', category: 'primera', evaluatedOn: '', values: {} });
     } catch (error) { setPhysicalSaveError(error.message); }
   }
 
@@ -521,6 +526,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   });
 
   const selected = physicalPlayers.find(player => player.id === selectedPlayer);
+  const physicalAssessmentPlayers = players
+    .filter(player => player.active && (player.categories || []).includes(physicalDraft.category))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
   const physicalPlayersWithResults = visiblePlayers.filter(player => Object.keys(player.tests || {}).length > 0).length;
   const latestResult = [...matches].reverse().find(match => match.played) || null;
   const workspaceSections = [
@@ -844,12 +852,18 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             {editingPhysical && (
               <form className="physical-editor" onSubmit={submitPhysicalAssessment}>
                 <div className="callup-meta-grid">
-                  <label>Jugadora<input value={physicalDraft.name} onChange={event => setPhysicalDraft(current => ({ ...current, name: event.target.value }))} required /></label>
-                  <label>Categoría<select value={physicalDraft.category} onChange={event => setPhysicalDraft(current => ({ ...current, category: event.target.value }))}>
+                  <label>Jugadora<select value={physicalDraft.playerId} onChange={event => setPhysicalDraft(current => ({ ...current, playerId: event.target.value }))} required>
+                    <option value="">Seleccioná una jugadora del plantel</option>
+                    {physicalAssessmentPlayers.map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
+                  </select></label>
+                  <label>Categoría<select value={physicalDraft.category} onChange={event => setPhysicalDraft(current => ({ ...current, category: event.target.value, playerId: '' }))}>
                     <option value="primera">1ra División</option><option value="intermedia">Intermedia</option><option value="5ta">5ta División</option>
                   </select></label>
                   <label>Fecha de evaluación<input type="date" value={physicalDraft.evaluatedOn} onChange={event => setPhysicalDraft(current => ({ ...current, evaluatedOn: event.target.value }))} /></label>
                 </div>
+                {!physicalAssessmentPlayers.length && (
+                  <p className="empty-state">No hay jugadoras activas en esta categoría. <button type="button" className="inline-link" onClick={() => { setEditingPhysical(false); setView('jugadoras'); }}>Agregalas o asignales esta categoría en Plantel.</button></p>
+                )}
                 <div className="physical-entry-grid">
                   {physicalTests.filter(test => test.active !== false).map(test => (
                     <fieldset key={test.key}><legend>{test.name} ({test.unit || 'sin unidad'})</legend>
@@ -864,7 +878,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                   <p className="empty-state">Todavía no hay pruebas activas. <button type="button" className="inline-link" onClick={() => { setEditingPhysical(false); setEditingTestCatalog(true); }}>Agregá las pruebas que van a evaluar.</button></p>
                 )}
                 {physicalSaveError && <p className="message error">{physicalSaveError}</p>}
-                <button type="submit" disabled={!physicalTests.some(test => test.active !== false)}>Guardar evaluación en la base</button>
+                <button type="submit" disabled={!physicalTests.some(test => test.active !== false) || !physicalAssessmentPlayers.length}>Guardar evaluación en la base</button>
               </form>
             )}
             <div className="physical-hero">

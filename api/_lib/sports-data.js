@@ -765,7 +765,7 @@ async function deleteEvents(slug, ids) {
 }
 
 async function savePhysicalAssessment(slug, input, seasonName) {
-  if (!input.name || !Array.isArray(input.results)) throw new Error('Faltan datos de la evaluación.');
+  if ((!input.playerId && !input.name) || !Array.isArray(input.results)) throw new Error('Seleccioná una jugadora del plantel y completá sus mediciones.');
   const db = ensureDb();
   const testDefinitions = await getPhysicalTestDefinitions(slug);
   const testsByKey = new Map(testDefinitions.map(test => [test.key, test]));
@@ -774,21 +774,37 @@ async function savePhysicalAssessment(slug, input, seasonName) {
   try {
     await client.query('BEGIN');
     const category = ['primera', 'intermedia', '5ta'].includes(input.category) ? input.category : 'primera';
-    const team = await client.query(
-      `INSERT INTO sc_teams (club_slug, name, category) VALUES ($1, $2, $3)
-       ON CONFLICT (club_slug, category) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-      [slug, input.teamName || category, category]
-    );
-    const player = await client.query(
-      `INSERT INTO sc_players (club_slug, display_name) VALUES ($1, $2)
-       ON CONFLICT (club_slug, display_name) DO UPDATE SET active = TRUE, updated_at = NOW() RETURNING id`,
-      [slug, String(input.name).trim()]
-    );
-    await client.query('INSERT INTO sc_team_players (team_id, player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-      [team.rows[0].id, player.rows[0].id]);
+    let playerId;
+    if (input.playerId) {
+      const selectedPlayerId = Number(input.playerId);
+      if (!Number.isSafeInteger(selectedPlayerId) || selectedPlayerId <= 0) throw new Error('Seleccioná una jugadora válida del plantel.');
+      const player = await client.query(
+        `SELECT p.id FROM sc_players p
+         JOIN sc_team_players tp ON tp.player_id = p.id
+         JOIN sc_teams t ON t.id = tp.team_id AND t.club_slug = p.club_slug
+         WHERE p.club_slug = $1 AND p.id = $2 AND p.active = TRUE AND t.category = $3
+         LIMIT 1`, [slug, selectedPlayerId, category]
+      );
+      if (!player.rowCount) throw new Error('La jugadora seleccionada no pertenece a esta categoría del plantel.');
+      playerId = player.rows[0].id;
+    } else {
+      const team = await client.query(
+        `INSERT INTO sc_teams (club_slug, name, category) VALUES ($1, $2, $3)
+         ON CONFLICT (club_slug, category) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+        [slug, input.teamName || category, category]
+      );
+      const player = await client.query(
+        `INSERT INTO sc_players (club_slug, display_name) VALUES ($1, $2)
+         ON CONFLICT (club_slug, display_name) DO UPDATE SET active = TRUE, updated_at = NOW() RETURNING id`,
+        [slug, String(input.name).trim()]
+      );
+      await client.query('INSERT INTO sc_team_players (team_id, player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [team.rows[0].id, player.rows[0].id]);
+      playerId = player.rows[0].id;
+    }
     let assessment = await client.query(
       `SELECT id FROM sc_physical_assessments WHERE club_slug = $1 AND player_id = $2 AND evaluated_on IS NOT DISTINCT FROM $3::date AND source_key = 'manual' AND season_id = $4 LIMIT 1`,
-      [slug, player.rows[0].id, input.evaluatedOn || null, seasonId]
+      [slug, playerId, input.evaluatedOn || null, seasonId]
     );
     if (assessment.rowCount) {
       await client.query('DELETE FROM sc_physical_test_results WHERE assessment_id = $1', [assessment.rows[0].id]);
@@ -796,7 +812,7 @@ async function savePhysicalAssessment(slug, input, seasonName) {
       assessment = await client.query(
         `INSERT INTO sc_physical_assessments (club_slug, player_id, evaluated_on, source_key, season_id)
          VALUES ($1, $2, $3::date, 'manual', $4) RETURNING id`,
-        [slug, player.rows[0].id, input.evaluatedOn || null, seasonId]
+        [slug, playerId, input.evaluatedOn || null, seasonId]
       );
     }
     for (const result of input.results) {
@@ -813,7 +829,7 @@ async function savePhysicalAssessment(slug, input, seasonName) {
       );
     }
     await client.query('COMMIT');
-    return { playerId: player.rows[0].id, assessmentId: assessment.rows[0].id };
+    return { playerId, assessmentId: assessment.rows[0].id };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
