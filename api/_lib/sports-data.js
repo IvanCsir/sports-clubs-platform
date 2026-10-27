@@ -802,9 +802,7 @@ async function savePhysicalAssessment(slug, input, seasonName) {
       `SELECT id FROM sc_physical_assessments WHERE club_slug = $1 AND player_id = $2 AND evaluated_on IS NOT DISTINCT FROM $3::date AND source_key = 'manual' AND season_id = $4 LIMIT 1`,
       [slug, playerId, input.evaluatedOn || null, seasonId]
     );
-    if (assessment.rowCount) {
-      await client.query('DELETE FROM sc_physical_test_results WHERE assessment_id = $1', [assessment.rows[0].id]);
-    } else {
+    if (!assessment.rowCount) {
       assessment = await client.query(
         `INSERT INTO sc_physical_assessments (club_slug, player_id, evaluated_on, source_key, season_id)
          VALUES ($1, $2, $3::date, 'manual', $4) RETURNING id`,
@@ -820,7 +818,9 @@ async function savePhysicalAssessment(slug, input, seasonName) {
       }
       await client.query(
         `INSERT INTO sc_physical_test_results (assessment_id, test_key, attempt, value, unit)
-         VALUES ($1, $2, $3, $4, $5)`,
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (assessment_id, test_key, attempt)
+         DO UPDATE SET value = EXCLUDED.value, unit = EXCLUDED.unit`,
         [assessment.rows[0].id, definition.key, attempt, value, definition.unit || '']
       );
     }
