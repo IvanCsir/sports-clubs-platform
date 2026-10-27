@@ -58,7 +58,7 @@ function PreparationVideoPlayer({ videoEmbed, title }) {
       title={title}
       loading="lazy"
       allow="autoplay; encrypted-media; picture-in-picture"
-      allowFullScreen
+      allowFullScreen={videoEmbed.provider !== 'Drive'}
       referrerPolicy="strict-origin-when-cross-origin"
     />
   );
