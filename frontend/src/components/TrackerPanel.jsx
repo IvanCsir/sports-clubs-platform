@@ -101,6 +101,9 @@ export default function TrackerPanel({
   const count = (team, type) =>
     currentEvents.filter(event => event.team === team && event.type === type).length;
 
+  const countQuarter = (team, type) =>
+    currentEvents.filter(event => event.team === team && event.type === type && Number(event.quarter) === Number(quarter)).length;
+
   const addEvent = async (team, type, details = {}, actionId = '') => {
     if (savingEvent) return false;
     setSavingEvent(true);
@@ -245,7 +248,7 @@ export default function TrackerPanel({
         >
           <span><Icon /></span>
           <strong>{label}</strong>
-          <small>{count(team, type)} en partido</small>
+          <small>{quarter}° cuarto: {countQuarter(team, type)} · Total: {count(team, type)}</small>
           <b>+1</b>
         </button>
       ))}
@@ -253,7 +256,7 @@ export default function TrackerPanel({
         <span>Tarjetas</span>
         {['green', 'yellow', 'red'].map(card => (
           <button key={card} onClick={() => beginAction(team, card)} disabled={savingEvent}>
-            {card === 'green' ? '🟩' : card === 'yellow' ? '🟨' : '🟥'} {count(team, card)}
+            {card === 'green' ? '🟩' : card === 'yellow' ? '🟨' : '🟥'} C{quarter}: {countQuarter(team, card)} · {count(team, card)} total
           </button>
         ))}
       </div>
@@ -368,7 +371,7 @@ export default function TrackerPanel({
         ))}
       </div>
 
-      <div className="tracker-grid">
+      <div className={`tracker-grid${teamView === 'both' ? '' : ' single-team'}`}>
         {(teamView === 'home' || teamView === 'both') && renderTeam('home', club.shortName || club.name)}
         {(teamView === 'away' || teamView === 'both') && renderTeam('away', match?.rival || 'Rival')}
       </div>

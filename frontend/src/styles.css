@@ -92,6 +92,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .tracker-quarters button, .tracker-team-view button, .tracker-actions button { color: #b7c9de; border: 1px solid #8dd3ff40; background: #ffffff0d; }
 .tracker-quarters button.active, .tracker-team-view button.active { color: #031125; background: #00a2ff; }
 .tracker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.tracker-grid.single-team { grid-template-columns: minmax(0, 1fr); }
 .tracker-team { padding: 16px; border-radius: 16px; background: #ffffff0a; }
 .tracker-team h3 { margin-top: 0; }
 .tracker-team > button { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; width: 100%; margin: 8px 0; text-align: left; color: #eaf6ff; background: #123154; }
