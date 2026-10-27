@@ -130,12 +130,10 @@ function fetchAmhMatches(division, club) {
               }
             }
 
-            const opponentLogoUrl = `/api/torneo/team-logo?club=${encodeURIComponent(club.slug)}&division=${divId}&team=${encodeURIComponent(rival)}`;
             const matchObj = {
               round: `Fecha ${cells['FECHA_NRO']}`,
               fecha: cells['FECHA'] || '',
               rival,
-              opponentLogoUrl,
               homeAway,
               matchTime: getMatchTime(cells, divId),
               score,

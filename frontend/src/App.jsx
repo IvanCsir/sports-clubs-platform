@@ -590,7 +590,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                   <div className="home-match-title">
                     <div className="home-match-title-row">
                       <h2>vs {nextAmhMatch?.rival || meta.rival || 'Rival pendiente'}</h2>
-                      <OpponentBadge key={nextAmhMatch?.rival || meta.rival || ''} name={nextAmhMatch?.rival || meta.rival || ''} imageUrl={nextAmhMatch?.opponentLogoUrl || ''} />
+                      <OpponentBadge key={nextAmhMatch?.rival || meta.rival || ''} name={nextAmhMatch?.rival || meta.rival || ''} />
                     </div>
                     <p>{nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</p>
                   </div>
@@ -915,7 +915,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               <span className="kicker">{nextAmhMatch?.round || meta['fecha n°'] || meta['fecha'] || 'PRÓXIMO PARTIDO'}</span>
               <div className="home-match-title-row">
                 <h2>vs {nextAmhMatch?.rival || meta.rival || 'Rival pendiente'}</h2>
-                <OpponentBadge key={nextAmhMatch?.rival || meta.rival || ''} name={nextAmhMatch?.rival || meta.rival || ''} imageUrl={nextAmhMatch?.opponentLogoUrl || ''} />
+                <OpponentBadge key={nextAmhMatch?.rival || meta.rival || ''} name={nextAmhMatch?.rival || meta.rival || ''} />
               </div>
               <div className="match-details">
                 <span>📅 {nextAmhMatch?.fecha || meta.dia || meta['día'] || 'Fecha pendiente'}</span>

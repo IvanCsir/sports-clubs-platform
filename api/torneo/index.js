@@ -41,7 +41,6 @@ function fetchAmhStandings(division, club) {
                   pos: parseInt(filtered[0], 10),
                   zona: filtered[1],
                   team,
-                  logoUrl: `/api/torneo/team-logo?club=${encodeURIComponent(club.slug)}&division=${divId}&team=${encodeURIComponent(team)}`,
                   pj: parseInt(filtered[3], 10),
                   pg: parseInt(filtered[4], 10),
                   pe: parseInt(filtered[5], 10),
