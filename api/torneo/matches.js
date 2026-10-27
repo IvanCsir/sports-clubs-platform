@@ -33,6 +33,42 @@ function getMatchTime(cells, division) {
   return cells['HORA_PARTIDO'] || AMH_MATCH_TIMES[matchNumber] || (division === '2' ? '15:15' : '16:45');
 }
 
+function parseMatchDate(value) {
+  const text = String(value || '').trim();
+  const localDate = text.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})$/);
+  if (localDate) {
+    const year = Number(localDate[3]) < 100 ? 2000 + Number(localDate[3]) : Number(localDate[3]);
+    const month = Number(localDate[2]);
+    const day = Number(localDate[1]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+    return date.getTime();
+  }
+
+  const isoDate = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoDate) {
+    const year = Number(isoDate[1]);
+    const month = Number(isoDate[2]);
+    const day = Number(isoDate[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+    return date.getTime();
+  }
+  return null;
+}
+
+function compareMatchesByDate(a, b) {
+  const aDate = parseMatchDate(a.fecha);
+  const bDate = parseMatchDate(b.fecha);
+  if (aDate !== null && bDate !== null && aDate !== bDate) return aDate - bDate;
+  if (aDate !== null && bDate === null) return -1;
+  if (aDate === null && bDate !== null) return 1;
+
+  const aRound = Number(String(a.round || '').match(/\d+/)?.[0] || Number.MAX_SAFE_INTEGER);
+  const bRound = Number(String(b.round || '').match(/\d+/)?.[0] || Number.MAX_SAFE_INTEGER);
+  return aRound - bRound;
+}
+
 function fetchAmhMatches(division, club) {
   return new Promise((resolve, reject) => {
     const divId = division === '2' ? '2' : '1';
@@ -55,7 +91,6 @@ function fetchAmhMatches(division, club) {
           const allMatches = [];
           const playedMatches = [];
           const pendingMatches = [];
-          let nextMatch = null;
 
           rows.forEach((r) => {
             const cells = {};
@@ -95,10 +130,12 @@ function fetchAmhMatches(division, club) {
               }
             }
 
+            const opponentLogoUrl = `/api/torneo/team-logo?club=${encodeURIComponent(club.slug)}&division=${divId}&team=${encodeURIComponent(rival)}`;
             const matchObj = {
               round: `Fecha ${cells['FECHA_NRO']}`,
               fecha: cells['FECHA'] || '',
               rival,
+              opponentLogoUrl,
               homeAway,
               matchTime: getMatchTime(cells, divId),
               score,
@@ -112,18 +149,14 @@ function fetchAmhMatches(division, club) {
               playedMatches.push(matchObj);
             } else {
               pendingMatches.push(matchObj);
-              if (!nextMatch) {
-                nextMatch = {
-                  round: `Fecha ${cells['FECHA_NRO']}`,
-                  fecha: cells['FECHA'] || '',
-                  rival,
-                  homeAway,
-                  matchTime: getMatchTime(cells, divId),
-                  status: 'Pendiente'
-                };
-              }
             }
           });
+
+          // Las fechas pueden reprogramarse y romper el orden numérico del fixture.
+          allMatches.sort(compareMatchesByDate);
+          playedMatches.sort(compareMatchesByDate);
+          pendingMatches.sort(compareMatchesByDate);
+          const nextMatch = pendingMatches[0] || null;
 
           resolve({
             division,

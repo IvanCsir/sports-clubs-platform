@@ -245,25 +245,12 @@ const server = http.createServer((req, res) => {
 
   // API Proxy para Partidos AMH
   if (reqPath === '/api/torneo/matches') {
-    const division = urlObj.searchParams.get('division') || '1';
-    getClubAsync(urlObj.searchParams.get('club')).then(club => new Promise((resolve, reject) => {
-      fetchAmhMatches(division, club, (err, data) => err ? reject(err) : resolve(data));
-    })).then(data => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.writeHead(200);
-      res.end(JSON.stringify({
-        division,
-        matches: data.allMatches || data.matches,
-        playedMatches: data.playedMatches,
-        pendingMatches: data.pendingMatches,
-        nextMatch: data.nextMatch,
-        updatedAt: new Date().toISOString()
-      }));
-    }).catch(err => {
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ error: err.message }));
-    });
+    require('./api/torneo/matches.js')(req, res);
+    return;
+  }
+
+  if (reqPath === '/api/torneo/team-logo') {
+    require('./api/torneo/team-logo.js')(req, res);
     return;
   }
 
