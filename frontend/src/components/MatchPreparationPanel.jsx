@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Italic, List, ListOrdered, Pause, Play, Underline } from 'lucide-react';
+import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Italic, List, ListOrdered, Underline } from 'lucide-react';
 import TacticalPlays from './TacticalPlays';
 
 const emptyPreparation = () => ({ focus: '', videos: [{ title: '', url: '' }], plays: [] });
@@ -34,11 +34,7 @@ function getVideoEmbed(value) {
       const pathId = url.pathname.match(/\/file\/d\/([A-Za-z0-9_-]+)/)?.[1];
       const fileId = pathId || url.searchParams.get('id');
       if (!fileId || !/^[A-Za-z0-9_-]+$/.test(fileId)) return null;
-      return {
-        src: `https://drive.google.com/file/d/${fileId}/preview`,
-        playbackSrc: `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`,
-        provider: 'Drive',
-      };
+      return { src: `https://drive.google.com/file/d/${fileId}/preview`, provider: 'Drive' };
     }
 
     if (['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com', 'youtu.be', 'www.youtu.be'].includes(hostname)) {
@@ -56,95 +52,15 @@ function getVideoEmbed(value) {
 }
 
 function PreparationVideoPlayer({ videoEmbed, title }) {
-  const [directPlaybackFailed, setDirectPlaybackFailed] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const playerRef = useRef(null);
-
-  const formatTime = seconds => {
-    if (!Number.isFinite(seconds)) return '0:00';
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60).toString().padStart(2, '0');
-    return `${minutes}:${remainingSeconds}`;
-  };
-
-  const togglePlayback = async () => {
-    const player = playerRef.current;
-    if (!player) return;
-    if (player.paused) {
-      try {
-        await player.play();
-        setPlaying(true);
-      } catch (_) {
-        setPlaying(false);
-      }
-    } else {
-      player.pause();
-      setPlaying(false);
-    }
-  };
-
-  if (videoEmbed.provider === 'Drive' && !directPlaybackFailed) {
-    return (
-      <div className="preparation-video-player">
-        <video
-          ref={playerRef}
-          className="preparation-video-native"
-          src={videoEmbed.playbackSrc}
-          title={title}
-          playsInline
-          preload="metadata"
-          onLoadedMetadata={event => setDuration(event.currentTarget.duration)}
-          onTimeUpdate={event => setCurrentTime(event.currentTarget.currentTime)}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          onEnded={() => setPlaying(false)}
-          onError={() => setDirectPlaybackFailed(true)}
-          onClick={togglePlayback}
-        />
-        <div className="preparation-video-controls" aria-label="Controles del video">
-          <button type="button" onClick={togglePlayback} aria-label={playing ? 'Pausar video' : 'Reproducir video'}>
-            {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-          </button>
-          <span>{formatTime(currentTime)}</span>
-          <input
-            type="range"
-            min="0"
-            max={duration || 0}
-            step="0.1"
-            value={Math.min(currentTime, duration || 0)}
-            aria-label="Posición del video"
-            onChange={event => {
-              const nextTime = Number(event.target.value);
-              if (playerRef.current) playerRef.current.currentTime = nextTime;
-              setCurrentTime(nextTime);
-            }}
-          />
-          <span>{formatTime(duration)}</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (videoEmbed.provider !== 'Drive') {
-    return (
-      <iframe
-        src={videoEmbed.src}
-        title={title}
-        loading="lazy"
-        allow="autoplay; encrypted-media; picture-in-picture"
-        allowFullScreen
-        referrerPolicy="strict-origin-when-cross-origin"
-      />
-    );
-  }
-
   return (
-    <div className="preparation-video-unavailable">
-      <p>No se pudo reproducir el video dentro de la aplicación.</p>
-      <a href={videoEmbed.src} target="_blank" rel="noreferrer">Abrir reproductor de Drive</a>
-    </div>
+    <iframe
+      src={videoEmbed.src}
+      title={title}
+      loading="lazy"
+      allow="autoplay; encrypted-media; picture-in-picture"
+      allowFullScreen
+      referrerPolicy="strict-origin-when-cross-origin"
+    />
   );
 }
 
