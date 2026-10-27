@@ -1,40 +1,55 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import OpponentBadge from './OpponentBadge';
 
+function divisionKey(value) {
+  const normalized = String(value || '1').trim().toLowerCase();
+  return normalized === '2' || normalized.includes('intermedia') || normalized.includes('segunda')
+    ? 'intermedia'
+    : 'primera';
+}
+
 export default function TournamentPanel({ club }) {
-  const [division, setDivision] = useState('primera');
+  const [division, setDivision] = useState(() => divisionKey(club.tournament?.division));
   const [matchesTab, setMatchesTab] = useState('pending');
   const [data, setData] = useState({ primera: null, intermedia: null });
   const [status, setStatus] = useState('Cargando torneo...');
+  const loadingDivisions = useRef(new Set());
 
-  async function loadTournament() {
+  async function loadTournament(targetDivision = division) {
+    if (loadingDivisions.current.has(targetDivision)) return;
+    loadingDivisions.current.add(targetDivision);
     setStatus('Actualizando torneo...');
     try {
-      const loadDivision = async (key, id) => {
-        const [standingsResponse, matchesResponse] = await Promise.all([
-          fetch(`/api/torneo?club=${encodeURIComponent(club.slug)}&division=${id}`, { cache: 'no-store' }),
-          fetch(`/api/torneo/matches?club=${encodeURIComponent(club.slug)}&division=${id}`, { cache: 'no-store' })
-        ]);
-        const standings = await standingsResponse.json();
-        const matches = await matchesResponse.json();
-        if (!standingsResponse.ok) throw new Error(standings.error || 'No se pudo cargar la tabla.');
-        if (!matchesResponse.ok) throw new Error(matches.error || 'No se pudo cargar el fixture.');
-        return [key, { ...standings, ...matches }];
-      };
-      const [primera, intermedia] = await Promise.all([
-        loadDivision('primera', '1'),
-        loadDivision('intermedia', '2')
-      ]);
-      setData(Object.fromEntries([primera, intermedia]));
+      const divisionId = targetDivision === 'intermedia' ? '2' : '1';
+      const query = `club=${encodeURIComponent(club.slug)}&division=${divisionId}`;
+      const standingsResponse = await fetch(`/api/torneo?${query}`, { cache: 'no-store' });
+      const standings = await standingsResponse.json();
+      if (!standingsResponse.ok) throw new Error(standings.error || 'No se pudo cargar la tabla.');
+
+      const matchesResponse = await fetch(`/api/torneo/matches?${query}`, { cache: 'no-store' });
+      const matches = await matchesResponse.json();
+      if (!matchesResponse.ok) throw new Error(matches.error || 'No se pudo cargar el fixture.');
+
+      setData(current => ({ ...current, [targetDivision]: { ...standings, ...matches } }));
       setStatus(`Actualizado ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`);
     } catch (error) {
       setStatus(error.message);
+    } finally {
+      loadingDivisions.current.delete(targetDivision);
     }
   }
 
   useEffect(() => {
-    loadTournament();
-  }, [club.slug, club.tournament?.tournamentId]);
+    setData({ primera: null, intermedia: null });
+    const configuredDivision = divisionKey(club.tournament?.division);
+    setDivision(configuredDivision);
+    loadTournament(configuredDivision);
+  }, [club.slug, club.tournament?.baseUrl, club.tournament?.tournamentId, club.tournament?.clubId, club.tournament?.division]);
+
+  function selectDivision(nextDivision) {
+    setDivision(nextDivision);
+    if (!data[nextDivision]) loadTournament(nextDivision);
+  }
 
   const current = data[division] || { standings: [], scorers: [], playedMatches: [], pendingMatches: [] };
   const normalizeTeamName = name => String(name || '')
@@ -83,20 +98,20 @@ export default function TournamentPanel({ club }) {
         <div className="tournament-tabs">
           <button
             className={division === 'primera' ? 'active' : ''}
-            onClick={() => setDivision('primera')}
+            onClick={() => selectDivision('primera')}
           >
             1ra División
           </button>
           <button
             className={division === 'intermedia' ? 'active' : ''}
-            onClick={() => setDivision('intermedia')}
+            onClick={() => selectDivision('intermedia')}
           >
             Intermedia
           </button>
         </div>
         <div className="sync-status">
           {status}
-          <button className="refresh" onClick={loadTournament}>
+          <button className="refresh" onClick={() => loadTournament()}>
             Actualizar
           </button>
         </div>

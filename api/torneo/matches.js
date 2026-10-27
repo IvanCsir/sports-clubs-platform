@@ -190,12 +190,12 @@ module.exports = async (req, res) => {
   }
 
   const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const division = urlObj.searchParams.get('division') || '1';
   try {
     const club = await getClubAsync(urlObj.searchParams.get('club'));
     if (!club || !club.tournament?.baseUrl || !club.tournament?.tournamentId || !club.tournament?.clubId) {
       throw new Error('El club no tiene configurado su torneo AMH.');
     }
+    const division = urlObj.searchParams.get('division') || club.tournament.division || '1';
     const data = await fetchAmhMatches(division, club);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
