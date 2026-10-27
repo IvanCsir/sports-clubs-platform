@@ -566,11 +566,10 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
    PANEL DE ESTADÍSTICAS & ANÁLISIS POR CUARTOS
    ========================================================================== */
 .stats-panel { margin-top: 20px; padding: clamp(18px, 4vw, 32px); border: 1px solid #8dd3ff33; border-radius: 20px; background: #ffffff09; }
-.stats-heading-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 360px); align-items: center; gap: 24px; }
+.stats-heading-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 360px); align-items: start; gap: 24px; }
 .stats-hero { margin-bottom: 20px; }
 .stats-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 12px; margin: 18px 0; }
-.stats-tournament-picker { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin: 0 0 20px; }
-.stats-tournament-picker label { color: #b7c9de; font-size: .9rem; }
+.stats-tournament-picker { display: flex; justify-content: flex-end; align-items: flex-start; margin: 0 0 20px; }
 .stats-tournament-picker select { min-width: min(360px, 100%); padding: 10px 12px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #071d3d; }
 .stats-selector-box { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 10px; min-width: 0; }
 .stats-selector-box label { font-size: .85rem; color: #b7c9de; white-space: nowrap; }

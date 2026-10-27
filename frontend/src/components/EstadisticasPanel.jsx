@@ -105,9 +105,9 @@ export default function EstadisticasPanel({
 
         {tournaments.length > 0 && (
           <div className="stats-tournament-picker">
-            <label htmlFor="select-stats-tournament">Torneo</label>
             <select
               id="select-stats-tournament"
+              aria-label="Seleccionar torneo para las estadísticas"
               value={selectedTournamentKey || activeTournamentKey}
               onChange={event => setSelectedTournamentKey(event.target.value)}
             >
