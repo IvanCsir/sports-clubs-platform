@@ -223,6 +223,12 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || 'No se pudo guardar el evento en la base de datos.');
+    setTournamentStats(current => ({
+      ...current,
+      tournaments: current.tournaments.map(tournament => tournament.key === current.activeKey
+        ? { ...tournament, events: [...(tournament.events || []).filter(item => item.id !== event.id), { ...event, opponent }] }
+        : tournament)
+    }));
   }
 
   async function removeTrackerEvent(id) {
@@ -469,6 +475,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setMobileMenuOpen(false);
     if (id === 'fisico') loadPhysical();
     if (id === 'seguimiento' && authenticated) loadStaffData(token);
+    if (id === 'stats' && authenticated) loadStaffData(token).catch(error => setStatus(error.message));
     if (id === 'dt') {
       setMatches([]);
       loadMatches('1');
