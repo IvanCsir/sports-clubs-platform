@@ -228,18 +228,7 @@ const server = http.createServer((req, res) => {
 
   // API Proxy para Torneo AMH (evita CORS y Mixed Content en local)
   if (reqPath === '/api/torneo') {
-    const division = urlObj.searchParams.get('division') || '1';
-    getClubAsync(urlObj.searchParams.get('club')).then(club => new Promise((resolve, reject) => {
-      fetchAmhStandings(division, club, (err, data) => err ? reject(err) : resolve(data));
-    })).then(data => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.writeHead(200);
-      res.end(JSON.stringify(data));
-    }).catch(err => {
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ error: err.message }));
-    });
+    require('./api/torneo/index.js')(req, res);
     return;
   }
 

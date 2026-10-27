@@ -193,7 +193,12 @@ export default function TournamentPanel({ club }) {
                   current.standings.map((row, index) => (
                     <tr className={isClubRow(row) ? 'highlight' : ''} key={`${row.team}-${index}`}>
                       <td>{row.pos || index + 1}</td>
-                      <td>{row.team}</td>
+                      <td>
+                        <div className="standings-team-cell">
+                          <OpponentBadge name={row.team || ''} size="small" imageUrl={row.logoUrl || ''} />
+                          <span>{row.team}</span>
+                        </div>
+                      </td>
                       <td>{row.pts ?? 0}</td>
                       <td>{row.pj ?? 0}</td>
                       <td>{row.dif ?? 0}</td>

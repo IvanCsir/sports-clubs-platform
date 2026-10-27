@@ -486,6 +486,9 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .standings-react th, .standings-react td { padding: 10px 8px; border-bottom: 1px solid #8dd3ff20; text-align: left; white-space: nowrap; }
 .standings-react th { color: #9eb4cc; font-size: .7rem; }
 .standings-react tr.highlight { color: #fff; background: #00a2ff1a; }
+.standings-team-cell { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.standings-team-cell .opponent-badge { flex: 0 0 32px; width: 32px; height: 32px; box-shadow: none; }
+.standings-team-cell .opponent-badge img { padding: 3px; }
 .scorers-card { margin-top: 14px; }
 .scorers-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
 .scorers-list > div { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; padding: 10px; border: 1px solid #8dd3ff20; border-radius: 10px; }

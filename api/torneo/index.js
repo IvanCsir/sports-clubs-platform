@@ -36,10 +36,12 @@ function fetchAmhStandings(division, club) {
             if (!isScorers) {
               const filtered = cells.filter((c) => c !== '');
               if (filtered.length >= 10) {
+                const team = filtered[2];
                 tableData.push({
                   pos: parseInt(filtered[0], 10),
                   zona: filtered[1],
-                  team: filtered[2],
+                  team,
+                  logoUrl: `/api/torneo/team-logo?club=${encodeURIComponent(club.slug)}&division=${divId}&team=${encodeURIComponent(team)}`,
                   pj: parseInt(filtered[3], 10),
                   pg: parseInt(filtered[4], 10),
                   pe: parseInt(filtered[5], 10),

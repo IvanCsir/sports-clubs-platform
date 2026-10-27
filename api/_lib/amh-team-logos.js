@@ -6,13 +6,32 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_CACHE_ITEMS = 200;
 
 function normalizeTeamName(value) {
-  return String(value || '')
+  const normalized = String(value || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
     .replace(/[().,'"-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+  const branch = normalized.match(/\s+([ABC])$/)?.[1] || '';
+  const baseName = branch ? normalized.replace(/\s+[ABC]$/, '') : normalized;
+  const compact = baseName.replace(/[^A-Z0-9]/g, '');
+  const aliases = new Map([
+    ['UNSJ', ['UNSJ', 'UNIVERSIDAD NACIONAL DE SAN JUAN', 'UNIVERSIDAD SAN JUAN', 'U N S JUAN', 'U N S J']],
+    ['UNCUYO', ['UNCUYO', 'UNIVERSIDAD NACIONAL DE CUYO', 'UNIVERSIDAD DE CUYO', 'U N CUYO']],
+    ['BCO MZA', ['BCO MZA', 'BANCO MZA', 'BANCO MENDOZA', 'BANCO DE MENDOZA', 'CPBM']],
+    ['MARISTA SAN RAFAEL', ['MARISTA SAN RAFAEL', 'MARISTA S RAFAEL', 'MARISTAS SAN RAFAEL', 'MARISTAS S RAFAEL']],
+    ['SAN RAFAEL TENIS CLUB', ['SAN RAFAEL TENIS CLUB', 'S R TENIS CLUB']],
+    ['TORDOS', ['TORDOS', 'LOS TORDOS']],
+    ['ALEMAN', ['ALEMAN', 'CLUB ALEMAN']],
+    ['MURIALDO', ['MURIALDO', 'LEONARDO MURIALDO']]
+  ]);
+  for (const [canonical, names] of aliases) {
+    if (names.some(name => name.replace(/[^A-Z0-9]/g, '') === compact)) {
+      return branch ? `${canonical} ${branch}` : canonical;
+    }
+  }
+  return normalized;
 }
 
 function requestBuffer(url, headers = {}, redirects = 0) {
