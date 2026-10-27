@@ -23,6 +23,7 @@ const DEFAULT_CLUB = {
     amhTeamName: '',
     name: 'Clausura Damas B 2026'
   },
+  season: { name: '2026' },
   auth: {
     password: '',
     secret: ''
@@ -80,6 +81,7 @@ function normalizeClub(club) {
     ...club,
     theme: { ...clone(DEFAULT_CLUB.theme), ...(club.theme || {}) },
     tournament: { ...clone(DEFAULT_CLUB.tournament), ...(club.tournament || {}) },
+    season: { ...clone(DEFAULT_CLUB.season), ...(club.season || {}) },
     auth: { ...clone(DEFAULT_CLUB.auth), ...(club.auth || {}) }
   };
 }

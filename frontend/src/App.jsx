@@ -22,7 +22,8 @@ const emptyClub = {
   tournamentId: '',
   tournamentClubId: '',
   tournamentAmhTeamName: '',
-  tournamentDivision: '1'
+  tournamentDivision: '1',
+  seasonName: String(new Date().getFullYear())
 };
 
 const PHYSICAL_TESTS = [
@@ -479,7 +480,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           <div>
             <span className="kicker">{club.shortName}</span>
             <h1>{club.teamName}</h1>
-            <p>{club.sport}</p>
+            <p>{club.sport} · Temporada {club.season?.name || new Date().getFullYear()}</p>
           </div>
           <div className="workspace-header-actions">
             {authenticated ? (
@@ -1112,7 +1113,8 @@ function App() {
       tournamentId: club.tournament?.tournamentId || '',
       tournamentClubId: club.tournament?.clubId || '',
       tournamentAmhTeamName: club.tournament?.amhTeamName || '',
-      tournamentDivision: club.tournament?.division || '1'
+      tournamentDivision: club.tournament?.division || '1',
+      seasonName: club.season?.name || String(new Date().getFullYear())
     });
     setShowForm(true);
     setMessage('');
@@ -1206,6 +1208,7 @@ function App() {
           amhTeamName: form.tournamentAmhTeamName,
           division: form.tournamentDivision || '1'
         },
+        season: { name: form.seasonName },
         auth: { password: form.staffPassword, secret: form.staffSecret }
       }
     };
@@ -1393,6 +1396,18 @@ function App() {
                 </button>
               </div>
             )}
+            <label>
+              Temporada activa
+              <input
+                name="seasonName"
+                value={form.seasonName}
+                onChange={updateField}
+                maxLength={60}
+                placeholder="2027"
+                required
+              />
+              <small>Citaciones, botonera, estadísticas, evaluaciones y seguimiento se guardan por temporada. Al iniciar otra, cambiá este nombre y seleccioná su torneo AMH.</small>
+            </label>
             <fieldset className="amh-selector">
               <legend>Configurar torneo desde AMH</legend>
               <p>Buscá los datos oficiales sin cargar IDs manualmente.</p>

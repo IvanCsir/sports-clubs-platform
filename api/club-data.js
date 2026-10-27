@@ -24,6 +24,7 @@ module.exports = async function handler(req, res) {
   try {
     const club = slug ? await getClubAsync(slug) : null;
     if (!club) return json(res, 404, { error: 'Club no encontrado.' });
+    const seasonName = club.season?.name || String(new Date().getFullYear());
 
     if (req.method === 'GET') {
       const dataset = url.searchParams.get('dataset') || 'citations';
@@ -32,11 +33,11 @@ module.exports = async function handler(req, res) {
         return json(res, 200, { players: await sportsData.getPlayerPortalRoster(slug) });
       }
       if (dataset === 'preparations') {
-        return json(res, 200, { preparations: await sportsData.getMatchPreparations(slug) });
+        return json(res, 200, { preparations: await sportsData.getMatchPreparations(slug, seasonName) });
       }
       if (dataset === 'physical') {
         // Las evaluaciones son públicas para que las jugadoras puedan consultarlas desde el enlace del club.
-        const data = await sportsData.getClubData(slug);
+        const data = await sportsData.getClubData(slug, seasonName);
         return json(res, 200, { physicalPlayers: data.physicalPlayers });
       }
       if (dataset === 'staff') {
@@ -44,13 +45,13 @@ module.exports = async function handler(req, res) {
         if (!token || !verifySessionToken(token, club).valid) {
           return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
         }
-        const data = await sportsData.getClubData(slug);
+        const data = await sportsData.getClubData(slug, seasonName);
         return json(res, 200, {
           physicalPlayers: data.physicalPlayers, events: data.events, players: data.players || [], citations: data.citations,
-          monitoring: await sportsData.getPlayerMonitoring(slug)
+          monitoring: await sportsData.getPlayerMonitoring(slug, seasonName)
         });
       }
-      const data = await sportsData.getClubData(slug);
+      const data = await sportsData.getClubData(slug, seasonName);
       return json(res, 200, { citations: data.citations });
     }
     if (!['POST', 'DELETE'].includes(req.method)) return json(res, 405, { error: 'Método no permitido.' });
@@ -58,7 +59,7 @@ module.exports = async function handler(req, res) {
     const body = await readBody(req);
     if (req.method === 'POST' && body.action === 'save-player-monitoring') {
       try {
-        return json(res, 200, await sportsData.savePlayerMonitoring(slug, body));
+        return json(res, 200, await sportsData.savePlayerMonitoring(slug, body, seasonName));
       } catch (error) {
         if (/Seleccioná|Completá|Indicá|La fecha|Tipo de registro|no pertenece/.test(error.message)) {
           return json(res, 400, { error: error.message });
@@ -100,7 +101,7 @@ module.exports = async function handler(req, res) {
     if (body.action === 'save-callup') {
       if (!['primera', 'intermedia'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
       if (!Array.isArray(body.players) || body.players.length > 60) return json(res, 400, { error: 'La lista de jugadoras no es válida.' });
-      return json(res, 200, await sportsData.saveCallup(slug, body));
+      return json(res, 200, await sportsData.saveCallup(slug, body, seasonName));
     }
     if (body.action === 'save-preparation') {
       if (!['primera', 'intermedia'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
@@ -145,22 +146,22 @@ module.exports = async function handler(req, res) {
       const saved = await sportsData.saveMatchPreparation(slug, {
         ...body,
         preparation: { focus: String(preparation.focus || '').trim(), videoUrls, plays }
-      });
+      }, seasonName);
       return json(res, 200, saved);
     }
     if (body.action === 'save-event') {
       if (!body.event || !body.event.id) return json(res, 400, { error: 'El evento debe incluir un identificador.' });
-      return json(res, 200, await sportsData.saveEvent(slug, body));
+      return json(res, 200, await sportsData.saveEvent(slug, body, seasonName));
     }
     if (body.action === 'replace-match-events') {
       if (!Array.isArray(body.events) || body.events.length > 1000) return json(res, 400, { error: 'La lista de eventos no es válida.' });
-      return json(res, 200, await sportsData.replaceMatchEvents(slug, body));
+      return json(res, 200, await sportsData.replaceMatchEvents(slug, body, seasonName));
     }
     if (body.action === 'save-physical-assessment') {
       if (!String(body.name || '').trim() || !Array.isArray(body.results) || body.results.length > 27) {
         return json(res, 400, { error: 'Completá la jugadora y los resultados de la evaluación.' });
       }
-      return json(res, 200, await sportsData.savePhysicalAssessment(slug, body));
+      return json(res, 200, await sportsData.savePhysicalAssessment(slug, body, seasonName));
     }
     return json(res, 400, { error: 'Acción de persistencia desconocida.' });
   } catch (error) {

@@ -198,7 +198,8 @@ module.exports = async (req, res) => {
     const division = urlObj.searchParams.get('division') || club.tournament.division || '1';
     const data = await fetchAmhMatches(division, club);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    // Evita servir el fixture del torneo anterior tras cambiar la temporada activa.
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
     res.statusCode = 200;
     res.end(JSON.stringify(data));
   } catch (err) {

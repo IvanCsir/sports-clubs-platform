@@ -58,6 +58,9 @@ function validateClub(input) {
     logoUrl: String(input.logoUrl || '').trim(),
     theme: input.theme || {},
     tournament: input.tournament || {},
+    season: {
+      name: String(input.season?.name || new Date().getFullYear()).trim().slice(0, 60)
+    },
     auth: {
       password: String(input.auth && input.auth.password || '').trim(),
       secret: String(input.auth && input.auth.secret || '').trim()

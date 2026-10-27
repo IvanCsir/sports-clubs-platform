@@ -189,7 +189,7 @@ export default function TournamentPanel({ club }) {
           <div className="section-heading">
             <div>
               <h3>Tabla de posiciones</h3>
-              <small>{current.divisionName || 'Competencia oficial'}</small>
+              <small>{[club.season?.name && `Temporada ${club.season.name}`, current.tournament, current.divisionName].filter(Boolean).join(' · ') || 'Competencia oficial'}</small>
             </div>
           </div>
           <div className="standings-wrap">
