@@ -58,7 +58,7 @@ export default function SeasonBackupPanel({ club, token }) {
           <li>Plantel y categorías</li>
           <li>Citaciones y partidos de la temporada</li>
           <li>Planes de partido, incluidas jugadas y enlaces de video</li>
-          <li>Evaluaciones físicas y seguimiento de jugadoras</li>
+          <li>Catálogo de pruebas, evaluaciones físicas y seguimiento de jugadoras</li>
           <li>Eventos de la botonera, organizados por torneo</li>
         </ul>
         <p className="season-backup-note">

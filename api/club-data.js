@@ -56,7 +56,7 @@ module.exports = async function handler(req, res) {
       if (dataset === 'physical') {
         // Las evaluaciones son públicas para que las jugadoras puedan consultarlas desde el enlace del club.
         const data = await sportsData.getClubData(slug, seasonName, tournamentKey);
-        return json(res, 200, { physicalPlayers: data.physicalPlayers });
+        return json(res, 200, { physicalPlayers: data.physicalPlayers, physicalTests: data.physicalTests });
       }
       if (dataset === 'backup') {
         const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
@@ -90,7 +90,7 @@ module.exports = async function handler(req, res) {
         }
         const data = await sportsData.getClubData(slug, seasonName, tournamentKey);
         return json(res, 200, {
-          physicalPlayers: data.physicalPlayers, events: data.events, players: data.players || [], citations: data.citations,
+          physicalPlayers: data.physicalPlayers, physicalTests: data.physicalTests, events: data.events, players: data.players || [], citations: data.citations,
           monitoring: await sportsData.getPlayerMonitoring(slug, seasonName),
           tournamentStats: await sportsData.getTournamentStats(slug, seasonName, tournamentKey, tournamentName)
         });
@@ -132,6 +132,22 @@ module.exports = async function handler(req, res) {
       }
       if (!['primera', 'intermedia', '5ta'].includes(body.category)) return json(res, 400, { error: 'Categoría inválida.' });
       return json(res, 200, await sportsData.savePlayer(slug, body));
+    }
+    if (body.action === 'save-physical-test') {
+      try {
+        return json(res, 200, await sportsData.savePhysicalTestDefinition(slug, body));
+      } catch (error) {
+        if (/Indicá|no puede|deben|debe estar|Ya existe/.test(error.message)) return json(res, 400, { error: error.message });
+        throw error;
+      }
+    }
+    if (body.action === 'deactivate-physical-test') {
+      if (!String(body.testKey || '').startsWith('custom-')) return json(res, 400, { error: 'Solo se pueden desactivar pruebas personalizadas.' });
+      return json(res, 200, await sportsData.deactivatePhysicalTestDefinition(slug, body.testKey));
+    }
+    if (body.action === 'reactivate-physical-test') {
+      if (!String(body.testKey || '').startsWith('custom-')) return json(res, 400, { error: 'Solo se pueden reactivar pruebas personalizadas.' });
+      return json(res, 200, await sportsData.reactivatePhysicalTestDefinition(slug, body.testKey));
     }
     if (body.action === 'update-player') {
       if (!String(body.name || '').trim() || String(body.name).trim().length > 120) {
@@ -231,10 +247,15 @@ module.exports = async function handler(req, res) {
       return json(res, 200, await sportsData.replaceMatchEvents(slug, body, seasonName, tournamentKey, tournamentName));
     }
     if (body.action === 'save-physical-assessment') {
-      if (!String(body.name || '').trim() || !Array.isArray(body.results) || body.results.length > 27) {
+      if (!String(body.name || '').trim() || !Array.isArray(body.results) || !body.results.length || body.results.length > 500) {
         return json(res, 400, { error: 'Completá la jugadora y los resultados de la evaluación.' });
       }
-      return json(res, 200, await sportsData.savePhysicalAssessment(slug, body, seasonName));
+      try {
+        return json(res, 200, await sportsData.savePhysicalAssessment(slug, body, seasonName));
+      } catch (error) {
+        if (/Una medición|Faltan datos/.test(error.message)) return json(res, 400, { error: error.message });
+        throw error;
+      }
     }
     return json(res, 400, { error: 'Acción de persistencia desconocida.' });
   } catch (error) {

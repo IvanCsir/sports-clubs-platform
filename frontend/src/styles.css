@@ -320,6 +320,16 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .physical-card { margin-top: 20px; padding: 22px; border: 1px solid #8dd3ff33; border-radius: 20px; background: #ffffff09; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .callup-editor, .physical-editor { display: grid; gap: 14px; margin: 14px 0 22px; padding: 16px; border: 1px solid #8dd3ff33; border-radius: 14px; background: #02081799; }
+.physical-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.physical-test-catalog-editor h3, .physical-test-definition-form h3 { margin: 0; }
+.physical-test-catalog-editor p { margin: 0; color: #9eb4cc; }
+.physical-test-catalog-list { display: grid; gap: 8px; }
+.physical-test-catalog-list > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid #8dd3ff26; border-radius: 10px; background: #ffffff08; }
+.physical-test-catalog-list > div > span { display: grid; gap: 3px; }
+.physical-test-catalog-list small { color: #9eb4cc; }
+.physical-test-definition-form { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid #8dd3ff26; }
+.physical-test-definition-form input, .physical-test-definition-form select { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #071d3d; font: inherit; }
+.physical-test-definition-form .message { margin: 0; }
 .player-editor { display: grid; grid-template-columns: minmax(180px, 2fr) minmax(160px, 1fr) auto; align-items: end; gap: 12px; margin: 14px 0 22px; padding: 16px; border: 1px solid #8dd3ff33; border-radius: 14px; background: #02081799; }
 .player-editor label { display: grid; gap: 6px; color: #b7c9de; font-size: .88rem; }
 .player-editor input, .player-editor select { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #071d3d; font: inherit; }
@@ -348,6 +358,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .callup-player-categories { display: block; margin-top: 2px; color: #9eb4cc; font-size: .76rem; }
 .inline-link { padding: 0; border: 0; color: #62c3ff; background: none; text-decoration: underline; }
 @media (max-width: 680px) { .player-editor { grid-template-columns: 1fr; } }
+@media (max-width: 680px) { .physical-card-actions { width: 100%; } .physical-card-actions button { flex: 1 1 150px; } .physical-test-catalog-list > div { align-items: flex-start; } }
 .callup-editor label, .physical-editor label { display: grid; gap: 6px; color: #b7c9de; font-size: .88rem; }
 .callup-editor textarea, .physical-editor textarea, .physical-editor select { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #071d3d; font: inherit; }
 .preparation-help { color: #9eb4cc; font-size: .8rem; }

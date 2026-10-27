@@ -28,16 +28,28 @@ const emptyClub = {
 };
 
 const PHYSICAL_TESTS = [
-  { key: 'broadJump', name: 'Broad Jump', type: 'Salto horizontal', unit: 'm', higherIsBetter: true, icon: PersonStanding, decimals: 2, cols: [3, 4, 5] },
-  { key: 'cmj', name: 'CMJ', type: 'Salto vertical', unit: 'cm', higherIsBetter: true, icon: Zap, decimals: 1, cols: [6, 7, 8] },
-  { key: 'agility', name: 'Test 5-10-5', type: 'Agilidad', unit: 'seg', higherIsBetter: false, icon: Timer, decimals: 2, cols: [9, 10, 11] },
-  { key: 'sprint', name: 'Velocidad 40 mts', type: 'Velocidad', unit: 'seg', higherIsBetter: false, icon: Wind, decimals: 2, cols: [12, 13, 14] },
-  { key: 'yoyo', name: 'Yo-Yo Test', type: 'Resistencia', unit: 'm', higherIsBetter: true, icon: HeartPulse, decimals: 0, cols: [15, 16, 17] },
-  { key: 'bench', name: 'Press de banca', type: 'Fuerza superior', unit: 'kg', higherIsBetter: true, icon: Dumbbell, decimals: 1, cols: [18, 19, 20] },
-  { key: 'deadlift', name: 'Peso muerto', type: 'Cadena posterior', unit: 'kg', higherIsBetter: true, icon: Dumbbell, decimals: 1, cols: [21, 22, 23] },
-  { key: 'squat', name: 'Sentadilla', type: 'Fuerza inferior', unit: 'kg', higherIsBetter: true, icon: Activity, decimals: 1, cols: [24, 25, 26] },
-  { key: 'platform', name: 'Plataforma', type: 'Potencia', unit: '', higherIsBetter: true, icon: Target, decimals: 1, cols: [27, 28, 29] }
+  { key: 'broadJump', name: 'Broad Jump', type: 'Salto horizontal', category: 'potencia', unit: 'm', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: PersonStanding, decimals: 2, cols: [3, 4, 5] },
+  { key: 'cmj', name: 'CMJ', type: 'Salto vertical', category: 'potencia', unit: 'cm', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: Zap, decimals: 1, cols: [6, 7, 8] },
+  { key: 'agility', name: 'Test 5-10-5', type: 'Agilidad', category: 'agilidad', unit: 'seg', direction: 'lower', higherIsBetter: false, maxAttempts: 3, icon: Timer, decimals: 2, cols: [9, 10, 11] },
+  { key: 'sprint', name: 'Velocidad 40 mts', type: 'Velocidad', category: 'velocidad', unit: 'seg', direction: 'lower', higherIsBetter: false, maxAttempts: 3, icon: Wind, decimals: 2, cols: [12, 13, 14] },
+  { key: 'yoyo', name: 'Yo-Yo Test', type: 'Resistencia', category: 'resistencia', unit: 'm', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: HeartPulse, decimals: 0, cols: [15, 16, 17] },
+  { key: 'bench', name: 'Press de banca', type: 'Fuerza superior', category: 'fuerza', unit: 'kg', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: Dumbbell, decimals: 1, cols: [18, 19, 20] },
+  { key: 'deadlift', name: 'Peso muerto', type: 'Cadena posterior', category: 'fuerza', unit: 'kg', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: Dumbbell, decimals: 1, cols: [21, 22, 23] },
+  { key: 'squat', name: 'Sentadilla', type: 'Fuerza inferior', category: 'fuerza', unit: 'kg', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: Activity, decimals: 1, cols: [24, 25, 26] },
+  { key: 'platform', name: 'Plataforma', type: 'Potencia', category: 'potencia', unit: '', direction: 'higher', higherIsBetter: true, maxAttempts: 3, icon: Target, decimals: 1, cols: [27, 28, 29] }
 ];
+
+function hydratePhysicalTests(tests) {
+  const fallbackByKey = new Map(PHYSICAL_TESTS.map(test => [test.key, test]));
+  return (tests?.length ? tests : PHYSICAL_TESTS).map(test => ({
+    ...fallbackByKey.get(test.key),
+    ...test,
+    type: test.type || test.category || fallbackByKey.get(test.key)?.type || 'Personalizada',
+    icon: fallbackByKey.get(test.key)?.icon || Activity,
+    maxAttempts: Number(test.maxAttempts || fallbackByKey.get(test.key)?.maxAttempts || 3),
+    decimals: Number(test.decimals ?? fallbackByKey.get(test.key)?.decimals ?? 2)
+  }));
+}
 
 function normalizeMatchValue(value) {
   return String(value || '').trim().toLocaleLowerCase('es-AR').replace(/\s+/g, ' ');
@@ -111,6 +123,10 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [editingPhysical, setEditingPhysical] = useState(false);
   const [physicalDraft, setPhysicalDraft] = useState({ name: '', category: 'primera', evaluatedOn: '', values: {} });
   const [physicalSaveError, setPhysicalSaveError] = useState('');
+  const [physicalTests, setPhysicalTests] = useState(PHYSICAL_TESTS);
+  const [editingTestCatalog, setEditingTestCatalog] = useState(false);
+  const [testDraft, setTestDraft] = useState({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2, maxAttempts: 3 });
+  const [testCatalogError, setTestCatalogError] = useState('');
   const [status, setStatus] = useState('Cargando información del club...');
   const [showPrecargaModal, setShowPrecargaModal] = useState(false);
 
@@ -157,6 +173,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setEvents(payload.events || []);
     setTournamentStats(payload.tournamentStats || { tournaments: [], activeKey: '' });
     setPhysicalPlayers(payload.physicalPlayers || []);
+    setPhysicalTests(hydratePhysicalTests(payload.physicalTests));
     setPlayers(payload.players || []);
     setMonitoring(payload.monitoring || { wellness: [], loads: [] });
     if (payload.citations) setData(payload.citations);
@@ -208,6 +225,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setTournamentStats({ tournaments: [], activeKey: '' });
     setPlayers([]);
     setPhysicalPlayers([]);
+    setPhysicalTests(PHYSICAL_TESTS);
     setMonitoring({ wellness: [], loads: [] });
     setSelectedPlayer(null);
     setEditingCallup(false);
@@ -305,7 +323,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     const results = Object.entries(physicalDraft.values)
       .map(([key, value]) => {
         const [testKey, attempt] = key.split(':');
-        const test = PHYSICAL_TESTS.find(item => item.key === testKey);
+        const test = physicalTests.find(item => item.key === testKey);
         return { testKey, attempt: Number(attempt), rawValue: value, value: Number(value), unit: test?.unit || '' };
       }).filter(item => item.rawValue !== '' && Number.isFinite(item.value));
     try {
@@ -320,6 +338,50 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       setEditingPhysical(false);
       setPhysicalDraft({ name: '', category: 'primera', evaluatedOn: '', values: {} });
     } catch (error) { setPhysicalSaveError(error.message); }
+  }
+
+  async function submitPhysicalTestDefinition(event) {
+    event.preventDefault();
+    setTestCatalogError('');
+    try {
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'save-physical-test', ...testDraft })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo agregar la prueba.');
+      await loadPhysical();
+      setTestDraft({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2, maxAttempts: 3 });
+    } catch (error) { setTestCatalogError(error.message); }
+  }
+
+  async function deactivatePhysicalTest(testKey) {
+    setTestCatalogError('');
+    try {
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'deactivate-physical-test', testKey })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo desactivar la prueba.');
+      await loadPhysical();
+    } catch (error) { setTestCatalogError(error.message); }
+  }
+
+  async function reactivatePhysicalTest(testKey) {
+    setTestCatalogError('');
+    try {
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'reactivate-physical-test', testKey })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo reactivar la prueba.');
+      await loadPhysical();
+    } catch (error) { setTestCatalogError(error.message); }
   }
 
   async function submitPlayer(event) {
@@ -405,6 +467,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || `Evaluaciones físicas: HTTP ${response.status}`);
       setPhysicalPlayers(payload.physicalPlayers || []);
+      setPhysicalTests(hydratePhysicalTests(payload.physicalTests));
       setStatus(`Datos actualizados · ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`);
     } catch (error) {
       setStatus(error.message);
@@ -446,9 +509,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     return matchesCategory && (!query || player.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(query));
   });
 
-  const averages = PHYSICAL_TESTS.map(test => {
+  const averages = physicalTests.filter(test => test.active !== false || visiblePlayers.some(player => player.tests[test.key])) .map(test => {
     const values = visiblePlayers.map(player => player.tests[test.key]?.evals.at(-1)?.value).filter(value => value !== undefined);
-    const rounds = [1, 2, 3].map(round => {
+    const rounds = Array.from({ length: test.maxAttempts }, (_, index) => index + 1).map(round => {
       const roundValues = visiblePlayers.map(player => player.tests[test.key]?.evals.find(item => item.round === round)?.value).filter(value => value !== undefined);
       return roundValues.length ? Number((roundValues.reduce((sum, value) => sum + value, 0) / roundValues.length).toFixed(test.decimals)) : null;
     });
@@ -723,11 +786,56 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             <div className="section-heading">
               <h2>Evaluaciones físicas</h2>
               {authenticated && (
-                <button className="secondary" type="button" onClick={() => setEditingPhysical(value => !value)}>
-                  {editingPhysical ? 'Cerrar carga' : 'Cargar evaluación'}
-                </button>
+                <div className="physical-card-actions">
+                  <button className="secondary" type="button" onClick={() => { setEditingTestCatalog(false); setEditingPhysical(value => !value); }}>
+                    {editingPhysical ? 'Cerrar carga' : 'Cargar evaluación'}
+                  </button>
+                  <button className="secondary" type="button" onClick={() => { setEditingPhysical(false); setEditingTestCatalog(value => !value); setTestCatalogError(''); }}>
+                    {editingTestCatalog ? 'Cerrar pruebas' : 'Configurar pruebas'}
+                  </button>
+                </div>
               )}
             </div>
+            {editingTestCatalog && authenticated && (
+              <section className="physical-editor physical-test-catalog-editor">
+                <div>
+                  <h3>Pruebas del club</h3>
+                  <p>Las pruebas nuevas quedan disponibles para las próximas cargas. Al desactivar una, se conservan los resultados históricos.</p>
+                </div>
+                <div className="physical-test-catalog-list">
+                  {physicalTests.filter(test => test.custom).map(test => (
+                    <div key={test.key}>
+                      <span><strong>{test.name}{test.active === false ? ' · Inactiva' : ''}</strong><small>{test.category} · {test.unit || 'sin unidad'} · {test.maxAttempts} intentos</small></span>
+                      {test.active === false
+                        ? <button type="button" className="secondary" onClick={() => reactivatePhysicalTest(test.key)}>Reactivar</button>
+                        : <button type="button" className="secondary" onClick={() => deactivatePhysicalTest(test.key)}>Desactivar</button>}
+                    </div>
+                  ))}
+                  {!physicalTests.some(test => test.custom) && <p className="empty-state">Todavía no agregaste pruebas personalizadas.</p>}
+                </div>
+                <form className="physical-test-definition-form" onSubmit={submitPhysicalTestDefinition}>
+                  <h3>Agregar prueba</h3>
+                  <div className="callup-meta-grid">
+                    <label>Nombre<input value={testDraft.name} maxLength={80} onChange={event => setTestDraft(current => ({ ...current, name: event.target.value }))} required /></label>
+                    <label>Área<select value={testDraft.category} onChange={event => setTestDraft(current => ({ ...current, category: event.target.value }))}>
+                      <option value="fuerza">Fuerza</option><option value="potencia">Potencia</option><option value="velocidad">Velocidad</option><option value="resistencia">Resistencia</option><option value="agilidad">Agilidad</option><option value="movilidad">Movilidad</option><option value="técnica">Técnica</option><option value="personalizada">Otra</option>
+                    </select></label>
+                    <label>Unidad<input value={testDraft.unit} maxLength={16} placeholder="seg, cm, kg, repeticiones…" onChange={event => setTestDraft(current => ({ ...current, unit: event.target.value }))} /></label>
+                    <label>Cantidad de intentos<select value={testDraft.maxAttempts} onChange={event => setTestDraft(current => ({ ...current, maxAttempts: Number(event.target.value) }))}>
+                      {Array.from({ length: 10 }, (_, index) => index + 1).map(count => <option key={count} value={count}>{count}</option>)}
+                    </select></label>
+                    <label>Decimales<select value={testDraft.decimals} onChange={event => setTestDraft(current => ({ ...current, decimals: Number(event.target.value) }))}>
+                      {[0, 1, 2, 3].map(count => <option key={count} value={count}>{count}</option>)}
+                    </select></label>
+                    <label>Para el ranking, conviene<select value={testDraft.direction} onChange={event => setTestDraft(current => ({ ...current, direction: event.target.value }))}>
+                      <option value="higher">Un resultado más alto</option><option value="lower">Un resultado más bajo</option><option value="neutral">No ordenar por resultado</option>
+                    </select></label>
+                  </div>
+                  {testCatalogError && <p className="message error">{testCatalogError}</p>}
+                  <button type="submit">Agregar prueba al club</button>
+                </form>
+              </section>
+            )}
             {editingPhysical && (
               <form className="physical-editor" onSubmit={submitPhysicalAssessment}>
                 <div className="callup-meta-grid">
@@ -738,9 +846,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                   <label>Fecha de evaluación<input type="date" value={physicalDraft.evaluatedOn} onChange={event => setPhysicalDraft(current => ({ ...current, evaluatedOn: event.target.value }))} /></label>
                 </div>
                 <div className="physical-entry-grid">
-                  {PHYSICAL_TESTS.map(test => (
+                  {physicalTests.filter(test => test.active !== false).map(test => (
                     <fieldset key={test.key}><legend>{test.name} ({test.unit || 'sin unidad'})</legend>
-                      {[1, 2, 3].map(attempt => {
+                      {Array.from({ length: test.maxAttempts }, (_, index) => index + 1).map(attempt => {
                         const key = `${test.key}:${attempt}`;
                         return <label key={key}>{attempt}° intento<input type="number" step="any" value={physicalDraft.values[key] || ''} onChange={event => setPhysicalDraft(current => ({ ...current, values: { ...current.values, [key]: event.target.value } }))} /></label>;
                       })}
@@ -829,14 +937,14 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                       <button className="secondary" onClick={() => setSelectedPlayer(null)}>Cambiar</button>
                     </div>
                     <div className="physical-profile-overview">
-                      <strong>{Object.keys(selected.tests || {}).length} de {PHYSICAL_TESTS.length} pruebas con datos</strong>
+                      <strong>{Object.keys(selected.tests || {}).length} pruebas con datos</strong>
                       <span>Comparación de marcas por intento</span>
                     </div>
                     <div className="test-cards">
-                      {PHYSICAL_TESTS.map(test => {
+                      {physicalTests.filter(test => test.active !== false || selected.tests[test.key]).map(test => {
                         const result = selected.tests[test.key];
                         const latest = result?.evals.at(-1);
-                        const TestIcon = test.icon;
+                        const TestIcon = test.icon || Activity;
                         return (
                           <article className="test-card" key={test.key}>
                             <div>
@@ -847,7 +955,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                             <b>{latest ? `${latest.value} ${test.unit}` : 'Sin registros'}</b>
                             {latest && <small className="test-result-caption">Último intento</small>}
                             <div className="test-rounds">
-                              {[1, 2, 3].map(round => {
+                              {Array.from({ length: test.maxAttempts }, (_, index) => index + 1).map(round => {
                                 const attempt = result?.evals.find(item => item.round === round)?.value;
                                 return (
                                   <span key={round}><small>Intento {round}</small><strong>{attempt ?? '—'}</strong></span>
@@ -856,7 +964,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                             </div>
                             {result?.diff != null && (
                               <em className={result.improved ? 'positive' : 'negative'}>
-                                {result.improved ? '↗' : '↘'} Cambio entre intentos: {result.diff > 0 ? '+' : ''}{result.diff} {test.unit}
+                                {result.improved === null ? '' : result.improved ? '↗ ' : '↘ '}Diferencia entre intentos: {result.diff > 0 ? '+' : ''}{result.diff} {test.unit}
                               </em>
                             )}
                           </article>
@@ -872,7 +980,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             {physicalMode === 'averages' && (
               <div className="average-grid">
                 {averages.map(test => {
-                  const TestIcon = test.icon;
+                  const TestIcon = test.icon || Activity;
                   return (
                   <article className="average-card" key={test.key}>
                     <div className="average-heading">
@@ -886,7 +994,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                     <small className="average-caption">Promedio actual · {visiblePlayers.filter(player => player.tests[test.key]?.evals.at(-1)?.value !== undefined).length} jugadoras</small>
                     <div className="test-rounds">
                       {test.rounds.map((value, index) => (
-                        <span key={index}>{index + 1}° eval: {value === null ? '—' : `${value} ${test.unit}`}</span>
+                        <span key={index}>Intento {index + 1}: {value === null ? '—' : `${value} ${test.unit}`}</span>
                       ))}
                     </div>
                   </article>
@@ -896,8 +1004,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             )}
             {physicalMode === 'top10' && (
               <div className="top10-grid-react">
-                {PHYSICAL_TESTS.map(test => {
-                  const TestIcon = test.icon;
+                {physicalTests.filter(test => test.direction !== 'neutral' && (test.active !== false || visiblePlayers.some(player => player.tests[test.key]))).map(test => {
+                  const TestIcon = test.icon || Activity;
                   const ranked = visiblePlayers
                     .map(player => ({ player, value: player.tests[test.key]?.evals.at(-1)?.value }))
                     .filter(item => item.value !== undefined)

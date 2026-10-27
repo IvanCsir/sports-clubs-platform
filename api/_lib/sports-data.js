@@ -1,4 +1,5 @@
 const postgres = require('./postgres');
+const { DEFAULT_PHYSICAL_TESTS, mapDefinition } = require('./physical-tests');
 
 function ensureDb() {
   if (!postgres.isConfigured()) throw new Error('DATABASE_URL no está configurada.');
@@ -41,10 +42,72 @@ async function ensureSeasonId(slug, seasonName, tournamentKey) {
   }
 }
 
+async function getPhysicalTestDefinitions(slug, includeInactive = false) {
+  const result = await ensureDb().query(
+    `SELECT test_key, name, category, unit, direction, decimals, max_attempts, active
+     FROM sc_physical_test_definitions
+     WHERE club_slug = $1 AND ($2::boolean OR active = TRUE)
+     ORDER BY name`, [slug, includeInactive]
+  );
+  const defaults = DEFAULT_PHYSICAL_TESTS.map(test => ({
+    ...test,
+    higherIsBetter: test.direction === 'higher' ? true : test.direction === 'lower' ? false : null,
+    custom: false,
+    active: true
+  }));
+  return [...defaults, ...result.rows.map(mapDefinition)];
+}
+
+async function savePhysicalTestDefinition(slug, input) {
+  const name = String(input.name || '').trim();
+  const unit = String(input.unit || '').trim();
+  const category = String(input.category || 'personalizada').trim();
+  const direction = ['higher', 'lower', 'neutral'].includes(input.direction) ? input.direction : 'neutral';
+  const decimals = Number(input.decimals);
+  const maxAttempts = Number(input.maxAttempts);
+  if (!name || name.length > 80) throw new Error('Indicá un nombre de prueba de hasta 80 caracteres.');
+  if (unit.length > 16) throw new Error('La unidad no puede superar los 16 caracteres.');
+  if (!category || category.length > 40) throw new Error('Indicá una categoría de hasta 40 caracteres.');
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 3) throw new Error('Los decimales deben estar entre 0 y 3.');
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10) throw new Error('La cantidad de intentos debe estar entre 1 y 10.');
+  const definitions = await getPhysicalTestDefinitions(slug);
+  if (definitions.some(test => test.name.localeCompare(name, 'es', { sensitivity: 'base' }) === 0)) {
+    throw new Error('Ya existe una prueba con ese nombre.');
+  }
+  const baseKey = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 56);
+  const key = `custom-${baseKey || 'prueba'}`;
+  const inserted = await ensureDb().query(
+    `INSERT INTO sc_physical_test_definitions
+       (club_slug, test_key, name, category, unit, direction, decimals, max_attempts)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (club_slug, test_key) DO NOTHING
+     RETURNING test_key`, [slug, key, name, category, unit, direction, decimals, maxAttempts]
+  );
+  if (!inserted.rowCount) throw new Error('Ya existe una prueba con ese nombre o clave.');
+  return { saved: true, key };
+}
+
+async function deactivatePhysicalTestDefinition(slug, testKey) {
+  const result = await ensureDb().query(
+    `UPDATE sc_physical_test_definitions SET active = FALSE, updated_at = NOW()
+     WHERE club_slug = $1 AND test_key = $2 AND active = TRUE`, [slug, testKey]
+  );
+  return { deactivated: result.rowCount > 0 };
+}
+
+async function reactivatePhysicalTestDefinition(slug, testKey) {
+  const result = await ensureDb().query(
+    `UPDATE sc_physical_test_definitions SET active = TRUE, updated_at = NOW()
+     WHERE club_slug = $1 AND test_key = $2 AND active = FALSE`, [slug, testKey]
+  );
+  return { reactivated: result.rowCount > 0 };
+}
+
 async function getClubData(slug, seasonName, tournamentKey) {
   const db = ensureDb();
   const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
   const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
+  const physicalTests = await getPhysicalTestDefinitions(slug, true);
   const [callups, assessments, events, roster] = await Promise.all([
     db.query(`SELECT t.category, m.provider_match_id AS callup_match_key, m.round_label, m.opponent, m.home_away, m.date_label,
                      m.call_time, m.match_time, m.venue, m.opponent_logo_url,
@@ -128,8 +191,10 @@ async function getClubData(slug, seasonName, tournamentKey) {
       const last = test.evals.at(-1)?.value;
       test.diff = test.evals.length > 1 ? Number((last - first).toFixed(2)) : null;
       test.diffPct = test.evals.length > 1 && first !== 0 ? Number((test.diff / first * 100).toFixed(1)) : 0;
-      const higherIsBetter = ['broadJump', 'cmj', 'yoyo', 'bench', 'deadlift', 'squat', 'platform'].includes(key);
-      test.improved = test.diff === null ? null : higherIsBetter ? test.diff > 0 : test.diff < 0;
+      const definition = physicalTests.find(item => item.key === key);
+      test.improved = test.diff === null || !definition || definition.direction === 'neutral'
+        ? null
+        : definition.direction === 'higher' ? test.diff > 0 : test.diff < 0;
     }
   }
 
@@ -149,6 +214,7 @@ async function getClubData(slug, seasonName, tournamentKey) {
   return {
     citations,
     physicalPlayers: Array.from(physicalByPlayer.values()),
+    physicalTests,
     events: matchEvents,
     players: roster.rows.map(row => ({ id: String(row.id), name: row.display_name, active: row.active, categories: row.categories || [] }))
   };
@@ -258,6 +324,7 @@ async function getSeasonBackup(slug, seasonName, tournamentKey) {
   return {
     season: String(seasonName || new Date().getFullYear()),
     exportedAt: new Date().toISOString(),
+    physicalTests: await getPhysicalTestDefinitions(slug, true),
     players: roster.rows.map(row => ({ ...row, id: String(row.id) })),
     matches: matches.rows,
     callups: callups.rows,
@@ -689,6 +756,8 @@ async function deleteEvents(slug, ids) {
 async function savePhysicalAssessment(slug, input, seasonName) {
   if (!input.name || !Array.isArray(input.results)) throw new Error('Faltan datos de la evaluación.');
   const db = ensureDb();
+  const testDefinitions = await getPhysicalTestDefinitions(slug);
+  const testsByKey = new Map(testDefinitions.map(test => [test.key, test]));
   const seasonId = await ensureSeasonId(slug, seasonName);
   const client = await db.connect();
   try {
@@ -720,12 +789,16 @@ async function savePhysicalAssessment(slug, input, seasonName) {
       );
     }
     for (const result of input.results) {
-      if (!['broadJump', 'cmj', 'agility', 'sprint', 'yoyo', 'bench', 'deadlift', 'squat', 'platform'].includes(result.testKey) ||
-          !Number.isFinite(Number(result.value)) || !Number.isInteger(Number(result.attempt)) || Number(result.attempt) < 1 || Number(result.attempt) > 3) continue;
+      const definition = testsByKey.get(String(result.testKey || ''));
+      const attempt = Number(result.attempt);
+      const value = Number(result.value);
+      if (!definition || !Number.isFinite(value) || !Number.isInteger(attempt) || attempt < 1 || attempt > definition.maxAttempts) {
+        throw new Error('Una medición no coincide con las pruebas activas o su cantidad de intentos.');
+      }
       await client.query(
         `INSERT INTO sc_physical_test_results (assessment_id, test_key, attempt, value, unit)
          VALUES ($1, $2, $3, $4, $5)`,
-        [assessment.rows[0].id, result.testKey, result.attempt, result.value, result.unit || '']
+        [assessment.rows[0].id, definition.key, attempt, value, definition.unit || '']
       );
     }
     await client.query('COMMIT');
@@ -738,4 +811,4 @@ async function savePhysicalAssessment(slug, input, seasonName) {
   }
 }
 
-module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getSeasonBackup, getTournamentStats, getPlayerPortalRoster, savePlayerMonitoring, saveMatchPreparation, deleteMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, deleteEvents, savePhysicalAssessment };
+module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getSeasonBackup, getTournamentStats, getPlayerPortalRoster, getPhysicalTestDefinitions, savePhysicalTestDefinition, deactivatePhysicalTestDefinition, reactivatePhysicalTestDefinition, savePlayerMonitoring, saveMatchPreparation, deleteMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, deleteEvents, savePhysicalAssessment };
