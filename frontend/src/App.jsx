@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Activity, CalendarClock, ChevronRight, ClipboardList, Goal, MapPin, Megaphone, Timer, Trophy, UsersRound, Zap } from 'lucide-react';
 import TrackerPanel from './components/TrackerPanel';
 import TournamentPanel from './components/TournamentPanel';
@@ -132,6 +132,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [token, setToken] = useState('');
   const [showStaffLogin, setShowStaffLogin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [managementMenuOpen, setManagementMenuOpen] = useState(false);
   const [staffLoginPassword, setStaffLoginPassword] = useState('');
   const [staffLoginError, setStaffLoginError] = useState('');
 
@@ -556,9 +557,16 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       { id: 'respaldo', label: 'Respaldo' }
     ] : [])
   ];
+  const primaryWorkspaceSections = workspaceSections.filter(section =>
+    ['inicio', 'citaciones', 'preparacion', 'torneo', 'fisico', 'seguimiento'].includes(section.id)
+  );
+  const managementWorkspaceSections = workspaceSections.filter(section =>
+    ['jugadoras', 'dt', 'stats', 'respaldo'].includes(section.id)
+  );
   const selectWorkspaceSection = id => {
     setView(id);
     setMobileMenuOpen(false);
+    setManagementMenuOpen(false);
     if (id === 'fisico') loadPhysical();
     if (id === 'seguimiento' && authenticated) loadStaffData(token);
     if (id === 'stats' && authenticated) loadStaffData(token).catch(error => setStatus(error.message));
@@ -610,20 +618,25 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           <span aria-hidden="true">☰</span> Menú <small>{workspaceSections.find(section => section.id === view)?.label}</small>
         </button>
         <nav className="workspace-nav" aria-label="Secciones del club">
-          <button className={view === 'inicio' ? 'active' : ''} onClick={() => selectWorkspaceSection('inicio')}>Inicio</button>
-          <button className={view === 'citaciones' ? 'active' : ''} onClick={() => selectWorkspaceSection('citaciones')}>Citaciones</button>
-          <button className={view === 'preparacion' ? 'active' : ''} onClick={() => selectWorkspaceSection('preparacion')}>Plan partido</button>
-          <button className={view === 'torneo' ? 'active' : ''} onClick={() => selectWorkspaceSection('torneo')}>Torneos</button>
-          <button className={view === 'fisico' ? 'active' : ''} onClick={() => selectWorkspaceSection('fisico')}>Evaluaciones físicas</button>
-          <button className={view === 'seguimiento' ? 'active' : ''} onClick={() => selectWorkspaceSection('seguimiento')}>Seguimiento</button>
-          {authenticated && <>
-            <span className="workspace-nav-divider" aria-hidden="true" />
-            <button className={view === 'jugadoras' ? 'active' : ''} onClick={() => selectWorkspaceSection('jugadoras')}>Plantel</button>
-            <button className={view === 'dt' ? 'active' : ''} onClick={() => selectWorkspaceSection('dt')}>Botonera DT</button>
-            <button className={view === 'stats' ? 'active' : ''} onClick={() => selectWorkspaceSection('stats')}>Estadísticas</button>
-            <button className={view === 'respaldo' ? 'active' : ''} onClick={() => selectWorkspaceSection('respaldo')}>Respaldo</button>
-          </>}
+          {primaryWorkspaceSections.map(section => (
+            <button key={section.id} className={view === section.id ? 'active' : ''} onClick={() => selectWorkspaceSection(section.id)}>{section.label}</button>
+          ))}
+          {authenticated && managementWorkspaceSections.length > 0 && (
+            <button
+              type="button"
+              className={`workspace-nav-more${managementWorkspaceSections.some(section => section.id === view) ? ' active' : ''}`}
+              aria-expanded={managementMenuOpen}
+              onClick={() => setManagementMenuOpen(open => !open)}
+            >Herramientas <span aria-hidden="true">{managementMenuOpen ? '−' : '+'}</span></button>
+          )}
         </nav>
+        {managementMenuOpen && authenticated && (
+          <nav className="workspace-nav-secondary" aria-label="Herramientas del cuerpo técnico">
+            {managementWorkspaceSections.map(section => (
+              <button key={section.id} className={view === section.id ? 'active' : ''} onClick={() => selectWorkspaceSection(section.id)}>{section.label}</button>
+            ))}
+          </nav>
+        )}
         {mobileMenuOpen && (
           <div className="mobile-menu-layer" onMouseDown={event => { if (event.target === event.currentTarget) setMobileMenuOpen(false); }}>
             <nav id="workspace-mobile-menu" className="mobile-menu-drawer" aria-label="Menú del club">
@@ -631,16 +644,21 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                 <div><span className="kicker">{club.shortName}</span><h2>Secciones</h2></div>
                 <button type="button" className="secondary mobile-menu-close" aria-label="Cerrar menú" onClick={() => setMobileMenuOpen(false)}>×</button>
               </div>
-              {workspaceSections.map(section => (
-                <button
-                  type="button"
-                  key={section.id}
-                  className={`mobile-menu-item${view === section.id ? ' active' : ''}`}
-                  aria-current={view === section.id ? 'page' : undefined}
-                  onClick={() => selectWorkspaceSection(section.id)}
-                >
-                  {section.label}<span aria-hidden="true">→</span>
-                </button>
+              {workspaceSections.map((section, index) => (
+                <Fragment key={section.id}>
+                  {index === 0 && <p className="mobile-menu-group-label">DÍA A DÍA</p>}
+                  {managementWorkspaceSections.some(item => item.id === section.id) && index === workspaceSections.findIndex(item => item.id === section.id) && (
+                    <p className="mobile-menu-group-label">GESTIÓN DEL PLANTEL</p>
+                  )}
+                  <button
+                    type="button"
+                    className={`mobile-menu-item${view === section.id ? ' active' : ''}`}
+                    aria-current={view === section.id ? 'page' : undefined}
+                    onClick={() => selectWorkspaceSection(section.id)}
+                  >
+                    {section.label}<span aria-hidden="true">→</span>
+                  </button>
+                </Fragment>
               ))}
               <div className="mobile-menu-footer">
                 {authenticated ? (
