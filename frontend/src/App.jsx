@@ -557,12 +557,15 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       { id: 'respaldo', label: 'Respaldo' }
     ] : [])
   ];
-  const primaryWorkspaceSections = workspaceSections.filter(section =>
-    ['inicio', 'citaciones', 'preparacion', 'torneo', 'fisico', 'seguimiento'].includes(section.id)
-  );
-  const managementWorkspaceSections = workspaceSections.filter(section =>
-    ['jugadoras', 'dt', 'stats', 'respaldo'].includes(section.id)
-  );
+  const workspaceGroups = [
+    { id: 'planificacion', label: 'Planificación', sectionIds: ['jugadoras', 'citaciones', 'fisico', 'seguimiento'] },
+    { id: 'partido', label: 'Partido', sectionIds: ['preparacion', 'dt', 'stats'] },
+    { id: 'administracion', label: 'Administración', sectionIds: ['respaldo'] }
+  ].map(group => ({
+    ...group,
+    sections: group.sectionIds.map(id => workspaceSections.find(section => section.id === id)).filter(Boolean)
+  })).filter(group => group.sections.length > 0);
+  const activeWorkspaceGroup = workspaceGroups.find(group => group.sections.some(section => section.id === view));
   const selectWorkspaceSection = id => {
     setView(id);
     setMobileMenuOpen(false);
@@ -618,21 +621,29 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           <span aria-hidden="true">☰</span> Menú <small>{workspaceSections.find(section => section.id === view)?.label}</small>
         </button>
         <nav className="workspace-nav" aria-label="Secciones del club">
-          {primaryWorkspaceSections.map(section => (
-            <button key={section.id} className={view === section.id ? 'active' : ''} onClick={() => selectWorkspaceSection(section.id)}>{section.label}</button>
-          ))}
-          {authenticated && managementWorkspaceSections.length > 0 && (
+          <button className={view === 'inicio' ? 'active' : ''} onClick={() => selectWorkspaceSection('inicio')}>Inicio</button>
+          {workspaceGroups.filter(group => group.id !== 'administracion').map(group => (
             <button
               type="button"
-              className={`workspace-nav-more${managementWorkspaceSections.some(section => section.id === view) ? ' active' : ''}`}
-              aria-expanded={managementMenuOpen}
-              onClick={() => setManagementMenuOpen(open => !open)}
-            >Herramientas <span aria-hidden="true">{managementMenuOpen ? '−' : '+'}</span></button>
+              key={group.id}
+              className={`workspace-nav-more${activeWorkspaceGroup?.id === group.id ? ' active' : ''}`}
+              aria-expanded={managementMenuOpen === group.id}
+              onClick={() => setManagementMenuOpen(open => open === group.id ? false : group.id)}
+            >{group.label} <span aria-hidden="true">{managementMenuOpen === group.id ? '−' : '+'}</span></button>
+          )}
+          <button className={view === 'torneo' ? 'active' : ''} onClick={() => selectWorkspaceSection('torneo')}>Torneos</button>
+          {authenticated && workspaceGroups.find(group => group.id === 'administracion') && (
+            <button
+              type="button"
+              className={`workspace-nav-more${activeWorkspaceGroup?.id === 'administracion' ? ' active' : ''}`}
+              aria-expanded={managementMenuOpen === 'administracion'}
+              onClick={() => setManagementMenuOpen(open => open === 'administracion' ? false : 'administracion')}
+            >Más <span aria-hidden="true">{managementMenuOpen === 'administracion' ? '−' : '+'}</span></button>
           )}
         </nav>
-        {managementMenuOpen && authenticated && (
-          <nav className="workspace-nav-secondary" aria-label="Herramientas del cuerpo técnico">
-            {managementWorkspaceSections.map(section => (
+        {managementMenuOpen && workspaceGroups.find(group => group.id === managementMenuOpen) && (
+          <nav className="workspace-nav-secondary" aria-label={workspaceGroups.find(group => group.id === managementMenuOpen).label}>
+            {workspaceGroups.find(group => group.id === managementMenuOpen).sections.map(section => (
               <button key={section.id} className={view === section.id ? 'active' : ''} onClick={() => selectWorkspaceSection(section.id)}>{section.label}</button>
             ))}
           </nav>
@@ -644,20 +655,38 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                 <div><span className="kicker">{club.shortName}</span><h2>Secciones</h2></div>
                 <button type="button" className="secondary mobile-menu-close" aria-label="Cerrar menú" onClick={() => setMobileMenuOpen(false)}>×</button>
               </div>
-              {workspaceSections.map((section, index) => (
-                <Fragment key={section.id}>
-                  {index === 0 && <p className="mobile-menu-group-label">DÍA A DÍA</p>}
-                  {managementWorkspaceSections.some(item => item.id === section.id) && index === workspaceSections.findIndex(item => item.id === section.id) && (
-                    <p className="mobile-menu-group-label">GESTIÓN DEL PLANTEL</p>
-                  )}
-                  <button
-                    type="button"
-                    className={`mobile-menu-item${view === section.id ? ' active' : ''}`}
-                    aria-current={view === section.id ? 'page' : undefined}
-                    onClick={() => selectWorkspaceSection(section.id)}
-                  >
-                    {section.label}<span aria-hidden="true">→</span>
-                  </button>
+              <p className="mobile-menu-group-label">GENERAL</p>
+              <button type="button" className={`mobile-menu-item${view === 'inicio' ? ' active' : ''}`} aria-current={view === 'inicio' ? 'page' : undefined} onClick={() => selectWorkspaceSection('inicio')}>Inicio<span aria-hidden="true">→</span></button>
+              {workspaceGroups.filter(group => group.id !== 'administracion').map(group => (
+                <Fragment key={group.id}>
+                  <p className="mobile-menu-group-label">{group.label.toLocaleUpperCase('es-AR')}</p>
+                  {group.sections.map(section => (
+                    <button
+                      type="button"
+                      key={section.id}
+                      className={`mobile-menu-item${view === section.id ? ' active' : ''}`}
+                      aria-current={view === section.id ? 'page' : undefined}
+                      onClick={() => selectWorkspaceSection(section.id)}
+                    >
+                      {section.label}<span aria-hidden="true">→</span>
+                    </button>
+                  ))}
+                </Fragment>
+              ))}
+              <p className="mobile-menu-group-label">COMPETENCIA</p>
+              <button type="button" className={`mobile-menu-item${view === 'torneo' ? ' active' : ''}`} aria-current={view === 'torneo' ? 'page' : undefined} onClick={() => selectWorkspaceSection('torneo')}>Torneos<span aria-hidden="true">→</span></button>
+              {workspaceGroups.filter(group => group.id === 'administracion').map(group => (
+                <Fragment key={group.id}>
+                  <p className="mobile-menu-group-label">{group.label.toLocaleUpperCase('es-AR')}</p>
+                  {group.sections.map(section => (
+                    <button
+                      type="button"
+                      key={section.id}
+                      className={`mobile-menu-item${view === section.id ? ' active' : ''}`}
+                      aria-current={view === section.id ? 'page' : undefined}
+                      onClick={() => selectWorkspaceSection(section.id)}
+                    >{section.label}<span aria-hidden="true">→</span></button>
+                  ))}
                 </Fragment>
               ))}
               <div className="mobile-menu-footer">
