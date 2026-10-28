@@ -566,6 +566,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     sections: group.sectionIds.map(id => workspaceSections.find(section => section.id === id)).filter(Boolean)
   })).filter(group => group.sections.length > 0);
   const activeWorkspaceGroup = workspaceGroups.find(group => group.sections.some(section => section.id === view));
+  const playerWorkspaceSections = ['inicio', 'citaciones', 'preparacion', 'fisico', 'seguimiento']
+    .map(id => workspaceSections.find(section => section.id === id)).filter(Boolean);
   const selectWorkspaceSection = id => {
     setView(id);
     setMobileMenuOpen(false);
@@ -621,6 +623,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           <span aria-hidden="true">☰</span> Menú <small>{workspaceSections.find(section => section.id === view)?.label}</small>
         </button>
         <nav className="workspace-nav" aria-label="Secciones del club">
+          {!authenticated ? playerWorkspaceSections.map(section => (
+            <button key={section.id} className={view === section.id ? 'active' : ''} onClick={() => selectWorkspaceSection(section.id)}>{section.label}</button>
+          )) : <>
           <button className={view === 'inicio' ? 'active' : ''} onClick={() => selectWorkspaceSection('inicio')}>Inicio</button>
           {workspaceGroups.filter(group => group.id !== 'administracion').map(group => (
             <button
@@ -640,6 +645,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               onClick={() => setManagementMenuOpen(open => open === 'administracion' ? false : 'administracion')}
             >Más <span aria-hidden="true">{managementMenuOpen === 'administracion' ? '−' : '+'}</span></button>
           )}
+          </>}
         </nav>
         {managementMenuOpen && workspaceGroups.find(group => group.id === managementMenuOpen) && (
           <nav className="workspace-nav-secondary" aria-label={workspaceGroups.find(group => group.id === managementMenuOpen).label}>
@@ -655,6 +661,15 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                 <div><span className="kicker">{club.shortName}</span><h2>Secciones</h2></div>
                 <button type="button" className="secondary mobile-menu-close" aria-label="Cerrar menú" onClick={() => setMobileMenuOpen(false)}>×</button>
               </div>
+              {!authenticated ? playerWorkspaceSections.map(section => (
+                <button
+                  type="button"
+                  key={section.id}
+                  className={`mobile-menu-item${view === section.id ? ' active' : ''}`}
+                  aria-current={view === section.id ? 'page' : undefined}
+                  onClick={() => selectWorkspaceSection(section.id)}
+                >{section.label}<span aria-hidden="true">→</span></button>
+              )) : <>
               <p className="mobile-menu-group-label">GENERAL</p>
               <button type="button" className={`mobile-menu-item${view === 'inicio' ? ' active' : ''}`} aria-current={view === 'inicio' ? 'page' : undefined} onClick={() => selectWorkspaceSection('inicio')}>Inicio<span aria-hidden="true">→</span></button>
               {workspaceGroups.filter(group => group.id !== 'administracion').map(group => (
@@ -689,6 +704,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
                   ))}
                 </Fragment>
               ))}
+              </>}
               <div className="mobile-menu-footer">
                 {authenticated ? (
                   <button type="button" className="mobile-staff-access" onClick={() => { setMobileMenuOpen(false); logoutStaff(); }}>
