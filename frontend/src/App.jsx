@@ -108,8 +108,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [callupMetaDraft, setCallupMetaDraft] = useState({});
   const [callupError, setCallupError] = useState('');
   const [editingPhysical, setEditingPhysical] = useState(false);
-  const [physicalDraft, setPhysicalDraft] = useState({ playerId: '', category: 'primera', evaluatedOn: '', values: {} });
+  const [physicalDraft, setPhysicalDraft] = useState({ playerId: '', category: 'primera', evaluatedOn: '', testKey: '', value: '' });
   const [physicalSaveError, setPhysicalSaveError] = useState('');
+  const [physicalSaveSuccess, setPhysicalSaveSuccess] = useState('');
   const [physicalTests, setPhysicalTests] = useState(PHYSICAL_TESTS);
   const [editingTestCatalog, setEditingTestCatalog] = useState(false);
   const [testDraft, setTestDraft] = useState({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2 });
@@ -307,12 +308,14 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   async function submitPhysicalAssessment(event) {
     event.preventDefault();
     setPhysicalSaveError('');
-    const results = Object.entries(physicalDraft.values)
-      .map(([key, value]) => {
-        const testKey = key;
-        const test = physicalTests.find(item => item.key === testKey);
-        return { testKey, attempt: 1, rawValue: value, value: Number(value), unit: test?.unit || '' };
-      }).filter(item => item.rawValue !== '' && Number.isFinite(item.value));
+    setPhysicalSaveSuccess('');
+    const selectedTest = physicalTests.find(item => item.key === physicalDraft.testKey && item.active !== false);
+    const resultValue = Number(physicalDraft.value);
+    if (!selectedTest || !physicalDraft.playerId || !physicalDraft.evaluatedOn || physicalDraft.value === '' || !Number.isFinite(resultValue)) {
+      setPhysicalSaveError('Elegí la fecha, la prueba y la jugadora, y cargá un resultado.');
+      return;
+    }
+    const results = [{ testKey: selectedTest.key, attempt: 1, rawValue: physicalDraft.value, value: resultValue, unit: selectedTest.unit || '' }];
     try {
       const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
         method: 'POST',
@@ -327,8 +330,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'No se pudo guardar la evaluación.');
       await loadStaffData(token);
-      setEditingPhysical(false);
-      setPhysicalDraft({ playerId: '', category: 'primera', evaluatedOn: '', values: {} });
+      setPhysicalDraft(current => ({ ...current, playerId: '', value: '' }));
+      setPhysicalSaveSuccess('Resultado guardado. Ya podés seleccionar a la siguiente jugadora.');
     } catch (error) { setPhysicalSaveError(error.message); }
   }
 
@@ -528,6 +531,14 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const selected = physicalPlayers.find(player => player.id === selectedPlayer);
   const physicalAssessmentPlayers = players
     .filter(player => player.active && (player.categories || []).includes(physicalDraft.category))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+  const selectedPhysicalTest = physicalTests.find(test => test.key === physicalDraft.testKey && test.active !== false);
+  const physicalTestEntries = physicalPlayers
+    .map(player => ({
+      ...player,
+      result: player.tests[physicalDraft.testKey]?.evals.find(evaluation => String(evaluation.evaluatedOn || '').slice(0, 10) === physicalDraft.evaluatedOn)
+    }))
+    .filter(player => player.result)
     .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
   const physicalPlayersWithResults = visiblePlayers.filter(player => Object.keys(player.tests || {}).length > 0).length;
   const latestResult = [...matches].reverse().find(match => match.played) || null;
@@ -848,32 +859,40 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             )}
             {editingPhysical && (
               <form className="physical-editor" onSubmit={submitPhysicalAssessment}>
-                <p className="form-hint">Cargá solamente las pruebas que se realizaron en esta fecha. Cada nueva jornada de evaluación se guarda como un registro independiente y se suma al historial.</p>
+                <p className="form-hint">Elegí una prueba y una fecha; después cargá el resultado de cada jugadora. Podés cambiar de jugadora sin volver a seleccionar la prueba.</p>
                 <div className="callup-meta-grid">
-                  <label>Jugadora<select value={physicalDraft.playerId} onChange={event => setPhysicalDraft(current => ({ ...current, playerId: event.target.value }))} required>
-                    <option value="">Seleccioná una jugadora del plantel</option>
-                    {physicalAssessmentPlayers.map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
-                  </select></label>
                   <label>Categoría<select value={physicalDraft.category} onChange={event => setPhysicalDraft(current => ({ ...current, category: event.target.value, playerId: '' }))}>
                     <option value="primera">1ra División</option><option value="intermedia">Intermedia</option><option value="5ta">5ta División</option>
                   </select></label>
-                  <label>Fecha de evaluación<input type="date" value={physicalDraft.evaluatedOn} onChange={event => setPhysicalDraft(current => ({ ...current, evaluatedOn: event.target.value }))} /></label>
+                  <label>Fecha de evaluación<input type="date" value={physicalDraft.evaluatedOn} onChange={event => { setPhysicalDraft(current => ({ ...current, evaluatedOn: event.target.value, playerId: '', value: '' })); setPhysicalSaveSuccess(''); }} required /></label>
+                  <label>Prueba<select value={physicalDraft.testKey} onChange={event => { setPhysicalDraft(current => ({ ...current, testKey: event.target.value, playerId: '', value: '' })); setPhysicalSaveSuccess(''); }} required>
+                    <option value="">Seleccioná una prueba</option>
+                    {physicalTests.filter(test => test.active !== false).map(test => <option key={test.key} value={test.key}>{test.name}{test.unit ? ` (${test.unit})` : ''}</option>)}
+                  </select></label>
                 </div>
                 {!physicalAssessmentPlayers.length && (
                   <p className="empty-state">No hay jugadoras activas en esta categoría. <button type="button" className="inline-link" onClick={() => { setEditingPhysical(false); setView('jugadoras'); }}>Agregalas o asignales esta categoría en Plantel.</button></p>
                 )}
-                <div className="physical-entry-grid">
-                  {physicalTests.filter(test => test.active !== false).map(test => (
-                    <fieldset key={test.key}><legend>{test.name} ({test.unit || 'sin unidad'})</legend>
-                      <label>Resultado de esta evaluación<input type="number" step="any" value={physicalDraft.values[test.key] || ''} onChange={event => setPhysicalDraft(current => ({ ...current, values: { ...current.values, [test.key]: event.target.value } }))} /></label>
-                    </fieldset>
-                  ))}
-                </div>
+                {physicalDraft.testKey && physicalAssessmentPlayers.length > 0 && <div className="physical-entry-row">
+                  <label>Jugadora<select value={physicalDraft.playerId} onChange={event => { setPhysicalDraft(current => ({ ...current, playerId: event.target.value })); setPhysicalSaveSuccess(''); }} required>
+                    <option value="">Seleccioná una jugadora del plantel</option>
+                    {physicalAssessmentPlayers.map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
+                  </select></label>
+                  <label>Resultado{selectedPhysicalTest?.unit ? ` (${selectedPhysicalTest.unit})` : ''}<input type="number" step="any" value={physicalDraft.value} onChange={event => setPhysicalDraft(current => ({ ...current, value: event.target.value }))} required /></label>
+                </div>}
                 {!physicalTests.some(test => test.active !== false) && (
                   <p className="empty-state">Todavía no hay pruebas activas. <button type="button" className="inline-link" onClick={() => { setEditingPhysical(false); setEditingTestCatalog(true); }}>Agregá las pruebas que van a evaluar.</button></p>
                 )}
                 {physicalSaveError && <p className="message error">{physicalSaveError}</p>}
-                <button type="submit" disabled={!physicalTests.some(test => test.active !== false) || !physicalAssessmentPlayers.length}>Guardar evaluación en la base</button>
+                {physicalSaveSuccess && <p className="message success">{physicalSaveSuccess}</p>}
+                <button type="submit" disabled={!selectedPhysicalTest || !physicalAssessmentPlayers.length || !physicalDraft.evaluatedOn || !physicalDraft.playerId || physicalDraft.value === ''}>Guardar resultado y cargar otra jugadora</button>
+                {physicalDraft.testKey && physicalDraft.evaluatedOn && <section className="physical-entry-recorded">
+                  <h3>{selectedPhysicalTest?.name} · resultados del {new Date(`${physicalDraft.evaluatedOn}T00:00:00`).toLocaleDateString('es-AR')}</h3>
+                  {physicalTestEntries.length ? <ul>{physicalTestEntries.map(player => <li key={player.id}>
+                    <span><strong>{player.name}</strong><small>{player.result.value} {player.result.unit || selectedPhysicalTest?.unit || ''}</small></span>
+                    <button type="button" className="secondary" onClick={() => { setPhysicalDraft(current => ({ ...current, playerId: player.rosterId, value: String(player.result.value) })); setPhysicalSaveSuccess(''); }}>Corregir</button>
+                  </li>)}</ul> : <p>Todavía no hay resultados cargados para esta prueba y fecha.</p>}
+                </section>}
               </form>
             )}
             <div className="physical-hero">
