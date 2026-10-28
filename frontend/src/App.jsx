@@ -566,7 +566,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     sections: group.sectionIds.map(id => workspaceSections.find(section => section.id === id)).filter(Boolean)
   })).filter(group => group.sections.length > 0);
   const activeWorkspaceGroup = workspaceGroups.find(group => group.sections.some(section => section.id === view));
-  const playerWorkspaceSections = ['inicio', 'citaciones', 'preparacion', 'fisico', 'seguimiento']
+  const playerWorkspaceSections = ['inicio', 'citaciones', 'preparacion', 'torneo', 'seguimiento', 'fisico']
     .map(id => workspaceSections.find(section => section.id === id)).filter(Boolean);
   const selectWorkspaceSection = id => {
     setView(id);
