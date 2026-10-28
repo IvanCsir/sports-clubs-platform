@@ -630,7 +630,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               aria-expanded={managementMenuOpen === group.id}
               onClick={() => setManagementMenuOpen(open => open === group.id ? false : group.id)}
             >{group.label} <span aria-hidden="true">{managementMenuOpen === group.id ? '−' : '+'}</span></button>
-          )}
+          ))}
           <button className={view === 'torneo' ? 'active' : ''} onClick={() => selectWorkspaceSection('torneo')}>Torneos</button>
           {authenticated && workspaceGroups.find(group => group.id === 'administracion') && (
             <button
