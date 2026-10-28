@@ -116,6 +116,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [testDraft, setTestDraft] = useState({ name: '', category: 'fuerza', unit: '', direction: 'neutral', decimals: 2 });
   const [testCatalogError, setTestCatalogError] = useState('');
   const [status, setStatus] = useState('Cargando información del club...');
+  const [citationLoadState, setCitationLoadState] = useState({ loading: true, error: '' });
+  const [matchLoadState, setMatchLoadState] = useState({ loading: true, error: '' });
   const [showPrecargaModal, setShowPrecargaModal] = useState(false);
 
   // Estado compartido para Botonera DT y Estadísticas
@@ -139,14 +141,18 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   // Cargar fixture para Botonera y Estadísticas
   async function loadMatches(div = (category === 'intermedia' ? '2' : '1')) {
     setMatchesLoaded(false);
+    setMatchLoadState({ loading: true, error: '' });
     try {
       const response = await fetch(`/api/torneo/matches?club=${encodeURIComponent(club.slug)}&division=${div}`, { cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'No se pudo cargar el fixture.');
       setMatches(payload.matches || payload.pendingMatches || []);
       setNextAmhMatch(payload.nextMatch || (payload.pendingMatches && payload.pendingMatches[0]) || null);
-    } catch (_) {
+      setMatchLoadState({ loading: false, error: '' });
+    } catch (error) {
+      setMatches([]);
       setNextAmhMatch(null);
+      setMatchLoadState({ loading: false, error: error.message || 'No se pudo cargar el fixture de AMH.' });
     } finally {
       setMatchesLoaded(true);
     }
@@ -459,14 +465,17 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   }, [club.slug, category]);
 
   async function loadSheets() {
+    setCitationLoadState({ loading: true, error: '' });
     try {
       const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}&dataset=citations`, { cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar las citaciones.');
       setData(payload.citations || { primera: null, intermedia: null });
       setStatus(`Datos actualizados · ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`);
+      setCitationLoadState({ loading: false, error: '' });
     } catch (error) {
       setStatus(error.message);
+      setCitationLoadState({ loading: false, error: error.message || 'No se pudieron cargar las citaciones.' });
     }
   }
 
@@ -728,15 +737,19 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
         )}
 
         {['inicio', 'citaciones', 'fisico'].includes(view) && (
-          <div className="sync-status">
-            <span className="sync-status-message">{status}</span>
+          <div className={`sync-status${['inicio', 'citaciones'].includes(view) && citationLoadState.error ? ' is-error' : ''}`}>
+            <span className="sync-status-message" role={['inicio', 'citaciones'].includes(view) && citationLoadState.error ? 'alert' : 'status'}>
+              {['inicio', 'citaciones'].includes(view)
+                ? citationLoadState.loading ? 'Cargando citaciones…' : citationLoadState.error ? `No se pudieron cargar las citaciones: ${citationLoadState.error}` : status
+                : status}
+            </span>
             <button className="refresh" onClick={() => {
               if (view === 'fisico') loadPhysical();
               else {
                 loadSheets();
                 if (view === 'inicio') loadMatches();
               }
-            }} aria-label="Actualizar datos"><span aria-hidden="true">↻</span><span>Actualizar</span></button>
+            }} aria-label={citationLoadState.error ? 'Reintentar carga de datos' : 'Actualizar datos'}><span aria-hidden="true">↻</span><span>{citationLoadState.error ? 'Reintentar' : 'Actualizar'}</span></button>
           </div>
         )}
 
@@ -746,6 +759,16 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               <div><span className="kicker">PANEL DEL CLUB</span><h2>Hola, {club.shortName || club.name}</h2><p>Resumen de {category === 'primera' ? '1ra División' : 'Intermedia'}</p></div>
             </header>
             <section className="home-next-match">
+              {matchLoadState.loading ? (
+                <div className="home-data-notice" role="status">Cargando fixture desde AMH…</div>
+              ) : matchLoadState.error ? (
+                <div className="home-data-notice is-error" role="alert">
+                  <span>No se pudo cargar el fixture de AMH: {matchLoadState.error}</span>
+                  <button type="button" className="home-retry-button" onClick={() => loadMatches()}>Reintentar</button>
+                </div>
+              ) : !nextAmhMatch ? (
+                <div className="home-data-notice" role="status">No hay próximos partidos disponibles en AMH.</div>
+              ) : null}
               <div className="home-match-content">
                 <span className="home-match-label"><CalendarClock aria-hidden="true" />{nextAmhMatch?.round || meta['fecha n°'] || meta['fecha'] || 'PRÓXIMO PARTIDO'}</span>
                 <div className="home-match-opponent">
@@ -768,7 +791,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
             <div className="home-dashboard-grid">
               <button type="button" className="home-dashboard-card" onClick={() => selectWorkspaceSection('citaciones')}>
                 <span className="home-card-icon" aria-hidden="true"><ClipboardList /></span>
-                <span className="home-card-copy"><strong>Citaciones</strong><small>{current.players.length ? `${current.players.length} jugadoras citadas` : 'Todavía no hay jugadoras citadas'}</small>
+                <span className="home-card-copy"><strong>Citaciones</strong><small>{citationLoadState.loading ? 'Cargando citaciones…' : citationLoadState.error ? 'No se pudieron cargar las citaciones' : current.players.length ? `${current.players.length} jugadoras citadas` : 'Todavía no hay jugadoras citadas'}</small>
                   {current.players.length > 0 && <small className="home-card-preview">{current.players.slice(0, 3).join(' · ')}{current.players.length > 3 ? ` · +${current.players.length - 3}` : ''}</small>}
                 </span><ChevronRight className="home-card-chevron" aria-hidden="true" />
               </button>
