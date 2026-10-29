@@ -151,6 +151,11 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     try {
+      const currentSlug = String(body.slug || '').trim();
+      const requestedSlug = String(body.club?.slug || '').trim();
+      if (!currentSlug || requestedSlug !== currentSlug) {
+        return json(res, 400, { error: 'El identificador del club (slug) no se puede cambiar desde Editar perfil.' });
+      }
       const incomingAuth = body.club && body.club.auth;
       if (incomingAuth) {
         const hasSecret = Boolean(String(incomingAuth.secret || '').trim());
