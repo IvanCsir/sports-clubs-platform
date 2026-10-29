@@ -90,9 +90,16 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .staff-access-panel form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; max-width: 620px; margin: 18px 0; }
 .staff-access-panel form label { flex: 1 1 280px; }
 .staff-access-panel > label { display: block; margin: 12px 0; }
-.club-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.club-card-actions .danger { background: #7f1d1d; border-color: #ef4444; color: #fff; }
-.club-card-actions .danger:hover { background: #991b1b; }
+.club-card-actions { position: relative; margin-left: auto; }
+.club-options { position: relative; }
+.club-options > summary { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #8dd3ff40; border-radius: 11px; color: #b7c9de; background: #ffffff0d; cursor: pointer; list-style: none; }
+.club-options > summary::-webkit-details-marker { display: none; }
+.club-options > summary:hover, .club-options[open] > summary { color: #eaf6ff; border-color: #00a2ff88; background: #00a2ff18; }
+.club-options-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 5; display: grid; gap: 4px; width: 210px; padding: 7px; border: 1px solid #8dd3ff40; border-radius: 12px; background: #071832; box-shadow: 0 14px 36px #0009; }
+.club-options-menu button { padding: 10px 12px; color: #d9e8f7; background: transparent; text-align: left; }
+.club-options-menu button:hover { background: #ffffff12; }
+.club-options-menu button.danger { color: #fecaca; }
+.club-options-menu button.danger:hover { background: #7f1d1d88; }
 .staff-access-list { display: grid; gap: 8px; padding: 0; list-style: none; }
 .staff-access-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid #8dd3ff2b; border-radius: 12px; background: #ffffff08; }
 .staff-access-list li span { display: grid; gap: 4px; min-width: 0; }

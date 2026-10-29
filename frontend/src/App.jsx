@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { Activity, CalendarClock, ChevronRight, ClipboardList, Goal, MapPin, Megaphone, Timer, Trophy, UsersRound, Zap } from 'lucide-react';
+import { Activity, CalendarClock, ChevronRight, ClipboardList, Ellipsis, Goal, MapPin, Megaphone, Timer, Trophy, UsersRound, Zap } from 'lucide-react';
 import TrackerPanel from './components/TrackerPanel';
 import TournamentPanel from './components/TournamentPanel';
 import EstadisticasPanel from './components/EstadisticasPanel';
@@ -86,73 +86,6 @@ function isCallupExpired(meta) {
   return todayOrdinal !== null && todayOrdinal - matchDate > 1;
 }
 
-function hslToHex(hue, saturation, lightness) {
-  const h = ((hue % 360) + 360) % 360;
-  const s = Math.max(0, Math.min(1, saturation));
-  const l = Math.max(0, Math.min(1, lightness));
-  const chroma = (1 - Math.abs(2 * l - 1)) * s;
-  const x = chroma * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = l - chroma / 2;
-  const [r, g, b] = h < 60 ? [chroma, x, 0] : h < 120 ? [x, chroma, 0] : h < 180 ? [0, chroma, x]
-    : h < 240 ? [0, x, chroma] : h < 300 ? [x, 0, chroma] : [chroma, 0, x];
-  return `#${[r, g, b].map(channel => Math.round((channel + m) * 255).toString(16).padStart(2, '0')).join('')}`;
-}
-
-function getLogoColorTheme(logoUrl) {
-  if (!logoUrl || typeof document === 'undefined') return Promise.resolve(null);
-  return new Promise(resolve => {
-    const image = new Image();
-    if (!logoUrl.startsWith('data:')) image.crossOrigin = 'anonymous';
-    image.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        const size = 64;
-        canvas.width = size;
-        canvas.height = size;
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        context.drawImage(image, 0, 0, size, size);
-        const { data } = context.getImageData(0, 0, size, size);
-        const hues = Array.from({ length: 18 }, () => ({ weight: 0, hueX: 0, hueY: 0, saturation: 0 }));
-        for (let pixel = 0; pixel < data.length; pixel += 16) {
-          const alpha = data[pixel + 3] / 255;
-          if (alpha < 0.6) continue;
-          const r = data[pixel] / 255;
-          const g = data[pixel + 1] / 255;
-          const b = data[pixel + 2] / 255;
-          const max = Math.max(r, g, b);
-          const min = Math.min(r, g, b);
-          const delta = max - min;
-          const saturation = max === 0 ? 0 : delta / max;
-          if (saturation < 0.22 || max < 0.15 || max > 0.96) continue;
-          let hue = 0;
-          if (delta) {
-            if (max === r) hue = 60 * (((g - b) / delta) % 6);
-            else if (max === g) hue = 60 * ((b - r) / delta + 2);
-            else hue = 60 * ((r - g) / delta + 4);
-          }
-          hue = (hue + 360) % 360;
-          const weight = alpha * saturation;
-          const bucket = hues[Math.floor(hue / 20) % hues.length];
-          const radians = hue * Math.PI / 180;
-          bucket.weight += weight;
-          bucket.hueX += Math.cos(radians) * weight;
-          bucket.hueY += Math.sin(radians) * weight;
-          bucket.saturation += saturation * weight;
-        }
-        const dominant = hues.reduce((best, candidate) => candidate.weight > best.weight ? candidate : best, hues[0]);
-        if (!dominant.weight) return resolve(null);
-        const hue = (Math.atan2(dominant.hueY, dominant.hueX) * 180 / Math.PI + 360) % 360;
-        const saturation = Math.min(0.9, Math.max(0.62, dominant.saturation / dominant.weight));
-        resolve({ accent: hslToHex(hue, saturation, 0.59), primary: hslToHex(hue, saturation, 0.39) });
-      } catch (_) {
-        resolve(null);
-      }
-    };
-    image.onerror = () => resolve(null);
-    image.src = logoUrl;
-  });
-}
-
 function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [category, setCategory] = useState('primera');
   const [view, setView] = useState('inicio');
@@ -184,17 +117,6 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [citationLoadState, setCitationLoadState] = useState({ loading: true, error: '' });
   const [matchLoadState, setMatchLoadState] = useState({ loading: true, error: '' });
   const [showPrecargaModal, setShowPrecargaModal] = useState(false);
-  const [logoColorTheme, setLogoColorTheme] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    setLogoColorTheme(null);
-    getLogoColorTheme(club.logoUrl).then(colors => {
-      if (active) setLogoColorTheme(colors);
-    });
-    return () => { active = false; };
-  }, [club.slug, club.logoUrl]);
-
   // Estado compartido para Botonera DT y Estadísticas
   const storageKey = `club_tracker_${club.slug}`;
   const authKey = `club_tracker_auth_${club.slug}`;
@@ -663,10 +585,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   };
 
   return (
-    <main className="portal" style={{
-      '--club-accent': logoColorTheme?.accent || club.theme?.accent || '#00a2ff',
-      '--club-primary': logoColorTheme?.primary || club.theme?.primary || '#1e88e5'
-    }}>
+    <main className="portal" style={{ '--club-accent': club.theme?.accent || '#00a2ff', '--club-primary': club.theme?.primary || '#1e88e5' }}>
       <section className="workspace">
         {showAdminBack && <button className="secondary back-button" onClick={() => { logoutStaff(); onBack(); }}>← Volver a administración</button>}
         <header className="workspace-header">
@@ -1827,9 +1746,14 @@ function App() {
                 </a>
                 {isAdminRoute && adminToken && (
                   <div className="club-card-actions">
-                    <button className="edit" onClick={() => openEdit(club)}>Editar perfil</button>
-                    <button className="danger" onClick={() => deleteClub(club)}>Eliminar club</button>
-                    <button className="secondary" onClick={() => inviteClubStaff(club)}>Invitar cuerpo técnico</button>
+                    <details className="club-options">
+                      <summary aria-label={`Opciones de ${club.name || club.slug}`} title="Opciones del club"><Ellipsis size={20} /></summary>
+                      <div className="club-options-menu">
+                        <button type="button" onClick={() => openEdit(club)}>Editar perfil</button>
+                        <button type="button" onClick={() => inviteClubStaff(club)}>Invitar cuerpo técnico</button>
+                        <button type="button" className="danger" onClick={() => deleteClub(club)}>Eliminar club</button>
+                      </div>
+                    </details>
                   </div>
                 )}
               </article>
