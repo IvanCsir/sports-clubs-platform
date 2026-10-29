@@ -34,6 +34,14 @@ const postgres = require('./_lib/postgres');
 
 const SESSION_DURATION_HOURS = 12;
 
+function safeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 function createSessionToken(club, email = '') {
   const expiresAt = Date.now() + (SESSION_DURATION_HOURS * 60 * 60 * 1000);
   const normalizedEmail = String(email || '').trim().toLowerCase();
