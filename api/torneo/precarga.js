@@ -6,7 +6,7 @@
 
 const { fetchAvailableMatches, executeAmhPrecarga } = require('../_lib/amh.js');
 const { getClubAsync } = require('../_lib/club-config');
-const { verifySessionToken } = require('../auth');
+const { verifyActiveSessionToken } = require('../auth');
 
 module.exports = async function handler(req, res) {
   // Configuración de CORS
@@ -74,7 +74,7 @@ module.exports = async function handler(req, res) {
         res.end(JSON.stringify({ success: false, error: 'Club no encontrado.' }));
         return;
       }
-      if (!token || !verifySessionToken(token, club).valid) {
+      if (!token || !(await verifyActiveSessionToken(token, club)).valid) {
         res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: false, error: 'Sesión inválida o perteneciente a otro club.' }));
         return;

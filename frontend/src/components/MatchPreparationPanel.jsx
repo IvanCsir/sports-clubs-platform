@@ -322,7 +322,7 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
   async function savePreparation(event) {
     event.preventDefault();
     if (!authenticated || !token) {
-      setError('Ingresá con la contraseña del cuerpo técnico para guardar.');
+      setError('Ingresá con tu cuenta Google invitada para guardar.');
       return;
     }
     if (!selectedMatch?.matchKey || !matchDraft.round.trim() || !matchDraft.opponent.trim()) {

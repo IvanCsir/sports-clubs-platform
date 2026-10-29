@@ -22,6 +22,7 @@ module.exports = async function handler(req, res) {
     res.writeHead(200);
     res.end(JSON.stringify({
       club: getPublicClub(selected),
+      googleClientId: process.env.GOOGLE_CLIENT_ID || '',
       updatedAt: new Date().toISOString()
     }));
   } catch (error) {

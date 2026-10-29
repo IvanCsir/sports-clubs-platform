@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 
 function loadEnv() {
@@ -43,10 +44,18 @@ async function main() {
       }
       const { readConfiguredClubs } = require('../api/_lib/club-config');
       for (const club of readConfiguredClubs()) {
+        club.auth = { ...(club.auth || {}) };
+        if (!club.auth.secret) club.auth.secret = crypto.randomBytes(32).toString('base64url');
+        delete club.auth.password;
         await client.query(
           `INSERT INTO club_catalog (slug, config) VALUES ($1, $2::jsonb)
-           ON CONFLICT (slug) DO NOTHING`,
-          [club.slug, JSON.stringify(club)]
+           ON CONFLICT (slug) DO UPDATE SET config = CASE
+             WHEN COALESCE(club_catalog.config->'auth'->>'secret', '') = ''
+             THEN jsonb_set(club_catalog.config, '{auth}',
+               COALESCE(club_catalog.config->'auth', '{}'::jsonb) || jsonb_build_object('secret', $3::text), true)
+             ELSE club_catalog.config
+           END`,
+          [club.slug, JSON.stringify(club), club.auth.secret]
         );
       }
       process.stdout.write('Catálogo de clubes preparado.\n');

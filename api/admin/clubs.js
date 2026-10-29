@@ -3,6 +3,7 @@ const { getPublicClub, readConfiguredClubsAsync } = require('../_lib/club-config
 const supabase = require('../_lib/supabase');
 const localClubs = require('../_lib/local-clubs');
 const postgres = require('../_lib/postgres');
+const { createStaffInvite } = require('../_lib/staff-access');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
@@ -61,10 +62,7 @@ function validateClub(input) {
     season: {
       name: String(input.season?.name || new Date().getFullYear()).trim().slice(0, 60)
     },
-    auth: {
-      password: String(input.auth && input.auth.password || '').trim(),
-      secret: String(input.auth && input.auth.secret || '').trim()
-    }
+    auth: { secret: String(input.auth && input.auth.secret || crypto.randomBytes(32).toString('base64url')).trim() }
   };
 }
 
@@ -73,11 +71,7 @@ function mergeClub(current, input) {
   return {
     ...current,
     ...incoming,
-    auth: {
-      ...current.auth,
-      ...(input.auth && input.auth.password ? { password: input.auth.password } : {}),
-      ...(input.auth && input.auth.secret ? { secret: input.auth.secret } : {})
-    }
+    auth: { secret: input.auth && input.auth.secret ? input.auth.secret : current.auth.secret }
   };
 }
 
@@ -96,6 +90,22 @@ module.exports = async function handler(req, res) {
 
   const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!verifyAdminToken(auth)) return json(res, 401, { error: 'Sesión de administrador inválida o expirada.' });
+  if (req.method === 'POST' && body.action === 'create-staff-invite') {
+    try {
+      const slug = String(body.slug || '').trim();
+      const clubs = await readConfiguredClubsAsync();
+      if (!clubs.some(club => club.slug === slug)) return json(res, 404, { error: 'Club no encontrado.' });
+      const invite = await createStaffInvite(slug, body.email, 'administración de la plataforma');
+      return json(res, 201, {
+        email: invite.email,
+        expiresInDays: invite.expiresInDays,
+        invitePath: `/?club=${encodeURIComponent(slug)}&staffInvite=${encodeURIComponent(invite.token)}`
+      });
+    } catch (error) {
+      if (/email válido|ya tiene acceso/.test(error.message)) return json(res, 400, { error: error.message });
+      return json(res, 503, { error: 'No se pudo crear la invitación. Verificá que la migración de accesos esté aplicada.' });
+    }
+  }
   if (req.method === 'GET') {
     try {
       const clubs = await readConfiguredClubsAsync();
@@ -107,9 +117,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const club = validateClub(body.club || {});
-      if (!club.auth.password || !club.auth.secret) {
-        return json(res, 400, { error: 'Configurá la contraseña y el secreto del cuerpo técnico.' });
-      }
+      if (!club.auth.secret) return json(res, 400, { error: 'No se pudo generar la configuración segura del club.' });
       if (Buffer.byteLength(club.auth.secret, 'utf8') < 32) {
         return json(res, 400, { error: 'El secreto del club debe tener al menos 32 bytes.' });
       }
@@ -145,11 +153,7 @@ module.exports = async function handler(req, res) {
     try {
       const incomingAuth = body.club && body.club.auth;
       if (incomingAuth) {
-        const hasPassword = Boolean(String(incomingAuth.password || '').trim());
         const hasSecret = Boolean(String(incomingAuth.secret || '').trim());
-        if (hasPassword !== hasSecret) {
-          return json(res, 400, { error: 'Para cambiar el acceso del cuerpo técnico, enviá la contraseña y el secreto juntos.' });
-        }
         if (hasSecret && Buffer.byteLength(String(incomingAuth.secret).trim(), 'utf8') < 32) {
           return json(res, 400, { error: 'El secreto del club debe tener al menos 32 bytes.' });
         }

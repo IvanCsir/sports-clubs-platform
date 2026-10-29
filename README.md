@@ -30,7 +30,7 @@ El importador carga convocatorias actuales, resultados físicos e historial de p
 ## Configuración multi-club
 
 En desarrollo local copiá `.env.example` a `.env`. Para un único club se pueden conservar
-`CT_PASSWORD`, `CT_AUTH_SECRET` y los valores existentes. Para varios clubes, configurá
+`GOOGLE_CLIENT_ID` para habilitar el acceso del cuerpo técnico con Google. Para varios clubes, configurá
 `CLUBS_CONFIG_JSON` en Vercel o en el entorno de ejecución con un array JSON.
 
 Cada perfil contiene un `slug`, identidad visual, configuración del torneo y sus credenciales
@@ -49,7 +49,7 @@ Ejemplo mínimo:
   "sport": "Hockey",
   "teamName": "PLANTEL SUPERIOR",
   "logoUrl": "/logos/club-ejemplo.png",
-  "auth": { "password": "CAMBIAR", "secret": "SECRET_LARGO_Y_ALEATORIO" }
+  "auth": { "secret": "SECRET_LARGO_Y_ALEATORIO" }
 }]
 ```
 
@@ -113,6 +113,8 @@ El portal permite seleccionar clubes, gestionar su plantel, preparar citaciones,
 evaluaciones físicas y registrar eventos del partido. Las jugadoras pueden consultar las
 evaluaciones físicas desde el enlace público del club; la carga y edición requieren una sesión
 del cuerpo técnico. El resto de los datos privados y las escrituras también requieren esa sesión.
+
+El cuerpo técnico puede ingresar con una cuenta Google invitada al email correspondiente. La invitación inicial se crea desde `/admin`; una vez dentro, cada integrante puede invitar a otras personas y revocar accesos. El enlace es de un solo uso y vence en siete días. Configurá `GOOGLE_CLIENT_ID` y aplicá las migraciones para habilitar el registro.
 
 Desde "Editar perfil" se puede subir el escudo del club (PNG, JPG o SVG de hasta 1 MB).
 Las citaciones se consultan y editan mediante `/api/club-data`; la consulta de evaluaciones es pública por club, pero su edición y el acceso a eventos requieren una sesión del cuerpo técnico. Las escrituras se guardan en PostgreSQL.

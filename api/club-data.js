@@ -1,6 +1,7 @@
 const { getClubAsync } = require('./_lib/club-config');
-const { verifySessionToken } = require('./auth');
+const { verifyActiveSessionToken } = require('./auth');
 const sportsData = require('./_lib/sports-data');
+const { createStaffInvite, listStaffUsers, revokeStaffUser } = require('./_lib/staff-access');
 
 function json(res, status, payload) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -46,7 +47,7 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'GET') {
       const dataset = url.searchParams.get('dataset') || 'citations';
-      if (!['citations', 'physical', 'staff', 'preparations', 'player-portal', 'backup'].includes(dataset)) return json(res, 400, { error: 'Conjunto de datos inválido.' });
+      if (!['citations', 'physical', 'staff', 'staff-access', 'preparations', 'player-portal', 'backup'].includes(dataset)) return json(res, 400, { error: 'Conjunto de datos inválido.' });
       if (dataset === 'player-portal') {
         return json(res, 200, { players: await sportsData.getPlayerPortalRoster(slug) });
       }
@@ -60,7 +61,7 @@ module.exports = async function handler(req, res) {
       }
       if (dataset === 'backup') {
         const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
-        if (!token || !verifySessionToken(token, club).valid) {
+        if (!token || !(await verifyActiveSessionToken(token, club)).valid) {
           return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
         }
         const backup = await sportsData.getSeasonBackup(slug, seasonName, tournamentKey);
@@ -83,9 +84,16 @@ module.exports = async function handler(req, res) {
           ...backup
         });
       }
+      if (dataset === 'staff-access') {
+        const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
+        if (!token || !(await verifyActiveSessionToken(token, club)).valid) {
+          return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
+        }
+        return json(res, 200, { staff: await listStaffUsers(slug) });
+      }
       if (dataset === 'staff') {
         const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
-        if (!token || !verifySessionToken(token, club).valid) {
+        if (!token || !(await verifyActiveSessionToken(token, club)).valid) {
           return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
         }
         const data = await sportsData.getClubData(slug, seasonName, tournamentKey);
@@ -112,8 +120,29 @@ module.exports = async function handler(req, res) {
       }
     }
     const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
-    if (!token || !verifySessionToken(token, club).valid) {
+    const session = token ? await verifyActiveSessionToken(token, club) : { valid: false };
+    if (!session.valid) {
       return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
+    }
+    if (req.method === 'POST' && body.action === 'create-staff-invite') {
+      try {
+        const invite = await createStaffInvite(slug, body.email, session.email);
+        return json(res, 201, {
+          email: invite.email,
+          expiresInDays: invite.expiresInDays,
+          invitePath: `/?club=${encodeURIComponent(slug)}&staffInvite=${encodeURIComponent(invite.token)}`
+        });
+      } catch (error) {
+        if (/email válido|ya tiene acceso/.test(error.message)) return json(res, 400, { error: error.message });
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && body.action === 'revoke-staff-user') {
+      const userId = Number(body.userId);
+      if (!Number.isSafeInteger(userId) || userId <= 0) return json(res, 400, { error: 'Seleccioná una cuenta válida.' });
+      const revoked = await revokeStaffUser(slug, userId, session.email);
+      if (!revoked) return json(res, 400, { error: 'No se pudo revocar esa cuenta. No podés quitar tu propio acceso.' });
+      return json(res, 200, { revoked: true });
     }
     if (req.method === 'DELETE' || body.action === 'delete-event') {
       if (Array.isArray(body.ids)) {

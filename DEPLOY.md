@@ -17,20 +17,16 @@ No publiques ninguna de estas URI ni las agregues a Git.
 
 ## 2. Crear las tablas
 
-En PowerShell, desde la carpeta del proyecto, establecé temporalmente estas variables con
-los valores de Supabase y una contraseña segura para el cuerpo técnico. Generá un secreto
-aleatorio de al menos 32 bytes para `CT_AUTH_SECRET`:
+En PowerShell, desde la carpeta del proyecto, establecé temporalmente la URI de Supabase.
+El secreto de sesión de cada club se genera automáticamente al crear el club:
 
 ```powershell
 $env:DATABASE_URL = "URI_DIRECTA_O_SESSION_POOLER_DE_SUPABASE"
-$env:CT_PASSWORD = "CONTRASENA_DEL_CUERPO_TECNICO"
-$env:CT_AUTH_SECRET = "SECRETO_ALEATORIO_LARGO_DE_32_BYTES_O_MAS"
 npm run db:migrate
 ```
 
-La migración crea las tablas y registra el club inicial `regatas-andino` con la contraseña
-y el secreto de cuerpo técnico configurados en esa sesión. No migra datos históricos de
-Google Sheets.
+La migración crea las tablas y registra el club inicial `regatas-andino`. No migra datos
+históricos de Google Sheets.
 
 ## 3. Importar el repositorio a Vercel
 
@@ -53,15 +49,18 @@ En **Project → Settings → Environment Variables**, agregá estas variables p
 | `DATABASE_URL` | URI de Supabase **Transaction pooler** |
 | `ADMIN_PASSWORD` | Contraseña fuerte para abrir `/admin` |
 | `ADMIN_SECRET` | Secreto aleatorio de al menos 32 bytes para firmar la sesión de administración |
+| `GOOGLE_CLIENT_ID` | ID OAuth de tipo aplicación web para el botón de ingreso con Google |
 | `AMH_USER` | Usuario de AMH, si vas a usar la actualización del torneo |
 | `AMH_PASSWORD` | Contraseña de AMH, si vas a usar la actualización del torneo |
 
 No cargues `SUPABASE_SERVICE_ROLE_KEY`: este despliegue usa `DATABASE_URL` directamente.
-Las credenciales del cuerpo técnico ya quedan en el registro del club al ejecutar la
-migración; para cambiarlas, hacelo desde el perfil del club una vez publicado.
+Después de aplicar la migración, iniciá sesión en `/admin` y generá una invitación para el
+email Google de la primera persona del cuerpo técnico.
 
 Después de cargar variables, guardalas y volvé a desplegar. Las variables no se incluyen
 automáticamente en despliegues que ya estaban creados.
+
+En Google Cloud Console, creá un cliente OAuth de tipo **Aplicación web**, configurá el dominio publicado como origen autorizado (por ejemplo `https://tu-app.vercel.app`) y cargá su ID en `GOOGLE_CLIENT_ID`. Después aplicá las migraciones (`npm run db:migrate`). Desde `/admin`, usá **Invitar cuerpo técnico** en el club y enviá el enlace generado al email de Google de esa persona. Cada invitación vence en siete días y se puede usar una sola vez. Las personas ya invitadas pueden invitar a otros integrantes desde **Más → Accesos del cuerpo técnico**.
 
 ## 5. Verificar
 
@@ -71,5 +70,7 @@ Abrí la URL `vercel.app` asignada y comprobá:
 - Que `/admin` pide la contraseña configurada en `ADMIN_PASSWORD`.
 - Que el cuerpo técnico puede iniciar sesión y guardar una citación o un Plan partido.
 - Que una evaluación y las estadísticas cargan desde la base de datos.
+- Que un email invitado puede aceptar su invitación con Google y que otro email no puede usar ese enlace.
+- Que el cuerpo técnico puede revocar una cuenta y que sus sesiones dejan de funcionar.
 
 Si cambiás variables de entorno, generá un nuevo despliegue para que surtan efecto.

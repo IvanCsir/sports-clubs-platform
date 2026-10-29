@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Activity, CalendarClock, ChevronRight, ClipboardList, Goal, MapPin, Megaphone, Timer, Trophy, UsersRound, Zap } from 'lucide-react';
 import TrackerPanel from './components/TrackerPanel';
 import TournamentPanel from './components/TournamentPanel';
@@ -16,8 +16,6 @@ const emptyClub = {
   sport: 'Hockey',
   teamName: 'PLANTEL SUPERIOR',
   logoUrl: '',
-  staffPassword: '',
-  staffSecret: '',
   tournamentName: '',
   tournamentBaseUrl: '',
   tournamentId: '',
@@ -132,10 +130,10 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const [matchesLoaded, setMatchesLoaded] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [token, setToken] = useState('');
-  const [showStaffLogin, setShowStaffLogin] = useState(false);
+  const staffInviteToken = new URLSearchParams(window.location.search).get('staffInvite') || '';
+  const [showStaffLogin, setShowStaffLogin] = useState(Boolean(staffInviteToken));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [managementMenuOpen, setManagementMenuOpen] = useState(false);
-  const [staffLoginPassword, setStaffLoginPassword] = useState('');
   const [staffLoginError, setStaffLoginError] = useState('');
 
   // Cargar fixture para Botonera y Estadísticas
@@ -174,17 +172,24 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     if (payload.citations) setData(payload.citations);
   }
 
-  async function authenticateStaff(password) {
+  async function authenticateStaffGoogle(credential) {
     const response = await fetch(`/api/auth?club=${encodeURIComponent(club.slug)}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password })
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ googleCredential: credential, invite: staffInviteToken })
     });
     const payload = await response.json();
-    if (!response.ok || !payload.token) throw new Error(payload.error || 'No se pudo iniciar sesión.');
+    if (!response.ok || !payload.token) throw new Error(payload.error || 'No se pudo validar la cuenta de Google.');
     await loadStaffData(payload.token);
     setToken(payload.token);
     setAuthenticated(true);
     sessionStorage.setItem(authKey, payload.token);
-    return payload.token;
+    if (staffInviteToken) {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('staffInvite');
+      window.history.replaceState({}, '', cleanUrl.toString());
+    }
+    setShowStaffLogin(false);
+    setView('inicio');
   }
 
   async function authenticateStaffWithToken(sessionToken) {
@@ -198,17 +203,6 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     setAuthenticated(true);
     sessionStorage.setItem(authKey, sessionToken);
     return sessionToken;
-  }
-
-  async function submitStaffLogin(event) {
-    event.preventDefault();
-    setStaffLoginError('');
-    try {
-      await authenticateStaff(staffLoginPassword);
-      setStaffLoginPassword('');
-      setShowStaffLogin(false);
-      setView('inicio');
-    } catch (error) { setStaffLoginError(error.message); }
   }
 
   function logoutStaff() {
@@ -283,7 +277,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     event.preventDefault();
     setCallupError('');
     try {
-      if (!authenticated) throw new Error('Ingresá con la contraseña del cuerpo técnico para elegir y guardar las citadas.');
+      if (!authenticated) throw new Error('Ingresá con tu cuenta Google invitada para elegir y guardar las citadas.');
       const sessionToken = token;
       const players = callupDraft.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
       const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
@@ -563,13 +557,14 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
       { id: 'jugadoras', label: 'Plantel' },
       { id: 'dt', label: 'Botonera DT' },
       { id: 'stats', label: 'Estadísticas' },
-      { id: 'respaldo', label: 'Respaldo' }
+      { id: 'respaldo', label: 'Respaldo' },
+      { id: 'accesos', label: 'Accesos del cuerpo técnico' }
     ] : [])
   ];
   const workspaceGroups = [
     { id: 'planificacion', label: 'Planificación', sectionIds: ['jugadoras', 'citaciones', 'fisico', 'seguimiento'] },
     { id: 'partido', label: 'Partido', sectionIds: ['preparacion', 'dt', 'stats'] },
-    { id: 'administracion', label: 'Administración', sectionIds: ['respaldo'] }
+    { id: 'administracion', label: 'Administración', sectionIds: ['respaldo', 'accesos'] }
   ].map(group => ({
     ...group,
     sections: group.sectionIds.map(id => workspaceSections.find(section => section.id === id)).filter(Boolean)
@@ -841,6 +836,8 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
           />
         ) : view === 'respaldo' && authenticated ? (
           <SeasonBackupPanel club={club} token={token} />
+        ) : view === 'accesos' && authenticated ? (
+          <StaffAccessPanel club={club} token={token} />
         ) : view === 'torneo' ? (
           <TournamentPanel club={club} />
         ) : view === 'preparacion' ? (
@@ -1242,17 +1239,17 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
 
       {showStaffLogin && (
         <div className="overlay" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setShowStaffLogin(false); }}>
-          <form className="form-card staff-login-card" role="dialog" aria-modal="true" aria-labelledby="staffLoginTitle" onSubmit={submitStaffLogin}>
+          <div className="form-card staff-login-card" role="dialog" aria-modal="true" aria-labelledby="staffLoginTitle">
             <button type="button" className="close" aria-label="Cerrar" onClick={() => setShowStaffLogin(false)}>×</button>
             <span className="kicker">ACCESO PRIVADO</span>
             <h2 id="staffLoginTitle">Cuerpo técnico</h2>
-            <p>Ingresá para administrar el plantel, las citaciones y las herramientas del equipo.</p>
-            <label>Contraseña del cuerpo técnico
-              <input type="password" value={staffLoginPassword} onChange={event => setStaffLoginPassword(event.target.value)} autoComplete="current-password" required autoFocus />
-            </label>
+            <p>Ingresá con la cuenta Google que recibió la invitación del club.</p>
+            {club.googleClientId ? (
+              <GoogleIdentityButton clientId={club.googleClientId} onCredential={authenticateStaffGoogle} onError={error => setStaffLoginError(error.message)} />
+            ) : <p className="message error">El acceso con Google todavía no está configurado.</p>}
             {staffLoginError && <p className="message error" role="alert">{staffLoginError}</p>}
-            <button type="submit">Ingresar</button>
-          </form>
+            <button type="button" className="secondary" onClick={() => setShowStaffLogin(false)}>Cerrar</button>
+          </div>
         </div>
       )}
 
@@ -1268,6 +1265,121 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
         />
       )}
     </main>
+  );
+}
+
+function GoogleIdentityButton({ clientId, onCredential, onError }) {
+  const container = useRef(null);
+  const callback = useRef(onCredential);
+  const reportError = useRef(onError);
+  useEffect(() => { callback.current = onCredential; reportError.current = onError; }, [onCredential, onError]);
+  useEffect(() => {
+    let cancelled = false;
+    const mountButton = () => {
+      if (cancelled || !container.current || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async ({ credential }) => {
+          try { await callback.current(credential); }
+          catch (error) { reportError.current?.(error); }
+        }
+      });
+      window.google.accounts.id.renderButton(container.current, {
+        type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', width: 320
+      });
+    };
+    let script = document.querySelector('script[data-google-identity]');
+    if (window.google?.accounts?.id) mountButton();
+    else if (script) script.addEventListener('load', mountButton, { once: true });
+    else {
+      script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.dataset.googleIdentity = 'true';
+      script.addEventListener('load', mountButton, { once: true });
+      script.addEventListener('error', () => reportError.current?.(new Error('No se pudo cargar el acceso de Google.')), { once: true });
+      document.head.appendChild(script);
+    }
+    return () => { cancelled = true; };
+  }, [clientId]);
+  return <div ref={container} className="google-signin-button" />;
+}
+
+function StaffAccessPanel({ club, token }) {
+  const [email, setEmail] = useState('');
+  const [inviteUrl, setInviteUrl] = useState('');
+  const [message, setMessage] = useState('');
+  const [staff, setStaff] = useState([]);
+  const [loadingStaff, setLoadingStaff] = useState(true);
+  async function loadStaff() {
+    setLoadingStaff(true);
+    try {
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}&dataset=staff-access`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar los accesos.');
+      setStaff(payload.staff || []);
+    } catch (error) { setMessage(error.message); }
+    finally { setLoadingStaff(false); }
+  }
+  useEffect(() => { loadStaff(); }, [club.slug, token]);
+  async function invite(event) {
+    event.preventDefault();
+    setMessage('Creando invitación…');
+    setInviteUrl('');
+    try {
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'create-staff-invite', email })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo crear la invitación.');
+      setInviteUrl(new URL(payload.invitePath, window.location.origin).toString());
+      setMessage(`Invitación para ${payload.email}. Vence en ${payload.expiresInDays} días.`);
+      setEmail('');
+    } catch (error) { setMessage(error.message); }
+  }
+  async function revoke(user) {
+    if (!window.confirm(`¿Quitar el acceso de ${user.email}?`)) return;
+    try {
+      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'revoke-staff-user', userId: user.id })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo quitar el acceso.');
+      setMessage(`Se quitó el acceso de ${user.email}.`);
+      await loadStaff();
+    } catch (error) { setMessage(error.message); }
+  }
+  async function copyInvite() {
+    try { await navigator.clipboard.writeText(inviteUrl); setMessage('Enlace copiado.'); }
+    catch (_) { setMessage('No se pudo copiar automáticamente. Seleccioná y copiá el enlace.'); }
+  }
+  return (
+    <section className="players-section staff-access-panel">
+      <span className="kicker">CUERPO TÉCNICO</span>
+      <h2>Invitar a otra persona</h2>
+      <p>La persona recibirá un enlace para registrarse con Google. La invitación solo funciona con este email y vence en siete días.</p>
+      <form onSubmit={invite}>
+        <label>Email de Google
+          <input type="email" value={email} onChange={event => setEmail(event.target.value)} required maxLength={254} />
+        </label>
+        <button type="submit">Crear invitación</button>
+      </form>
+      {message && <p className="message" role="status">{message}</p>}
+      {inviteUrl && <><label>Enlace de invitación<input readOnly value={inviteUrl} onFocus={event => event.target.select()} /></label><button type="button" className="secondary" onClick={copyInvite}>Copiar enlace</button></>}
+      <h3>Accesos activos</h3>
+      {loadingStaff ? <p>Cargando accesos…</p> : staff.length ? (
+        <ul className="staff-access-list">{staff.map(user => (
+          <li key={user.id}><span><strong>{user.displayName || user.email}</strong><small>{user.displayName ? user.email : 'Cuerpo técnico'}</small></span>
+            <button type="button" className="secondary" onClick={() => revoke(user)}>Quitar acceso</button>
+          </li>
+        ))}</ul>
+      ) : <p>No hay cuentas Google activas.</p>}
+    </section>
   );
 }
 
@@ -1323,7 +1435,7 @@ function App() {
         return;
       }
       const data = await api(`/api/config?club=${encodeURIComponent(requestedSlug)}`);
-      setWorkspaceClub(data.club || null);
+      setWorkspaceClub(data.club ? { ...data.club, googleClientId: data.googleClientId || '' } : null);
     } catch (error) {
       setWorkspaceClub(null);
       setMessage(error.message);
@@ -1432,6 +1544,20 @@ function App() {
     }
   }
 
+  async function inviteClubStaff(club) {
+    const email = window.prompt(`Email de Google para invitar al cuerpo técnico de ${club.name}:`);
+    if (!email) return;
+    try {
+      const result = await api('/api/admin/clubs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ action: 'create-staff-invite', slug: club.slug, email })
+      });
+      const link = new URL(result.invitePath, window.location.origin).toString();
+      window.prompt(`Invitación para ${result.email}. Vence en ${result.expiresInDays} días. Copiá este enlace y envialo:`, link);
+    } catch (error) { setMessage(error.message); }
+  }
+
   async function saveClub(event) {
     event.preventDefault();
     if (logoReading) {
@@ -1440,12 +1566,6 @@ function App() {
     }
     if (!adminToken) {
       setMessage('Iniciá sesión como administrador antes de guardar.');
-      return;
-    }
-    const hasStaffPassword = Boolean(form.staffPassword.trim());
-    const hasStaffSecret = Boolean(form.staffSecret.trim());
-    if (hasStaffPassword !== hasStaffSecret) {
-      setMessage('Para cambiar el acceso del cuerpo técnico, completá la contraseña y el secreto. Dejá ambos vacíos para conservar los actuales.');
       return;
     }
     const body = {
@@ -1466,7 +1586,7 @@ function App() {
           division: form.tournamentDivision || '1'
         },
         season: { name: form.seasonName },
-        auth: { password: form.staffPassword, secret: form.staffSecret }
+        auth: {}
       }
     };
     try {
@@ -1604,9 +1724,10 @@ function App() {
                   <b>→</b>
                 </a>
                 {isAdminRoute && adminToken && (
-                  <button className="edit" onClick={() => openEdit(club)}>
-                    Editar perfil
-                  </button>
+                  <div className="club-card-actions">
+                    <button className="edit" onClick={() => openEdit(club)}>Editar perfil</button>
+                    <button className="secondary" onClick={() => inviteClubStaff(club)}>Invitar cuerpo técnico</button>
+                  </div>
                 )}
               </article>
             ))}
@@ -1742,34 +1863,7 @@ function App() {
                 </>
               )}
             </fieldset>
-            <p className="auth-settings-help">
-              {selected
-                ? 'Para cambiar el acceso, completá ambos campos. Si los dejás vacíos, se conserva la configuración actual. El secreto debe tener al menos 32 caracteres.'
-                : 'Configurá la contraseña de acceso y un secreto privado de al menos 32 caracteres para firmar las sesiones.'}
-            </p>
-            <label>
-              Contraseña cuerpo técnico
-              <input
-                name="staffPassword"
-                type="password"
-                value={form.staffPassword}
-                onChange={updateField}
-                autoComplete="new-password"
-                required={!selected || Boolean(form.staffSecret)}
-              />
-            </label>
-            <label>
-              Secreto del club
-              <input
-                name="staffSecret"
-                type="password"
-                value={form.staffSecret}
-                onChange={updateField}
-                autoComplete="new-password"
-                minLength={32}
-                required={!selected || Boolean(form.staffPassword)}
-              />
-            </label>
+            <p className="auth-settings-help">El acceso del cuerpo técnico se asigna por invitación y cuenta Google individual.</p>
             <button type="submit" disabled={logoReading}>
               {logoReading ? 'Cargando escudo...' : selected ? 'Guardar cambios' : 'Crear club'}
             </button>

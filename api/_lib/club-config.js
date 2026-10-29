@@ -25,7 +25,6 @@ const DEFAULT_CLUB = {
   },
   season: { name: '2026' },
   auth: {
-    password: '',
     secret: ''
   }
 };
@@ -59,7 +58,6 @@ function readConfiguredClubs() {
   const raw = process.env.CLUBS_CONFIG_JSON;
   if (!raw) {
     const club = clone(DEFAULT_CLUB);
-    if (process.env.CT_PASSWORD) club.auth.password = process.env.CT_PASSWORD;
     if (process.env.CT_AUTH_SECRET) club.auth.secret = process.env.CT_AUTH_SECRET;
     return [club];
   }

@@ -10,44 +10,36 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { readConfiguredClubsAsync } = require('./_lib/club-config');
+const { exchangeGoogleCredential } = require('./_lib/staff-access');
+const postgres = require('./_lib/postgres');
 
-// Cargar .env en desarrollo local si no se han cargado variables de entorno
+// Cargar variables locales faltantes sin reemplazar las del entorno de ejecución.
 (function loadEnv() {
-  if (!process.env.CT_PASSWORD) {
-    const envPath = path.resolve(__dirname, '..', '.env');
-    if (fs.existsSync(envPath)) {
-      try {
-        const content = fs.readFileSync(envPath, 'utf8');
-        content.split(/\r?\n/).forEach(line => {
-          line = line.trim();
-          if (!line || line.startsWith('#')) return;
-          const eqIdx = line.indexOf('=');
-          if (eqIdx !== -1) {
-            const key = line.slice(0, eqIdx).trim();
-            const val = line.slice(eqIdx + 1).trim();
-            if (!process.env[key]) process.env[key] = val;
-          }
-        });
-      } catch (_) {}
-    }
-  }
+  const envPath = path.resolve(__dirname, '..', '.env');
+  if (!fs.existsSync(envPath)) return;
+  try {
+    const content = fs.readFileSync(envPath, 'utf8');
+    content.split(/\r?\n/).forEach(line => {
+      line = line.trim();
+      if (!line || line.startsWith('#')) return;
+      const eqIdx = line.indexOf('=');
+      if (eqIdx !== -1) {
+        const key = line.slice(0, eqIdx).trim();
+        const val = line.slice(eqIdx + 1).trim();
+        if (!process.env[key]) process.env[key] = val;
+      }
+    });
+  } catch (_) {}
 })();
 
 const SESSION_DURATION_HOURS = 12;
 
-function safeCompare(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string') return false;
-  const bufA = Buffer.from(a, 'utf8');
-  const bufB = Buffer.from(b, 'utf8');
-  if (bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
-}
-
-function createSessionToken(club) {
+function createSessionToken(club, email = '') {
   const expiresAt = Date.now() + (SESSION_DURATION_HOURS * 60 * 60 * 1000);
-  const payload = `ct:${club.slug}:${expiresAt}`;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const payload = `ct:${club.slug}:${expiresAt}${normalizedEmail ? `:${normalizedEmail}` : ''}`;
   const signature = crypto.createHmac('sha256', club.auth.secret).update(payload).digest('hex');
-  const token = Buffer.from(JSON.stringify({ role: 'cuerpo_tecnico', club: club.slug, expiresAt, signature })).toString('base64');
+  const token = Buffer.from(JSON.stringify({ role: 'cuerpo_tecnico', club: club.slug, email: normalizedEmail, expiresAt, signature })).toString('base64');
   return { token, expiresAt, durationHours: SESSION_DURATION_HOURS };
 }
 
@@ -63,16 +55,27 @@ function verifySessionToken(token, club) {
     }
 
     if (parsed.club !== club.slug) return { valid: false, error: 'Token de otro club' };
-    const expectedPayload = `ct:${club.slug}:${parsed.expiresAt}`;
+    const expectedPayload = `ct:${club.slug}:${parsed.expiresAt}${parsed.email ? `:${String(parsed.email).trim().toLowerCase()}` : ''}`;
     const expectedSig = crypto.createHmac('sha256', club.auth.secret).update(expectedPayload).digest('hex');
     if (!safeCompare(parsed.signature, expectedSig)) {
       return { valid: false, error: 'Firma inválida' };
     }
 
-    return { valid: true, expiresAt: parsed.expiresAt };
+    return { valid: true, expiresAt: parsed.expiresAt, email: parsed.email || '' };
   } catch (err) {
     return { valid: false, error: 'Token corrupto' };
   }
+}
+
+async function verifyActiveSessionToken(token, club) {
+  const verification = verifySessionToken(token, club);
+  if (!verification.valid || !verification.email) return verification;
+  if (!postgres.isConfigured()) return { valid: false, error: 'Acceso individual no disponible.' };
+  const result = await postgres.getPool().query(
+    `SELECT 1 FROM sc_staff_users WHERE club_slug = $1 AND email = $2 AND revoked_at IS NULL`,
+    [club.slug, verification.email]
+  );
+  return result.rowCount ? verification : { valid: false, error: 'Este acceso fue revocado.' };
 }
 
 module.exports = async function handler(req, res) {
@@ -115,13 +118,13 @@ module.exports = async function handler(req, res) {
     const authHeader = (req.headers && req.headers.authorization) || '';
     const token = urlObj.searchParams.get('token') || authHeader.replace(/^Bearer\s+/i, '').trim();
 
-    const verification = verifySessionToken(token, club);
+    const verification = await verifyActiveSessionToken(token, club);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(verification));
     return;
   }
 
-  // POST: Login con contraseña de Cuerpo Técnico
+  // POST: intercambio de credencial Google por sesión del club
   if (req.method === 'POST') {
     try {
       let body;
@@ -138,33 +141,29 @@ module.exports = async function handler(req, res) {
         try { body = JSON.parse(raw); } catch (_) { body = {}; }
       }
 
-      const submittedPassword = (body.password || '').toString().trim();
-      const officialPassword = String(club.auth?.password || '').trim();
       const authSecret = String(club.auth?.secret || '');
 
-      if (!officialPassword || !authSecret) {
+      if (!authSecret) {
         res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: false, error: 'Autenticación no configurada para este club.' }));
         return;
       }
 
-      if (submittedPassword && safeCompare(submittedPassword, officialPassword)) {
-        const session = createSessionToken(club);
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
-          success: true,
-          token: session.token,
-          expiresAt: session.expiresAt,
-          durationHours: session.durationHours,
-          message: 'Sesión de Cuerpo Técnico iniciada correctamente'
-        }));
-      } else {
-        res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
-          success: false,
-          error: 'Contraseña de Cuerpo Técnico incorrecta'
-        }));
+      if (body.googleCredential) {
+        try {
+          const identity = await exchangeGoogleCredential(club.slug, body.googleCredential, body.invite || '');
+          const session = createSessionToken(club, identity.email);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+          res.end(JSON.stringify({ success: true, token: session.token, expiresAt: session.expiresAt, durationHours: session.durationHours }));
+        } catch (error) {
+          res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+          res.end(JSON.stringify({ success: false, error: error.message }));
+        }
+        return;
       }
+
+      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ success: false, error: 'Ingresá con Google usando una invitación vigente del club.' }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, error: err.message }));
@@ -177,4 +176,5 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.verifySessionToken = verifySessionToken;
+module.exports.verifyActiveSessionToken = verifyActiveSessionToken;
 module.exports.createSessionToken = createSessionToken;

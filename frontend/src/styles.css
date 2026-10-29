@@ -83,6 +83,18 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .home-dashboard-card > b { color: #00a2ff; }
 .staff-login-card > p { margin: 0 0 8px; color: #9eb4cc; }
 .staff-login-card input { width: 100%; padding: 12px; border: 1px solid #8dd3ff40; border-radius: 9px; color: #eaf6ff; background: #102747; font: inherit; font-size: 16px; }
+.staff-login-card details { margin: 14px 0; color: #b7c9de; }
+.staff-login-card summary { cursor: pointer; margin-bottom: 10px; }
+.google-signin-button { display: flex; justify-content: center; min-height: 44px; margin: 16px 0; }
+.staff-access-panel { max-width: 720px; }
+.staff-access-panel form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; max-width: 620px; margin: 18px 0; }
+.staff-access-panel form label { flex: 1 1 280px; }
+.staff-access-panel > label { display: block; margin: 12px 0; }
+.club-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.staff-access-list { display: grid; gap: 8px; padding: 0; list-style: none; }
+.staff-access-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid #8dd3ff2b; border-radius: 12px; background: #ffffff08; }
+.staff-access-list li span { display: grid; gap: 4px; min-width: 0; }
+.staff-access-list li small { color: #9eb4cc; overflow-wrap: anywhere; }
 .tracker-panel { margin-top: 20px; padding: clamp(18px, 4vw, 32px); border: 1px solid #8dd3ff33; border-radius: 20px; background: #ffffff09; }
 .tracker-hero { margin-bottom: 20px; }
 .tracker-hero p, .tracker-header p, .tracker-toolbar span { color: #b7c9de; }
