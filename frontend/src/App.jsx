@@ -574,7 +574,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
   const selectWorkspaceSection = id => {
     setView(id);
     setMobileMenuOpen(false);
-    setManagementMenuOpen(workspaceGroups.find(group => group.sections.some(section => section.id === id))?.id || false);
+    setManagementMenuOpen(false);
     if (id === 'fisico') loadPhysical();
     if (id === 'seguimiento' && authenticated) loadStaffData(token);
     if (id === 'stats' && authenticated) loadStaffData(token).catch(error => setStatus(error.message));
