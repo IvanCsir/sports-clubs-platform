@@ -36,4 +36,12 @@ function updateClub(slug, config) {
   return config;
 }
 
-module.exports = { readClubs, createClub, updateClub, STORE_PATH };
+function deleteClub(slug) {
+  const clubs = readClubs();
+  const next = clubs.filter(club => club.slug !== slug);
+  const deleted = next.length !== clubs.length;
+  if (deleted) fs.writeFileSync(STORE_PATH, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
+  return { deleted };
+}
+
+module.exports = { readClubs, createClub, updateClub, deleteClub, STORE_PATH };

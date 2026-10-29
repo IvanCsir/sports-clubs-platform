@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getPublicClub, readConfiguredClubsAsync } = require('../_lib/club-config');
+const { getPublicClub, readConfiguredClubs, readConfiguredClubsAsync } = require('../_lib/club-config');
 const supabase = require('../_lib/supabase');
 const localClubs = require('../_lib/local-clubs');
 const postgres = require('../_lib/postgres');
@@ -90,6 +90,35 @@ module.exports = async function handler(req, res) {
 
   const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!verifyAdminToken(auth)) return json(res, 401, { error: 'Sesión de administrador inválida o expirada.' });
+  if (req.method === 'DELETE') {
+    const slug = String(body.slug || '').trim();
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || body.confirmSlug !== slug) {
+      return json(res, 400, { error: 'Confirmá la eliminación enviando el slug exacto del club.' });
+    }
+    try {
+      const clubs = await readConfiguredClubsAsync();
+      if (!clubs.some(club => club.slug === slug)) return json(res, 404, { error: 'Club no encontrado.' });
+      if (postgres.isConfigured()) {
+        await postgres.deleteClub(slug);
+        return json(res, 200, { deleted: true, slug, storage: 'postgres' });
+      }
+      // Configured clubs come from deployment configuration and cannot be removed
+      // from durable storage; deleting their records would make them reappear.
+      if (readConfiguredClubs().some(club => club.slug === slug)) {
+        return json(res, 409, { error: 'Este club viene de la configuración del despliegue. Quitalo de CLUBS_CONFIG_JSON antes de eliminarlo.' });
+      }
+      if (supabase.isConfigured()) {
+        const rows = await supabase.request(`clubs?slug=eq.${encodeURIComponent(slug)}`, { method: 'DELETE' });
+        return rows.length ? json(res, 200, { deleted: true, slug, storage: 'supabase' }) : json(res, 404, { error: 'Club no encontrado.' });
+      }
+      if (process.env.VERCEL) return json(res, 503, { error: 'No hay un almacenamiento persistente configurado para eliminar este club.' });
+      const result = localClubs.deleteClub(slug);
+      return result.deleted ? json(res, 200, { deleted: true, slug, storage: 'local' }) : json(res, 404, { error: 'Club no encontrado.' });
+    } catch (error) {
+      console.error('[Admin] Error eliminando club:', error.message);
+      return json(res, 503, { error: 'No se pudo eliminar el club. Verificá que la migración de base de datos esté aplicada.' });
+    }
+  }
   if (req.method === 'POST' && body.action === 'create-staff-invite') {
     try {
       const slug = String(body.slug || '').trim();

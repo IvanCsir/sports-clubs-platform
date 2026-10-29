@@ -39,8 +39,13 @@ function clone(value) {
 async function readConfiguredClubsAsync() {
   if (postgres.isConfigured()) {
     try {
-      const clubs = await postgres.listClubs();
-      return mergeClubs(readConfiguredClubs(), clubs).map(normalizeClub);
+      const [clubs, deletedSlugs] = await Promise.all([
+        postgres.listClubs(),
+        postgres.listDeletedClubSlugs()
+      ]);
+      const deleted = new Set(deletedSlugs);
+      const configured = readConfiguredClubs().filter(club => !deleted.has(club.slug));
+      return mergeClubs(configured, clubs).map(normalizeClub);
     } catch (err) {
       console.error('[Postgres] No se pudo leer la configuración de clubes:', err.message);
       throw new Error('No se pudo acceder a la configuración de clubes.');

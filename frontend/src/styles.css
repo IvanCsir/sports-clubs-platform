@@ -91,6 +91,8 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .staff-access-panel form label { flex: 1 1 280px; }
 .staff-access-panel > label { display: block; margin: 12px 0; }
 .club-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.club-card-actions .danger { background: #7f1d1d; border-color: #ef4444; color: #fff; }
+.club-card-actions .danger:hover { background: #991b1b; }
 .staff-access-list { display: grid; gap: 8px; padding: 0; list-style: none; }
 .staff-access-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid #8dd3ff2b; border-radius: 12px; background: #ffffff08; }
 .staff-access-list li span { display: grid; gap: 4px; min-width: 0; }

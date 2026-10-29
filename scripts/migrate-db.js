@@ -48,7 +48,9 @@ async function main() {
         if (!club.auth.secret) club.auth.secret = crypto.randomBytes(32).toString('base64url');
         delete club.auth.password;
         await client.query(
-          `INSERT INTO club_catalog (slug, config) VALUES ($1, $2::jsonb)
+          `INSERT INTO club_catalog (slug, config)
+           SELECT $1, $2::jsonb
+           WHERE NOT EXISTS (SELECT 1 FROM deleted_club_slugs WHERE slug = $1)
            ON CONFLICT (slug) DO UPDATE SET config = CASE
              WHEN COALESCE(club_catalog.config->'auth'->>'secret', '') = ''
              THEN jsonb_set(club_catalog.config, '{auth}',
