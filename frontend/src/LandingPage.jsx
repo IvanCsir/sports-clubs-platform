@@ -52,7 +52,7 @@ export default function LandingPage() {
 
       <section className="landing-final-cta"><div className="landing-final-glow" /><span className="landing-section-label">BLUE HOCKEY</span><h2>El próximo partido<br />empieza con una buena preparación.</h2><p>Entrá al espacio de tu club y encontrá todo listo para el trabajo del cuerpo técnico.</p><a className="landing-primary-cta" href="/">Ingresar a mi club <ArrowRight size={17} /></a><small>El ingreso se realiza desde el enlace de tu club.</small></section>
 
-      <footer className="landing-footer"><a className="landing-brand" href="/inicio"><span className="landing-brand-mark"><span /></span><span>blue<span>hockey</span></span></a><span>Gestión deportiva para equipos de hockey.</span><a href="/">Acceso al club <ArrowRight size={14} /></a></footer>
+      <footer className="landing-footer"><a className="landing-brand" href="/inicio"><span className="landing-brand-mark"><span /></span><span>blue<span>hockey</span></span></a><span>Gestión deportiva para equipos de hockey.</span><a href="/">Acceso al club <ArrowRight size={14} /></a><small>Desarrollado por Iván Freiberg · © {new Date().getFullYear()} Blue Hockey. Todos los derechos reservados.</small></footer>
     </main>
   );
 }

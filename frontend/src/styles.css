@@ -1010,3 +1010,64 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
   .season-backup-content ul { grid-template-columns: 1fr; }
   .season-backup-content button { width: 100%; }
 }
+.landing-page { --landing-ink: #10243b; --landing-muted: #5e7086; --landing-blue: #1878cf; --landing-bg: #f7f9fc; color: #10243b; background: #f7f9fc; }
+.landing-nav { border-color: #10243b14; }
+.landing-brand { color: #122942; }
+.landing-brand > span:last-child > span { color: #1878cf; }
+.landing-nav nav a, .landing-nav-cta, .landing-text-cta { color: #52657b; }
+.landing-nav nav a:hover, .landing-text-cta:hover, .landing-footer a:hover { color: #1269ba; }
+.landing-nav-cta { border-color: #10243b25; color: #16324f; }
+.landing-nav-cta:hover { border-color: #1878cf75; background: #1878cf09; }
+.landing-hero { background: radial-gradient(ellipse at 80% 45%, #5daeff10, transparent 45%); }
+.landing-eyebrow, .landing-section-label { color: #176fbd; }
+.landing-eyebrow i { background: #218be4; box-shadow: 0 0 12px #218be455; }
+.landing-hero h1 { color: #10243b; }
+.landing-hero h1 em, .landing-intro h2 span { color: #1878cf; }
+.landing-hero-copy > p, .landing-intro > p, .landing-features-heading > p, .landing-workflow-copy > p { color: #5f7084; }
+.landing-primary-cta { border-color: #1679cf; color: white; background: #1878cf; box-shadow: 0 8px 24px #1878cf25; }
+.landing-primary-cta:hover { background: #1168b8; }
+.landing-text-cta { color: #334d68; }
+.landing-proof { color: #64758a; }
+.landing-proof i { border-color: #1878cf50; color: #1878cf; }
+.landing-hero-visual::before { background: #58aaff22; }
+.landing-visual-orbit { border-color: #3388d614; }
+.landing-visual-orbit-two { border-color: #3388d60c; }
+.landing-float-card { border-color: #dce6f1; background: #fff; box-shadow: 0 14px 35px #17395e19; }
+.landing-float-card b { color: #18314c; }
+.landing-float-card small { color: #6f8094; }
+.landing-visual-tag, .landing-hero-scroll { color: #687d94; }
+.landing-intro { border-color: #e3e9f0; background: #fff; }
+.landing-intro-line { color: #718196; }
+.landing-intro-line span { background: #dce4ed; }
+.landing-features h2, .landing-workflow h2 { color: #122942; }
+.landing-feature-grid { border-color: #dfe6ee; }
+.landing-feature-card { border-color: #dfe6ee; background: #fff; }
+.landing-feature-card:hover { background: #f0f7ff; }
+.landing-feature-icon { border-color: #1878cf30; color: #1878cf; background: #1878cf0d; }
+.landing-feature-number { color: #99a7b7; }
+.landing-feature-card > small { color: #2676ba; }
+.landing-feature-card h3 { color: #19334f; }
+.landing-feature-card p { color: #67788c; }
+.landing-workflow { border-color: #dfe6ee; background: #edf3f9; }
+.landing-workflow-copy > a { color: #176fbd; }
+.landing-season-card { border-color: #d7e1eb; background: linear-gradient(145deg, #fff, #f7fafe); box-shadow: 0 24px 60px #17395e12; }
+.landing-season-top > span, .landing-season-tournament small { color: #6c7d91; }
+.landing-season-rule { background: #e1e8f0; }
+.landing-season-tournament { border-color: #e1e8f0; background: #fff; }
+.landing-season-tournament div b { color: #19334f; }
+.landing-season-stats div { border-color: #e1e8f0; background: #fff; }
+.landing-season-stats b { color: #1878cf; }
+.landing-season-stats span, .landing-season-footer { color: #6d7e92; }
+.landing-final-cta { background: #0d1d31; }
+.landing-final-cta .landing-section-label { color: #83c3ff; }
+.landing-final-cta h2 { color: #f2f6ff; }
+.landing-final-cta > p { color: #b2c1d2; }
+.landing-final-cta > small { color: #93a6bc; }
+.landing-final-cta .landing-primary-cta { border-color: #83c3ff; color: #07111f; background: #83c3ff; }
+.landing-final-cta .landing-primary-cta:hover { background: #a1d2ff; }
+.landing-footer { border-color: #dfe6ee; }
+.landing-footer .landing-brand { color: #122942; }
+.landing-footer > span, .landing-footer > small { color: #66788d; }
+.landing-footer > a:last-child { color: #405a75; }
+.landing-footer > small { width: 100%; padding: 0 0 18px; color: #8391a2; font-size: .64rem; }
+@media (max-width: 680px) { .landing-footer > small { padding-top: 4px; } }
