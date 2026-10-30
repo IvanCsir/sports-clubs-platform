@@ -561,9 +561,9 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
     ] : [])
   ];
   const workspaceGroups = [
-    { id: 'planificacion', label: 'Planificación', sectionIds: ['jugadoras', 'citaciones', 'fisico', 'seguimiento'] },
+    { id: 'planificacion', label: 'Planificación', sectionIds: ['citaciones', 'fisico', 'seguimiento'] },
     { id: 'partido', label: 'Partido', sectionIds: ['preparacion', 'dt', 'stats'] },
-    { id: 'administracion', label: 'Administración', sectionIds: ['respaldo', 'accesos'] }
+    { id: 'administracion', label: 'Administración', sectionIds: ['jugadoras', 'accesos', 'respaldo'] }
   ].map(group => ({
     ...group,
     sections: group.sectionIds.map(id => workspaceSections.find(section => section.id === id)).filter(Boolean)
@@ -646,7 +646,7 @@ function ClubWorkspace({ club, onBack, showAdminBack }) {
               className={`workspace-nav-more${activeWorkspaceGroup?.id === 'administracion' ? ' active' : ''}`}
               aria-expanded={managementMenuOpen === 'administracion'}
               onClick={() => setManagementMenuOpen(open => open === 'administracion' ? false : 'administracion')}
-            >Más <span aria-hidden="true">{managementMenuOpen === 'administracion' ? '−' : '+'}</span></button>
+            >Administración <span aria-hidden="true">{managementMenuOpen === 'administracion' ? '−' : '+'}</span></button>
           )}
           </>}
         </nav>
