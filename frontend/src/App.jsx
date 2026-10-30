@@ -1452,7 +1452,7 @@ function App() {
   useEffect(() => {
     const favicon = document.querySelector('link[rel~="icon"]');
     if (!favicon) return;
-    favicon.href = isLandingRoute ? '/blue-hockey.png' : workspaceClub?.logoUrl || '/blue-hockey.png';
+    favicon.href = isLandingRoute ? '/blue-hockey-icon.png' : workspaceClub?.logoUrl || '/blue-hockey-icon.png';
     favicon.type = isLandingRoute || !workspaceClub?.logoUrl ? 'image/png'
       : workspaceClub.logoUrl.startsWith('data:image/')
         ? workspaceClub.logoUrl.slice(5, workspaceClub.logoUrl.indexOf(';'))

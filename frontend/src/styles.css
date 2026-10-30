@@ -1074,6 +1074,7 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .landing-nav { position: sticky; top: 0; width: 100%; height: 74px; padding: 0 max(32px, calc((100vw - 1240px) / 2)); background: #f7f9fcf2; backdrop-filter: blur(14px); }
 .landing-intro, .landing-features { scroll-margin-top: 84px; }
 .landing-board-score > div:not(.landing-board-vs) b { color: #eaf6ff; }
+.landing-brand-mark { object-fit: cover; transform: none; }
 .landing-home-panel { width: min(470px, 94%); padding: 24px; }
 .landing-home-panel h3 { margin: 22px 0 4px; color: #f1f6fc; font-size: 1.45rem; }
 .landing-home-panel > p { margin: 0 0 17px; color: #9eb4cc; font-size: .7rem; }

@@ -43,7 +43,7 @@ export default function LandingPage() {
   return (
     <main className="landing-page">
       <header className="landing-nav">
-        <a className="landing-brand" href="/inicio" aria-label="Blue Hockey, inicio"><span className="landing-brand-mark"><span /></span><span>blue<span>hockey</span></span></a>
+        <a className="landing-brand" href="/inicio" aria-label="Blue Hockey, inicio"><img className="landing-brand-mark" src="/blue-hockey-icon.png" alt="" /><span>blue<span>hockey</span></span></a>
         <nav><a href="#funcionalidades">Funcionalidades</a><a href="#para-quien">Para el cuerpo técnico</a></nav>
         <a className="landing-nav-cta" href="/">Ingresar a mi club <ArrowRight size={16} /></a>
       </header>
@@ -78,7 +78,7 @@ export default function LandingPage() {
 
       <section className="landing-final-cta"><div className="landing-final-glow" /><span className="landing-section-label">BLUE HOCKEY</span><h2>El próximo partido<br />empieza con una buena preparación.</h2><p>Entrá al espacio de tu club y encontrá todo listo para el trabajo del cuerpo técnico.</p><a className="landing-primary-cta" href="/">Ingresar a mi club <ArrowRight size={17} /></a><small>El ingreso se realiza desde el enlace de tu club.</small></section>
 
-      <footer className="landing-footer"><a className="landing-brand" href="/inicio"><span className="landing-brand-mark"><span /></span><span>blue<span>hockey</span></span></a><span>Gestión deportiva para equipos de hockey.</span><a href="/">Acceso al club <ArrowRight size={14} /></a><small>Desarrollado por Iván Freiberg · © {new Date().getFullYear()} Blue Hockey. Todos los derechos reservados.</small></footer>
+      <footer className="landing-footer"><a className="landing-brand" href="/inicio"><img className="landing-brand-mark" src="/blue-hockey-icon.png" alt="" /><span>blue<span>hockey</span></span></a><span>Gestión deportiva para equipos de hockey.</span><a href="/">Acceso al club <ArrowRight size={14} /></a><small>Desarrollado por Iván Freiberg · © {new Date().getFullYear()} Blue Hockey. Todos los derechos reservados.</small></footer>
       <a className="landing-whatsapp" href={whatsAppLink} target="_blank" rel="noreferrer" aria-label="Escribile a Blue Hockey por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16.04 3.2A12.7 12.7 0 0 0 5.1 22.35L3.4 28.6l6.4-1.68A12.7 12.7 0 1 0 16.04 3.2Zm0 23.05a10.3 10.3 0 0 1-5.25-1.44l-.38-.23-3.8 1 .99-3.7-.25-.4a10.3 10.3 0 1 1 8.7 4.77Zm5.65-7.72c-.31-.16-1.84-.91-2.13-1.02-.29-.1-.5-.15-.71.16-.2.31-.81 1.02-.99 1.23-.18.2-.36.23-.67.08-.31-.16-1.3-.48-2.47-1.52-.92-.82-1.54-1.84-1.72-2.15-.18-.31-.02-.48.13-.64.14-.13.31-.36.46-.54.16-.18.21-.31.31-.52.1-.2.05-.38-.02-.54-.08-.15-.71-1.7-.97-2.33-.26-.61-.52-.53-.71-.54h-.61c-.21 0-.54.08-.82.39-.28.31-1.08 1.05-1.08 2.56 0 1.52 1.1 2.98 1.26 3.19.15.2 2.17 3.31 5.26 4.64.73.32 1.3.51 1.75.65.74.24 1.42.2 1.95.12.59-.09 1.84-.75 2.1-1.47.26-.72.26-1.33.18-1.47-.08-.13-.28-.21-.59-.36Z"/></svg><span>Escribime</span></a>
     </main>
   );
