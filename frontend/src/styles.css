@@ -1145,5 +1145,27 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .preview-stats-foot { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-top: 13px; color: #a8bacd; font-size: .48rem; }
 .preview-stats-foot span { display: flex; align-items: center; gap: 6px; }
 .preview-stats-foot b { color: #7fc5ff; font-size: .47rem; }
+.preview-tracker-window { padding: 9px; }
+.preview-match-header { display: flex; align-items: center; justify-content: space-between; gap: 7px; padding: 8px; border: 1px solid #254568; border-radius: 7px; background: #0d1e33; }
+.preview-match-header > div { display: grid; gap: 4px; min-width: 0; }
+.preview-match-header small { color: #41adff; font-size: .43rem; font-weight: 800; letter-spacing: .1em; }
+.preview-match-header b { color: #f1f6fb; font-size: .58rem; white-space: nowrap; }
+.preview-match-header b i { color: #95aac0; font-size: .48rem; font-style: normal; }
+.preview-match-header div > span { color: #afc3d7; font-size: .44rem; }
+.preview-match-header > strong { flex: 0 0 auto; padding: 7px; border: 1px solid #006caa; border-radius: 6px; color: #00a2ff; background: #082843; font-size: .96rem; }
+.preview-quarter-tabs, .preview-team-tabs { display: flex; gap: 4px; margin-top: 7px; }
+.preview-quarter-tabs > *, .preview-team-tabs > * { flex: 1; padding: 6px 2px; border: 1px solid #263d57; border-radius: 5px; color: #c5d7e9; background: #111f31; text-align: center; font-size: .42rem; white-space: nowrap; }
+.preview-quarter-tabs > b, .preview-team-tabs > b { border-color: #00a2ff; color: #04162b; background: #00a2ff; }
+.preview-team-tabs > span:last-child { flex: 0 0 19%; }
+.preview-team-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 7px; }
+.preview-team-columns section { min-width: 0; padding: 7px; border: 1px solid #263d57; border-radius: 7px; background: #0d1d30; }
+.preview-team-columns section > b { color: #dce9f6; font-size: .47rem; }
+.preview-team-columns section > strong { display: block; margin: 4px 0; color: #00a2ff; font-size: 1.05rem; line-height: 1; }
+.preview-team-columns section > div { display: grid; gap: 4px; }
+.preview-team-columns section > div > span { display: grid; grid-template-columns: 13px 1fr auto; align-items: center; gap: 3px; min-height: 25px; padding: 4px; border: 1px solid #263d57; border-radius: 4px; color: #00a2ff; background: #11263d; font-size: .48rem; }
+.preview-team-columns section > div > span b { overflow: hidden; color: #e0eaf4; font-size: .4rem; text-overflow: ellipsis; white-space: nowrap; }
+.preview-team-columns section > div > span i { color: #00a2ff; font-size: .43rem; font-style: normal; font-weight: 800; }
+.preview-team-columns section > small { display: block; margin-top: 6px; padding-top: 5px; border-top: 1px solid #263d57; color: #bdccdb; font-size: .4rem; white-space: nowrap; }
+@media (max-width: 680px) { .preview-match-header b { font-size: .65rem; } .preview-team-columns section > div > span b { font-size: .48rem; } }
 @media (max-width: 900px) { .landing-preview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .landing-preview-analytics { grid-column: 1 / -1; } .landing-preview-analytics .preview-app-window { max-width: 440px; margin: auto; } }
 @media (max-width: 680px) { .landing-product-preview { width: calc(100% - 36px); padding: 4px 0 80px; } .landing-preview-heading { display: block; margin-bottom: 24px; } .landing-preview-heading p { margin-top: 12px; } .landing-preview-grid { grid-template-columns: 1fr; gap: 12px; } .landing-preview-analytics { grid-column: auto; } .preview-app-window { min-height: 255px; } }
