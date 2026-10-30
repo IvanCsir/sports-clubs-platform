@@ -14,7 +14,7 @@ const features = [
 function MiniMatchBoard() {
   return (
     <div className="landing-board" aria-label="Vista ilustrativa de análisis de partido">
-      <div className="landing-board-top"><span><i /> PARTIDO EN CURSO</span><span>1RA DIVISIÓN</span></div>
+      <div className="landing-board-top"><span><i /> VISTA DE EJEMPLO</span><span>1RA DIVISIÓN</span></div>
       <div className="landing-board-score"><div><small>LOCAL</small><b>2</b></div><div className="landing-board-vs">VS</div><div><small>VISITANTE</small><b>1</b></div></div>
       <div className="landing-board-clock"><span>3° CUARTO</span><b>08:42</b></div>
       <div className="landing-board-events"><span>ACCIONES REGISTRADAS</span><div><b>18</b><b>12</b><b>6</b></div><small><i /> Datos guardados para este partido</small></div>
@@ -46,9 +46,17 @@ export default function LandingPage() {
 
       <section className="landing-intro" id="para-quien"><div className="landing-section-label">EL DEPORTE, EN EL CENTRO</div><h2>Menos planillas dispersas.<br /><span>Más tiempo para el juego.</span></h2><p>Blue Hockey reúne las herramientas que necesita el cuerpo técnico para trabajar antes, durante y después de cada partido. La información del club queda organizada por plantel y temporada.</p><div className="landing-intro-line"><span /><b>UNA PLATAFORMA PARA EL DÍA A DÍA DEPORTIVO</b><span /></div></section>
 
+      <section className="landing-phases" aria-label="El trabajo deportivo en tres momentos">
+        <article><span>01</span><div><CalendarDays size={19} /><b>Prepará</b></div><p>Convocá al plantel y organizá el próximo encuentro.</p></article>
+        <i aria-hidden="true" />
+        <article><span>02</span><div><Zap size={19} /><b>Registrá</b></div><p>Usá la botonera durante el partido desde el celular.</p></article>
+        <i aria-hidden="true" />
+        <article><span>03</span><div><ChartNoAxesCombined size={19} /><b>Analizá</b></div><p>Revisá estadísticas y evolución por torneo y temporada.</p></article>
+      </section>
+
       <section className="landing-features" id="funcionalidades"><div className="landing-features-heading"><div><div className="landing-section-label">HERRAMIENTAS DEL CUERPO TÉCNICO</div><h2>De la planificación<br />al análisis del partido.</h2></div><p>Todo lo que usás para acompañar al equipo, reunido en una experiencia simple y accesible.</p></div><div className="landing-feature-grid">{features.map(({ icon: Icon, eyebrow, title, copy }, index) => <article className={`landing-feature-card landing-feature-card-${index + 1}`} key={title}><div className="landing-feature-top"><span className="landing-feature-icon"><Icon size={20} /></span><span className="landing-feature-number">0{index + 1}</span></div><small>{eyebrow}</small><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
 
-      <section className="landing-workflow"><div className="landing-workflow-copy"><div className="landing-section-label">TODO EN SU CONTEXTO</div><h2>La información sigue<br />el ritmo de la temporada.</h2><p>Organizá los datos deportivos por temporada y torneo. Así, las citaciones, las estadísticas, las evaluaciones y el seguimiento acompañan el recorrido del equipo.</p><a href="#funcionalidades">Explorar funcionalidades <ArrowRight size={16} /></a></div><div className="landing-season-card"><div className="landing-season-top"><span>TEMPORADA</span><b>2026</b><i>ACTIVA</i></div><div className="landing-season-rule" /><div className="landing-season-tournament"><span className="landing-season-ball"><Trophy size={19} /></span><div><small>TORNEO</small><b>Torneo del plantel</b></div><ArrowRight size={17} /></div><div className="landing-season-stats"><div><b>01</b><span>Plantel</span></div><div><b>02</b><span>Partidos</span></div><div><b>03</b><span>Evolución</span></div></div><div className="landing-season-footer"><span><i /> INFORMACIÓN DEPORTIVA ORGANIZADA</span><ClipboardList size={18} /></div></div></section>
+      <section className="landing-workflow"><div className="landing-workflow-copy"><div className="landing-section-label">TODO EN SU CONTEXTO</div><h2>La información sigue<br />el ritmo de la temporada.</h2><p>Organizá los datos deportivos por temporada y torneo. Así, las citaciones, las estadísticas, las evaluaciones y el seguimiento acompañan el recorrido del equipo.</p><a href="#funcionalidades">Explorar funcionalidades <ArrowRight size={16} /></a></div><div className="landing-season-card"><div className="landing-season-top"><span>TEMPORADA</span><b>ACTIVA</b><i>POR CLUB</i></div><div className="landing-season-rule" /><div className="landing-season-tournament"><span className="landing-season-ball"><Trophy size={19} /></span><div><small>TORNEO</small><b>Datos por competencia</b></div><ArrowRight size={17} /></div><div className="landing-season-stats"><div><b>01</b><span>Plantel</span></div><div><b>02</b><span>Partidos</span></div><div><b>03</b><span>Evolución</span></div></div><div className="landing-season-footer"><span><i /> INFORMACIÓN DEPORTIVA ORGANIZADA</span><ClipboardList size={18} /></div></div></section>
 
       <section className="landing-final-cta"><div className="landing-final-glow" /><span className="landing-section-label">BLUE HOCKEY</span><h2>El próximo partido<br />empieza con una buena preparación.</h2><p>Entrá al espacio de tu club y encontrá todo listo para el trabajo del cuerpo técnico.</p><a className="landing-primary-cta" href="/">Ingresar a mi club <ArrowRight size={17} /></a><small>El ingreso se realiza desde el enlace de tu club.</small></section>
 
