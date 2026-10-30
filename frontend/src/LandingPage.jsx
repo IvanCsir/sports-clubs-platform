@@ -11,7 +11,7 @@ const features = [
   { icon: ShieldCheck, eyebrow: 'CONTINUIDAD', title: 'Temporadas y respaldo', copy: 'Mantené la información organizada por temporada y descargá un respaldo de los datos.' },
 ];
 
-const whatsAppLink = 'https://wa.me/5492165410198?text=Hola%2C%20quiero%20conocer%20Blue%20Hockey.';
+const whatsAppLink = 'https://wa.me/5492615410198?text=Hola%2C%20quiero%20conocer%20Blue%20Hockey.';
 
 function MiniMatchBoard() {
   return (
