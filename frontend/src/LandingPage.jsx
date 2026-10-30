@@ -54,7 +54,7 @@ export default function LandingPage() {
           <h1>Todo el equipo.<br /><em>En la misma jugada.</em></h1>
           <p>Organizá el plantel, prepará los partidos y seguí el rendimiento de tu equipo desde un solo lugar.</p>
           <div className="landing-hero-actions"><a className="landing-primary-cta" href="#funcionalidades">Conocé la plataforma <ArrowDown size={17} /></a><a className="landing-text-cta" href="/">Ingresar a mi club <ArrowRight size={16} /></a></div>
-          <div className="landing-proof"><span><i>✓</i> Hecha para el trabajo deportivo</span><span><i>✓</i> Lista para usar desde el celular</span></div>
+          <div className="landing-proof"><span><i>✓</i> Hecha por entrenadores, para entrenadores</span><span><i>✓</i> Lista para usar desde el celular</span></div>
         </div>
         <div className="landing-hero-visual"><div className="landing-visual-orbit landing-visual-orbit-one" /><div className="landing-visual-orbit landing-visual-orbit-two" /><MiniHomePanel /><div className="landing-float-card"><span><Activity size={17} /></span><div><b>Una temporada, todo conectado</b><small>Plantel · partidos · evolución</small></div></div><div className="landing-visual-tag">JUEGO · DATOS · EQUIPO</div></div>
         <div className="landing-hero-scroll"><span>UNA MIRADA COMPLETA AL EQUIPO</span><ArrowDown size={15} /></div>
