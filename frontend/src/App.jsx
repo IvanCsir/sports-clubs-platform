@@ -8,6 +8,7 @@ import MatchPreparationPanel from './components/MatchPreparationPanel';
 import PlayerMonitoringPanel from './components/PlayerMonitoringPanel';
 import OpponentBadge from './components/OpponentBadge';
 import SeasonBackupPanel from './components/SeasonBackupPanel';
+import LandingPage from './LandingPage';
 
 const emptyClub = {
   slug: '',
@@ -1425,7 +1426,9 @@ async function api(path, options) {
 }
 
 function App() {
-  const isAdminRoute = window.location.pathname.replace(/\/+$/, '') === '/admin';
+  const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  const isLandingRoute = normalizedPath === '/inicio';
+  const isAdminRoute = normalizedPath === '/admin';
   const requestedSlug = !isAdminRoute ? new URLSearchParams(window.location.search).get('club') : null;
   const [clubs, setClubs] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -1440,6 +1443,11 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [workspaceClub, setWorkspaceClub] = useState(null);
   const [workspaceAdminOrigin, setWorkspaceAdminOrigin] = useState(false);
+
+  useEffect(() => {
+    if (isLandingRoute) document.title = 'Blue Hockey | Gestión deportiva para hockey';
+    else document.title = 'Blue Hockey';
+  }, [isLandingRoute]);
 
   useEffect(() => {
     const favicon = document.querySelector('link[rel~="icon"]');
@@ -1689,6 +1697,8 @@ function App() {
     };
     reader.readAsDataURL(file);
   }
+
+  if (isLandingRoute) return <LandingPage />;
 
   if (!isAdminRoute && requestedSlug && loading && !workspaceClub) {
     return (
