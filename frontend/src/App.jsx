@@ -1452,11 +1452,11 @@ function App() {
   useEffect(() => {
     const favicon = document.querySelector('link[rel~="icon"]');
     if (!favicon) return;
-    favicon.href = workspaceClub?.logoUrl || '/escudo-regatas-andino.png';
+    favicon.href = isLandingRoute ? '/blue-hockey.svg' : workspaceClub?.logoUrl || '/blue-hockey.svg';
     favicon.type = workspaceClub?.logoUrl?.startsWith('data:image/')
       ? workspaceClub.logoUrl.slice(5, workspaceClub.logoUrl.indexOf(';'))
       : '';
-  }, [workspaceClub]);
+  }, [workspaceClub, isLandingRoute]);
 
   async function loadClubs() {
     setLoading(true);
