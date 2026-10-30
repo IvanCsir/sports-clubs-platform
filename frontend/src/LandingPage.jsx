@@ -23,6 +23,20 @@ function MiniMatchBoard() {
   );
 }
 
+function ProductPreviews() {
+  return (
+    <section className="landing-product-preview" aria-labelledby="landing-preview-title">
+      <div className="landing-section-label">ASÍ SE VE POR DENTRO</div>
+      <div className="landing-preview-heading"><h2 id="landing-preview-title">Las herramientas del equipo,<br /><span>a simple vista.</span></h2><p>Vistas de ejemplo basadas en la app. Los datos se muestran de forma genérica.</p></div>
+      <div className="landing-preview-grid">
+        <article className="landing-preview-card landing-preview-dashboard"><div className="landing-preview-caption"><span>01 / INICIO</span><b>Todo el club en contexto</b></div><div className="preview-app-window"><div className="preview-app-header"><span className="preview-crest">C</span><div><b>CLUB</b><small>PLANTEL SUPERIOR</small></div><span className="preview-menu">☰</span></div><div className="preview-app-meta">Hockey · Temporada actual · Torneo</div><div className="preview-tabs"><b>1ra División</b><span>Intermedia</span></div><div className="preview-section-label">PRÓXIMO PARTIDO</div><div className="preview-fixture"><div><small>FECHA 04</small><b>Club <i>vs</i> Rival</b><span>Fecha y horario</span></div><span className="preview-pill">Ver citación →</span></div><div className="preview-shortcuts"><span>Citaciones</span><span>Plan partido</span><span>Torneos</span></div></div></article>
+        <article className="landing-preview-card landing-preview-tracker"><div className="landing-preview-caption"><span>02 / PARTIDO</span><b>La botonera, en acción</b></div><div className="preview-app-window preview-tracker-window"><div className="preview-tracker-top"><span>BOTONERA DT · CLUB</span><b>00:38</b></div><div className="preview-score"><div><small>CLUB</small><b>2</b></div><i>—</i><div><small>RIVAL</small><b>1</b></div></div><div className="preview-quarter"><span>3° CUARTO</span><span>PARTIDO EN CURSO</span></div><div className="preview-action-grid"><span>⦿<small>Remate</small></span><span>↗<small>Ataque</small></span><span>⊙<small>Córner</small></span><span>✓<small>Recupero</small></span></div><div className="preview-tracker-foot"><i /> Acciones del partido</div></div></article>
+        <article className="landing-preview-card landing-preview-analytics"><div className="landing-preview-caption"><span>03 / ANÁLISIS</span><b>Información para revisar</b></div><div className="preview-app-window preview-stats-window"><div className="preview-stats-top"><div><small>ESTADÍSTICAS</small><b>Resumen del equipo</b></div><span>TORNEO ACTUAL⌄</span></div><div className="preview-chart"><div><small>8</small><i style={{height:'39%'}} /></div><div><small>12</small><i style={{height:'68%'}} /></div><div><small>9</small><i style={{height:'51%'}} /></div><div><small>15</small><i style={{height:'84%'}} /></div><div><small>11</small><i style={{height:'61%'}} /></div></div><div className="preview-chart-labels"><span>F01</span><span>F02</span><span>F03</span><span>F04</span><span>F05</span></div><div className="preview-stats-foot"><span><i /> Evolución por partido</span><b>Ver estadísticas →</b></div></div></article>
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   return (
     <main className="landing-page">
@@ -53,6 +67,8 @@ export default function LandingPage() {
         <i aria-hidden="true" />
         <article><span>03</span><div><ChartNoAxesCombined size={19} /><b>Analizá</b></div><p>Revisá estadísticas y evolución por torneo y temporada.</p></article>
       </section>
+
+      <ProductPreviews />
 
       <section className="landing-features" id="funcionalidades"><div className="landing-features-heading"><div><div className="landing-section-label">HERRAMIENTAS DEL CUERPO TÉCNICO</div><h2>De la planificación<br />al análisis del partido.</h2></div><p>Todo lo que usás para acompañar al equipo, reunido en una experiencia simple y accesible.</p></div><div className="landing-feature-grid">{features.map(({ icon: Icon, eyebrow, title, copy }, index) => <article className={`landing-feature-card landing-feature-card-${index + 1}`} key={title}><div className="landing-feature-top"><span className="landing-feature-icon"><Icon size={20} /></span><span className="landing-feature-number">0{index + 1}</span></div><small>{eyebrow}</small><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
 
