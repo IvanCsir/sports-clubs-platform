@@ -1,7 +1,7 @@
 const { getClubAsync } = require('./_lib/club-config');
 const { verifyActiveSessionToken } = require('./auth');
 const sportsData = require('./_lib/sports-data');
-const { createStaffInvite, listStaffUsers, revokeStaffUser } = require('./_lib/staff-access');
+const { createStaffInvite, listStaffUsers, revokeStaffUser, setStaffAccessManager } = require('./_lib/staff-access');
 
 function json(res, status, payload) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -86,21 +86,25 @@ module.exports = async function handler(req, res) {
       }
       if (dataset === 'staff-access') {
         const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
-        if (!token || !(await verifyActiveSessionToken(token, club)).valid) {
+        const session = token ? await verifyActiveSessionToken(token, club) : { valid: false };
+        if (!session.valid) {
           return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
         }
-        return json(res, 200, { staff: await listStaffUsers(slug) });
+        if (!session.canManageAccess) return json(res, 403, { error: 'Solo la persona responsable puede administrar los accesos del club.' });
+        return json(res, 200, { staff: await listStaffUsers(slug), currentEmail: session.email });
       }
       if (dataset === 'staff') {
         const token = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '').trim();
-        if (!token || !(await verifyActiveSessionToken(token, club)).valid) {
+        const session = token ? await verifyActiveSessionToken(token, club) : { valid: false };
+        if (!session.valid) {
           return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
         }
         const data = await sportsData.getClubData(slug, seasonName, tournamentKey);
         return json(res, 200, {
           physicalPlayers: data.physicalPlayers, physicalTests: data.physicalTests, events: data.events, players: data.players || [], citations: data.citations,
           monitoring: await sportsData.getPlayerMonitoring(slug, seasonName),
-          tournamentStats: await sportsData.getTournamentStats(slug, seasonName, tournamentKey, tournamentName)
+          tournamentStats: await sportsData.getTournamentStats(slug, seasonName, tournamentKey, tournamentName),
+          canManageAccess: session.canManageAccess
         });
       }
       const data = await sportsData.getClubData(slug, seasonName, tournamentKey);
@@ -125,11 +129,13 @@ module.exports = async function handler(req, res) {
       return json(res, 401, { error: 'Sesión inválida o perteneciente a otro club.' });
     }
     if (req.method === 'POST' && body.action === 'create-staff-invite') {
+      if (!session.canManageAccess) return json(res, 403, { error: 'Solo la persona responsable puede administrar los accesos del club.' });
       try {
-        const invite = await createStaffInvite(slug, body.email, session.email);
+        const invite = await createStaffInvite(slug, body.email, session.email, body.canManageAccess === true);
         return json(res, 201, {
           email: invite.email,
           expiresInDays: invite.expiresInDays,
+          canManageAccess: invite.canManageAccess,
           invitePath: `/?club=${encodeURIComponent(slug)}&staffInvite=${encodeURIComponent(invite.token)}`
         });
       } catch (error) {
@@ -138,11 +144,22 @@ module.exports = async function handler(req, res) {
       }
     }
     if (req.method === 'POST' && body.action === 'revoke-staff-user') {
+      if (!session.canManageAccess) return json(res, 403, { error: 'Solo la persona responsable puede administrar los accesos del club.' });
       const userId = Number(body.userId);
       if (!Number.isSafeInteger(userId) || userId <= 0) return json(res, 400, { error: 'Seleccioná una cuenta válida.' });
       const revoked = await revokeStaffUser(slug, userId, session.email);
       if (!revoked) return json(res, 400, { error: 'No se pudo revocar esa cuenta. No podés quitar tu propio acceso.' });
       return json(res, 200, { revoked: true });
+    }
+    if (req.method === 'POST' && body.action === 'set-staff-access-manager') {
+      if (!session.canManageAccess) return json(res, 403, { error: 'Solo la persona responsable puede administrar los accesos del club.' });
+      const userId = Number(body.userId);
+      if (!Number.isSafeInteger(userId) || userId <= 0 || typeof body.canManageAccess !== 'boolean') {
+        return json(res, 400, { error: 'La cuenta o el permiso seleccionado no es válido.' });
+      }
+      const updated = await setStaffAccessManager(slug, userId, body.canManageAccess, session.email);
+      if (!updated) return json(res, 404, { error: 'No se encontró una cuenta activa para actualizar.' });
+      return json(res, 200, { updated: true });
     }
     if (req.method === 'DELETE' || body.action === 'delete-event') {
       if (Array.isArray(body.ids)) {
@@ -295,6 +312,8 @@ module.exports = async function handler(req, res) {
     return json(res, 400, { error: 'Acción de persistencia desconocida.' });
   } catch (error) {
     console.error('[API Club Data]', error);
+    if (/al menos una persona responsable/.test(error.message)) return json(res, 400, { error: error.message });
+    if (/No podés quitarte el permiso/.test(error.message)) return json(res, 400, { error: error.message });
     return json(res, 503, { error: 'No se pudo acceder a la base de datos del club.' });
   }
 };

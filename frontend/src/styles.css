@@ -89,7 +89,11 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .staff-access-panel { max-width: 720px; }
 .staff-access-panel form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; max-width: 620px; margin: 18px 0; }
 .staff-access-panel form label { flex: 1 1 280px; }
+.staff-access-panel form .staff-manager-checkbox { display: flex; flex: 1 1 100%; align-items: center; gap: 9px; }
+.staff-manager-checkbox input { width: auto; margin: 0; }
 .staff-access-panel > label { display: block; margin: 12px 0; }
+.staff-access-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.staff-access-actions button { padding: 9px 11px; font-size: .82rem; }
 .club-card-actions { position: relative; margin-left: auto; }
 .club-options { position: relative; }
 .club-options > summary { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #8dd3ff40; border-radius: 11px; color: #b7c9de; background: #ffffff0d; cursor: pointer; list-style: none; }

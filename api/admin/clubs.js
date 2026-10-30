@@ -124,10 +124,11 @@ module.exports = async function handler(req, res) {
       const slug = String(body.slug || '').trim();
       const clubs = await readConfiguredClubsAsync();
       if (!clubs.some(club => club.slug === slug)) return json(res, 404, { error: 'Club no encontrado.' });
-      const invite = await createStaffInvite(slug, body.email, 'administración de la plataforma');
+      const invite = await createStaffInvite(slug, body.email, 'administración de la plataforma', body.canManageAccess === true);
       return json(res, 201, {
         email: invite.email,
         expiresInDays: invite.expiresInDays,
+        canManageAccess: invite.canManageAccess,
         invitePath: `/?club=${encodeURIComponent(slug)}&staffInvite=${encodeURIComponent(invite.token)}`
       });
     } catch (error) {

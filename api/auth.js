@@ -80,10 +80,13 @@ async function verifyActiveSessionToken(token, club) {
   if (!verification.valid || !verification.email) return verification;
   if (!postgres.isConfigured()) return { valid: false, error: 'Acceso individual no disponible.' };
   const result = await postgres.getPool().query(
-    `SELECT 1 FROM sc_staff_users WHERE club_slug = $1 AND email = $2 AND revoked_at IS NULL`,
+    `SELECT can_manage_access AS "canManageAccess" FROM sc_staff_users
+     WHERE club_slug = $1 AND email = $2 AND revoked_at IS NULL`,
     [club.slug, verification.email]
   );
-  return result.rowCount ? verification : { valid: false, error: 'Este acceso fue revocado.' };
+  return result.rowCount
+    ? { ...verification, canManageAccess: result.rows[0].canManageAccess }
+    : { valid: false, error: 'Este acceso fue revocado.' };
 }
 
 module.exports = async function handler(req, res) {
