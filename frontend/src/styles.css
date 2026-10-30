@@ -1074,6 +1074,23 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .landing-nav { position: sticky; top: 0; width: 100%; height: 74px; padding: 0 max(32px, calc((100vw - 1240px) / 2)); background: #f7f9fcf2; backdrop-filter: blur(14px); }
 .landing-intro, .landing-features { scroll-margin-top: 84px; }
 .landing-board-score > div:not(.landing-board-vs) b { color: #eaf6ff; }
+.landing-home-panel { width: min(470px, 94%); padding: 24px; }
+.landing-home-panel h3 { margin: 22px 0 4px; color: #f1f6fc; font-size: 1.45rem; }
+.landing-home-panel > p { margin: 0 0 17px; color: #9eb4cc; font-size: .7rem; }
+.home-preview-fixture { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; border: 1px solid #1266a5; border-radius: 9px; background: linear-gradient(120deg, #10395e, #0b2340); }
+.home-preview-fixture > div { display: grid; gap: 8px; }
+.home-preview-fixture small { color: #42adff; font-size: .55rem; font-weight: 850; letter-spacing: .1em; }
+.home-preview-fixture > div > b { color: white; font-size: 1.1rem; }
+.home-preview-fixture > div > b i { color: #8da9c3; font-size: .72rem; font-style: normal; }
+.home-preview-fixture > div > span { color: #b0c2d5; font-size: .63rem; }
+.home-preview-fixture > strong { flex: 0 0 auto; padding: 10px 11px; border-radius: 6px; color: #06162a; background: #00a2ff; font-size: .58rem; }
+.home-preview-fixture > strong b { padding-left: 4px; }
+.home-preview-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 11px; }
+.home-preview-cards span { display: grid; gap: 6px; min-width: 0; padding: 11px; border: 1px solid #28445f; border-radius: 7px; background: #ffffff08; }
+.home-preview-cards i { color: #4eb3ff; font-size: .85rem; font-style: normal; }
+.home-preview-cards b { color: #e6f0fb; font-size: .61rem; }
+.home-preview-cards small { color: #9fb3c9; font-size: .51rem; line-height: 1.35; }
+@media (max-width: 680px) { .landing-home-panel { width: min(430px, 94%); padding: 19px; } .home-preview-fixture { padding: 12px; } .home-preview-fixture > div > b { font-size: .95rem; } .home-preview-cards { gap: 5px; } .home-preview-cards span { padding: 8px; } }
 .landing-whatsapp { position: fixed; right: 24px; bottom: 24px; z-index: 8; display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 19px 0 14px; border: 1px solid #fff9; border-radius: 999px; color: #fff; background: #20b965; box-shadow: 0 8px 26px #063a2470; text-decoration: none; font-size: .86rem; font-weight: 800; transition: transform .18s, background .18s, box-shadow .18s; }
 .landing-whatsapp:hover { background: #159e53; box-shadow: 0 10px 30px #063a247a; transform: translateY(-2px); }
 .landing-whatsapp svg { width: 27px; height: 27px; fill: currentColor; }

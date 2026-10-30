@@ -13,13 +13,13 @@ const features = [
 
 const whatsAppLink = 'https://wa.me/5492615410198?text=Hola%2C%20quiero%20conocer%20Blue%20Hockey.';
 
-function MiniMatchBoard() {
+function MiniHomePanel() {
   return (
-    <div className="landing-board" aria-label="Vista ilustrativa de análisis de partido">
-      <div className="landing-board-top"><span><i /> VISTA DE EJEMPLO</span><span>1RA DIVISIÓN</span></div>
-      <div className="landing-board-score"><div><small>LOCAL</small><b>2</b></div><div className="landing-board-vs">VS</div><div><small>VISITANTE</small><b>1</b></div></div>
-      <div className="landing-board-clock"><span>3° CUARTO</span><b>08:42</b></div>
-      <div className="landing-board-events"><span>ACCIONES REGISTRADAS</span><div><b>18</b><b>12</b><b>6</b></div><small><i /> Datos guardados para este partido</small></div>
+    <div className="landing-board landing-home-panel" aria-label="Vista de ejemplo de inicio del club">
+      <div className="landing-board-top"><span><i /> CLUB</span><span>PLANTEL SUPERIOR</span></div>
+      <h3>Hola, Club</h3><p>Resumen de 1ra División</p>
+      <div className="home-preview-fixture"><div><small>PRÓXIMO PARTIDO · FECHA 04</small><b>Club <i>vs</i> Rival</b><span>Fecha · Horario · Local</span></div><strong>Ver citación <b>›</b></strong></div>
+      <div className="home-preview-cards"><span><i>▤</i><b>Citaciones</b><small>Convocatoria del equipo</small></span><span><i>◉</i><b>Plan partido</b><small>Videos y jugadas</small></span><span><i>♜</i><b>Torneos</b><small>Fixture y resultados</small></span></div>
       <div className="landing-board-glow" />
     </div>
   );
@@ -56,7 +56,7 @@ export default function LandingPage() {
           <div className="landing-hero-actions"><a className="landing-primary-cta" href="#funcionalidades">Conocé la plataforma <ArrowDown size={17} /></a><a className="landing-text-cta" href="/">Ingresar a mi club <ArrowRight size={16} /></a></div>
           <div className="landing-proof"><span><i>✓</i> Hecha para el trabajo deportivo</span><span><i>✓</i> Lista para usar desde el celular</span></div>
         </div>
-        <div className="landing-hero-visual"><div className="landing-visual-orbit landing-visual-orbit-one" /><div className="landing-visual-orbit landing-visual-orbit-two" /><MiniMatchBoard /><div className="landing-float-card"><span><Activity size={17} /></span><div><b>Una temporada, todo conectado</b><small>Plantel · partidos · evolución</small></div></div><div className="landing-visual-tag">JUEGO · DATOS · EQUIPO</div></div>
+        <div className="landing-hero-visual"><div className="landing-visual-orbit landing-visual-orbit-one" /><div className="landing-visual-orbit landing-visual-orbit-two" /><MiniHomePanel /><div className="landing-float-card"><span><Activity size={17} /></span><div><b>Una temporada, todo conectado</b><small>Plantel · partidos · evolución</small></div></div><div className="landing-visual-tag">JUEGO · DATOS · EQUIPO</div></div>
         <div className="landing-hero-scroll"><span>UNA MIRADA COMPLETA AL EQUIPO</span><ArrowDown size={15} /></div>
       </section>
 
