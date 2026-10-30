@@ -1,4 +1,4 @@
-import { Activity, ArrowDown, ArrowRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, ClipboardList, ShieldCheck, UsersRound, Video, Zap } from 'lucide-react';
+import { Activity, ArrowDown, ArrowRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, ClipboardList, ShieldCheck, Trophy, UsersRound, Video, Zap } from 'lucide-react';
 
 const features = [
   { icon: CalendarDays, eyebrow: 'ORGANIZACIÓN', title: 'Citaciones y calendario', copy: 'Prepará cada fecha, compartí la convocatoria y tené a mano los próximos partidos del plantel.' },
