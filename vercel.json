@@ -16,6 +16,14 @@
     {
       "source": "/admin/",
       "destination": "/index.html"
+    },
+    {
+      "source": "/inicio",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/inicio/",
+      "destination": "/index.html"
     }
   ],
   "functions": {
