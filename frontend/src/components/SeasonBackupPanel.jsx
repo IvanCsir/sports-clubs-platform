@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Download } from 'lucide-react';
+import { fetchClubDataset } from '../api';
 
 function safeFilePart(value) {
   return String(value || '')
@@ -21,11 +22,7 @@ export default function SeasonBackupPanel({ club, token }) {
     setError('');
     setSuccess('');
     try {
-      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}&dataset=backup` , {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'No se pudo crear el respaldo.');
+      const payload = await fetchClubDataset(club.slug, 'backup', { token, fallbackError: 'No se pudo crear el respaldo.' });
 
       const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob);

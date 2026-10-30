@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
+import { api } from '../api';
 
+// Sólo se abre con una sesión del cuerpo técnico activa.
 export default function PrecargaModal({
   club,
   citedPlayers = {},
-  authenticated,
   token,
-  onAuthenticate,
   onClose
 }) {
   const [category, setCategory] = useState('primera');
@@ -15,63 +15,6 @@ export default function PrecargaModal({
   const [selectedPlayers, setSelectedPlayers] = useState(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState({ text: '', type: '' });
-  const [authPassword, setAuthPassword] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-
-  async function handleAuth(e) {
-    e.preventDefault();
-    if (!authPassword) return;
-    setIsAuthenticating(true);
-    setAuthError('');
-    try {
-      const response = await fetch(`/api/auth?club=${encodeURIComponent(club.slug)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: authPassword })
-      });
-      const data = await response.json();
-      if (!response.ok || !data.token) {
-        throw new Error(data.error || 'Contraseña incorrecta');
-      }
-      onAuthenticate(data.token);
-    } catch (err) {
-      setAuthError(err.message);
-    } finally {
-      setIsAuthenticating(false);
-    }
-  }
-
-  if (!authenticated) {
-    return (
-      <div className="overlay">
-        <div className="form-card precarga-modal">
-          <button type="button" className="close" onClick={onClose}>
-            ×
-          </button>
-          <span className="kicker">ACCESO EXCLUSIVO · CUERPO TÉCNICO</span>
-          <h2>Precarga Oficial AMH</h2>
-          <p className="precarga-desc">
-            Esta herramienta es de uso exclusivo para el cuerpo técnico para la inscripción oficial en Oracle APEX. Ingresá la contraseña del club.
-          </p>
-          <form className="tracker-login" onSubmit={handleAuth}>
-            <input
-              type="password"
-              value={authPassword}
-              onChange={e => setAuthPassword(e.target.value)}
-              placeholder="Contraseña del cuerpo técnico"
-              autoComplete="current-password"
-              disabled={isAuthenticating}
-            />
-            <button type="submit" disabled={isAuthenticating}>
-              {isAuthenticating ? 'Validando...' : 'Acceder'}
-            </button>
-          </form>
-          {authError && <p className="message error">{authError}</p>}
-        </div>
-      </div>
-    );
-  }
 
   const currentPlayers = citedPlayers[category]?.players || [];
 
@@ -86,11 +29,9 @@ export default function PrecargaModal({
     setStatus({ text: '', type: '' });
     try {
       const divId = cat === 'intermedia' ? '2' : '1';
-      const res = await fetch(`/api/torneo/precarga?club=${encodeURIComponent(club.slug)}&division=${divId}`, { cache: 'no-store' });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'No se pudieron consultar los partidos en AMH');
-      }
+      const fallbackError = 'No se pudieron consultar los partidos en AMH';
+      const data = await api(`/api/torneo/precarga?club=${encodeURIComponent(club.slug)}&division=${divId}`, { fallbackError });
+      if (!data.success) throw new Error(data.error || fallbackError);
       setMatches(data.matches || []);
       if (data.matches && data.matches.length > 0) {
         setSelectedMatchId(data.matches[0].id);
@@ -147,22 +88,19 @@ export default function PrecargaModal({
     setStatus({ text: 'Ejecutando inscripción en sistema AMH (Oracle APEX)...', type: 'info' });
 
     try {
-      const res = await fetch('/api/torneo/precarga', {
+      const data = await api('/api/torneo/precarga', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
+        token,
+        body: {
           division: divId,
           partidoId: selectedMatchId,
           rival: selectedMatch?.text || '',
           clubSlug: club.slug,
           players: Array.from(selectedPlayers)
-        })
+        },
+        fallbackError: 'Falló la precarga en AMH.'
       });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Falló la precarga en AMH.');
-      }
+      if (!data.success) throw new Error(data.error || 'Falló la precarga en AMH.');
 
       const inscribedCount = data.result?.inscribedCount ?? selectedPlayers.size;
       setStatus({

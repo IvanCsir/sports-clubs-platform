@@ -39,15 +39,11 @@ export default function EstadisticasPanel({
   tournaments = [],
   activeTournamentKey = '',
   matches = [],
-  authenticated,
-  onAuthenticate
+  authenticated
 }) {
   const [selectedMatch, setSelectedMatch] = useState('all');
   const [selectedTournamentKey, setSelectedTournamentKey] = useState(activeTournamentKey);
   const [activeTab, setActiveTab] = useState('quarters'); // 'quarters' | 'trends' | 'timeline'
-  const [password, setPassword] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (activeTournamentKey) setSelectedTournamentKey(activeTournamentKey);
@@ -72,51 +68,14 @@ export default function EstadisticasPanel({
   // Calcular estadísticas
   const { quarters, insights, halves } = calculateQuarterStats(filteredEvents);
 
-  async function handleLogin(e) {
-    e.preventDefault();
-    if (!password) return;
-    setIsSubmitting(true);
-    setAuthError('');
-    try {
-      const response = await fetch(`/api/auth?club=${encodeURIComponent(club.slug)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      });
-      const data = await response.json();
-      if (!response.ok || !data.token) {
-        throw new Error(data.error || 'Contraseña incorrecta');
-      }
-      await onAuthenticate(data.token);
-    } catch (err) {
-      setAuthError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
   if (!authenticated) {
     return (
       <section className="stats-panel">
         <div className="stats-hero">
           <span className="kicker">ANÁLISIS TÁCTICO · {club.shortName || club.name}</span>
           <h2>Acceso a Estadísticas Avanzadas</h2>
-          <p>Ingresá la clave del cuerpo técnico para visualizar métricas por cuartos, efectividad en cortos y tendencias.</p>
+          <p>Ingresá con tu cuenta Google invitada desde “Acceso cuerpo técnico” para visualizar métricas por cuartos, efectividad en cortos y tendencias.</p>
         </div>
-        <form className="tracker-login" onSubmit={handleLogin}>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Contraseña del cuerpo técnico"
-            autoComplete="current-password"
-            disabled={isSubmitting}
-          />
-          <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Verificando...' : 'Acceder'}
-          </button>
-        </form>
-        {authError && <p className="message">{authError}</p>}
       </section>
     );
   }

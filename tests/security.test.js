@@ -37,9 +37,13 @@ require.cache[amhPath] = {
 };
 
 const calls = [];
-const privateData = { citations: { primera: { players: ['A'], meta: {} } }, physicalPlayers: ['físicos'], events: ['privados'], players: [{ id: '1', name: 'A', active: true, categories: ['primera'] }] };
+const privateData = { citations: { primera: { players: ['A'], meta: {} } }, physicalPlayers: ['físicos'], physicalTests: ['pruebas'], events: ['privados'], players: [{ id: '1', name: 'A', active: true, categories: ['primera'] }] };
+const privateMonitoring = { wellness: ['wellness'], loads: ['cargas'] };
+const privateTournamentStats = { tournaments: [], activeKey: '1:general' };
 const sportsData = {
   getClubData: async slug => { calls.push(['getClubData', slug]); return privateData; },
+  getPlayerMonitoring: async slug => { calls.push(['getPlayerMonitoring', slug]); return privateMonitoring; },
+  getTournamentStats: async slug => { calls.push(['getTournamentStats', slug]); return privateTournamentStats; },
   savePlayer: async (slug, body) => { calls.push(['savePlayer', slug, body]); return { id: '2', name: body.name, category: body.category, active: true }; },
   saveCallup: async (slug, body) => { calls.push(['saveCallup', slug, body]); return { callupId: 9 }; },
   saveEvent: async (slug, body) => { calls.push(['saveEvent', slug, body]); return { id: 1 }; },
@@ -143,7 +147,15 @@ test('staff data is returned only to a matching club session', async () => {
   const res = responseRecorder();
   await clubDataHandler(request({ method: 'GET', path: '/api/club-data?club=club-a&dataset=staff', token: staffToken() }), res);
   assert.equal(res.status, 200);
-  assert.deepEqual(JSON.parse(res.body), { events: privateData.events, physicalPlayers: privateData.physicalPlayers, players: privateData.players });
+  assert.deepEqual(JSON.parse(res.body), {
+    physicalPlayers: privateData.physicalPlayers,
+    physicalTests: privateData.physicalTests,
+    events: privateData.events,
+    players: privateData.players,
+    citations: privateData.citations,
+    monitoring: privateMonitoring,
+    tournamentStats: privateTournamentStats
+  });
 });
 
 test('database writes reject a missing or cross-club session before persistence', async t => {

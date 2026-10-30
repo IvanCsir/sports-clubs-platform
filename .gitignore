@@ -14,7 +14,7 @@ desktop.ini
 .env
 .env.local
 
-# Base de datos local de clubes (puede contener credenciales)
+# Antiguo catálogo local de clubes (puede contener credenciales; ya no se usa)
 data/clubs.local.json
 
 # Frontend React generado

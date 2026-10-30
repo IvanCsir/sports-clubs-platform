@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { fetchClubDataset, postClubAction } from '../api';
 
 const CATEGORY_LABELS = { primera: '1ra División', intermedia: 'Intermedia', '5ta': '5ta División' };
 const METRICS = [
@@ -76,10 +77,8 @@ export default function PlayerMonitoringPanel({ club, authenticated, monitoring 
   }, [authenticated]);
 
   useEffect(() => {
-    fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}&dataset=player-portal`, { cache: 'no-store' })
-      .then(async response => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || 'No se pudo cargar el plantel.');
+    fetchClubDataset(club.slug, 'player-portal', { fallbackError: 'No se pudo cargar el plantel.' })
+      .then(payload => {
         const activePlayers = payload.players || [];
         setPlayers(activePlayers);
         if (activePlayers.length) {
@@ -142,16 +141,12 @@ export default function PlayerMonitoringPanel({ club, authenticated, monitoring 
       return;
     }
     const body = {
-      action: 'save-player-monitoring', playerId, category, date, kind: formKind,
+      playerId, category, date, kind: formKind,
       ...(formKind === 'wellness' ? wellness : { durationMinutes, perceivedEffort })
     };
     setSaving(true);
     try {
-      const response = await fetch(`/api/club-data?club=${encodeURIComponent(club.slug)}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'No se pudo guardar la respuesta.');
+      const payload = await postClubAction(club.slug, 'save-player-monitoring', body, { fallbackError: 'No se pudo guardar la respuesta.' });
       setStatus(formKind === 'wellness'
         ? 'Wellness guardado. Gracias por responder.'
         : `Carga guardada: ${payload.load} unidades (minutos × esfuerzo). Gracias por responder.`);

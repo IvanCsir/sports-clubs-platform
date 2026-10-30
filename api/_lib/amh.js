@@ -9,30 +9,7 @@
  */
 
 const fs = require('fs');
-const path = require('path');
 const http = require('http');
-
-// Cargar variables de entorno desde .env si existe (entorno local)
-function loadEnv() {
-  const envPath = path.resolve(__dirname, '..', '..', '.env');
-  if (fs.existsSync(envPath)) {
-    const content = fs.readFileSync(envPath, 'utf8');
-    content.split(/\r?\n/).forEach(line => {
-      line = line.trim();
-      if (!line || line.startsWith('#')) return;
-      const eqIdx = line.indexOf('=');
-      if (eqIdx !== -1) {
-        const key = line.slice(0, eqIdx).trim();
-        const val = line.slice(eqIdx + 1).trim();
-        if (!process.env[key]) {
-          process.env[key] = val;
-        }
-      }
-    });
-  }
-}
-
-loadEnv();
 
 const AMH_BASE_URL = process.env.AMH_BASE_URL || (process.env.AMH_URL ? new URL(process.env.AMH_URL).origin : 'http://15.235.75.172:8080');
 

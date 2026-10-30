@@ -1,30 +1,16 @@
+// Servidor de desarrollo local. Reproduce el ruteo de Vercel: cada archivo de api/ es una
+// función (api/torneo/matches.js → /api/torneo/matches), se aplican los rewrites de
+// vercel.json y el resto se sirve desde frontend/dist con fallback a index.html.
+require('./scripts/load-env')();
+
 const http = require('http');
-const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { getClubAsync } = require('./api/_lib/club-config');
-
-// Cargar variables de entorno desde .env si existe (modo local)
-(function loadEnv() {
-  const envPath = path.resolve(__dirname, '.env');
-  if (fs.existsSync(envPath)) {
-    try {
-      const content = fs.readFileSync(envPath, 'utf8');
-      content.split(/\r?\n/).forEach(line => {
-        line = line.trim();
-        if (!line || line.startsWith('#')) return;
-        const eqIdx = line.indexOf('=');
-        if (eqIdx !== -1) {
-          const key = line.slice(0, eqIdx).trim();
-          const val = line.slice(eqIdx + 1).trim();
-          if (!process.env[key]) process.env[key] = val;
-        }
-      });
-    } catch (_) {}
-  }
-})();
 
 const PORT = Number(process.env.PORT) || 3000;
+const API_ROOT = path.resolve(__dirname, 'api');
+const STATIC_ROOT = path.resolve(__dirname, 'frontend', 'dist');
+const { rewrites = [] } = require('./vercel.json');
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -39,296 +25,55 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
-function fetchAmhStandings(division, club, callback) {
-  const divId = division === '2' ? '2' : '1';
-  const tournament = club.tournament || {};
-  const url = `${tournament.baseUrl}/ords/r/amh/torneos/5?p5_torneos_f=${encodeURIComponent(tournament.tournamentId)}&p5_jug_cod_division_f=${divId}`;
-  const client = url.startsWith('https:') ? https : http;
-
-  client.get(url, res => {
-    let html = '';
-    res.on('data', chunk => html += chunk);
-    res.on('end', () => {
-      try {
-        const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
-        const tableData = [];
-        const scorersData = [];
-        let isScorers = false;
-
-        rows.forEach(r => {
-          const cells = [...r[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)]
-            .map(c => c[1].replace(/<[^>]+>/g, '').trim());
-          if (cells.length === 0 || cells.every(c => !c)) return;
-
-          if (cells.includes('Jugador') || cells.includes('Goles')) {
-            isScorers = true;
-            return;
-          }
-
-          if (cells.includes('Posición') || cells.includes('Equipo')) {
-            return;
-          }
-
-          if (!isScorers) {
-            const filtered = cells.filter(c => c !== '');
-            if (filtered.length >= 10) {
-              tableData.push({
-                pos: parseInt(filtered[0], 10),
-                zona: filtered[1],
-                team: filtered[2],
-                pj: parseInt(filtered[3], 10),
-                pg: parseInt(filtered[4], 10),
-                pe: parseInt(filtered[5], 10),
-                pp: parseInt(filtered[6], 10),
-                gf: parseInt(filtered[7], 10),
-                ge: parseInt(filtered[8], 10),
-                dif: parseInt(filtered[9], 10),
-                bonus: parseInt(filtered[10] || 0, 10),
-                pts: parseInt(filtered[filtered.length - 1], 10)
-              });
-            }
-          } else {
-            const filtered = cells.filter(c => c !== '');
-            if (filtered.length >= 3) {
-              scorersData.push({
-                club: filtered[0],
-                player: filtered[1],
-                goals: parseInt(filtered[2], 10)
-              });
-            }
-          }
-        });
-
-        callback(null, {
-          tournament: (tournament && tournament.name) || (tournament.tournamentId === '96' ? 'CLAUSURA DAMAS A - (2026)' : 'Clausura Damas B 2026'),
-          division: divId,
-          divisionName: divId === '2' ? 'Intermedia (Segunda)' : '1ra División (Primera)',
-          standings: tableData,
-          scorers: scorersData,
-          updatedAt: new Date().toISOString()
-        });
-      } catch (err) {
-        callback(err);
-      }
-    });
-  }).on('error', err => callback(err));
+function rewritePath(pathname) {
+  return rewrites.find(rule => rule.source === pathname)?.destination || pathname;
 }
 
-function normalizeAmhTeamName(value) {
-  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase().replace(/[().,'"']/g, ' ').replace(/\s+/g, ' ').trim();
+// Igual que en Vercel, los segmentos que empiezan con "_" no son funciones públicas.
+function findApiHandler(pathname) {
+  const segments = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
+  if (segments.some(segment => segment.startsWith('_') || segment.startsWith('.'))) return null;
+  const base = path.join(API_ROOT, ...segments);
+  return [`${base}.js`, path.join(base, 'index.js')].find(file => file.startsWith(API_ROOT) && fs.existsSync(file)) || null;
 }
 
-function isAmhClubTeam(teamName, club) {
-  const configuredNames = [club.tournament && club.tournament.teamName, club.shortName, club.name]
-    .filter(Boolean).map(normalizeAmhTeamName);
-  const candidate = normalizeAmhTeamName(teamName);
-  return configuredNames.some(name => candidate === name || candidate.startsWith(`${name} `) || name.startsWith(`${candidate} `));
+function send(res, status, body, contentType = 'text/plain; charset=utf-8') {
+  res.writeHead(status, { 'Content-Type': contentType });
+  res.end(body);
 }
 
-function fetchAmhMatches(division, club, callback) {
-  const divId = division === '2' ? '2' : '1';
-  const tournament = club.tournament || {};
-  const url = `${tournament.baseUrl}/ords/f?p=1107:6:0:FLOW_EXCEL_OUTPUT:::P6_TORNEOS_P,P6_CLUB_P,P6_JUG_COD_DIVISION_P:${encodeURIComponent(tournament.tournamentId)},${encodeURIComponent(tournament.clubId)},${divId}`;
-  const client = url.startsWith('https:') ? https : http;
-
-  client.get(url, res => {
-    let html = '';
-    res.on('data', chunk => html += chunk);
-    res.on('end', () => {
-      try {
-        const tableMatch = html.match(/<table[^>]+id="report_table_R195581212816937222"[^>]*>([\s\S]*?)<\/table>/i);
-        if (!tableMatch) { callback(null, { matches: [], playedMatches: [], nextMatch: null }); return; }
-
-        const rows = [...tableMatch[1].matchAll(/<tr>([\s\S]*?)<\/tr>/gi)];
-        const allMatches = [];
-        const playedMatches = [];
-        const pendingMatches = [];
-        let nextMatch = null;
-
-        rows.forEach(r => {
-          const cells = {};
-          const tdMatches = [...r[1].matchAll(/<td[^>]+headers="([^"]+)"[^>]*>([\s\S]*?)<\/td>/gi)];
-          tdMatches.forEach(td => {
-            const header = td[1].trim();
-            const rawVal = td[2].replace(/<[^>]+>/g, '').replace(/&#x2F;/g, '/').replace(/&amp;/g, '&').trim();
-            cells[header] = rawVal;
-            if (header === 'ESTADO_PARTIDO') cells['ESTADO_HTML'] = td[2];
-          });
-
-          if (!cells['FECHA_NRO']) return;
-
-          const estadoHtml = cells['ESTADO_HTML'] || '';
-          // En AMH Oficial:
-          // fa-times-circle / color:#E50D0D = Cruz roja (X) -> PARTIDO PENDIENTE / NO JUGADO AÚN
-          // fa-check-circle / color:#0E7A16 = Check verde -> PARTIDO DISPUTADO / JUGADO
-          const hasTimesCircle = estadoHtml.includes('fa-times-circle') || estadoHtml.includes('#E50D0D') || estadoHtml.includes('times');
-          const hasCheckCircle = estadoHtml.includes('fa-check-circle') || estadoHtml.includes('#0E7A16');
-          const isPlayed = hasCheckCircle && !hasTimesCircle;
-
-          const local = (cells['EQUIPO_LOCAL'] || '').trim();
-          const visita = (cells['EQUIPO_VISITANTE'] || '').trim();
-          if (!isAmhClubTeam(local, club) && !isAmhClubTeam(visita, club)) return;
-          const isHome = isAmhClubTeam(local, club);
-          const rival = (isHome ? visita : local).trim();
-          const homeAway = isHome ? 'Local' : 'Visitante';
-
-          let score = '-', result = 'pending';
-          if (isPlayed) {
-            const gl = parseInt(cells['GOLES_LOCAL'], 10) || 0;
-            const gv = parseInt(cells['GOLES_VISITA'], 10) || 0;
-            if (isHome) {
-              score = `${gl} - ${gv}`;
-              result = gl > gv ? 'win' : (gl < gv ? 'loss' : 'draw');
-            } else {
-              score = `${gv} - ${gl}`;
-              result = gv > gl ? 'win' : (gv < gl ? 'loss' : 'draw');
-            }
-          }
-
-          const matchObj = {
-            round: `Fecha ${cells['FECHA_NRO']}`,
-            fecha: cells['FECHA'] || '',
-            rival,
-            homeAway,
-            score,
-            result,
-            played: isPlayed,
-            status: isPlayed ? 'Jugado' : 'Pendiente'
-          };
-
-          allMatches.push(matchObj);
-          if (isPlayed) {
-            playedMatches.push(matchObj);
-          } else {
-            pendingMatches.push(matchObj);
-            if (!nextMatch) {
-              nextMatch = {
-                round: `Fecha ${cells['FECHA_NRO']}`,
-                fecha: cells['FECHA'] || '',
-                rival,
-                homeAway,
-                status: 'Pendiente'
-              };
-            }
-          }
-        });
-
-        callback(null, { matches: allMatches, playedMatches, pendingMatches, nextMatch });
-      } catch (err) {
-        callback(err);
-      }
-    });
-  }).on('error', err => callback(err));
-}
-
-const server = http.createServer((req, res) => {
-  const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const reqPath = urlObj.pathname;
-
-  // API Proxy para Torneo AMH (evita CORS y Mixed Content en local)
-  if (reqPath === '/api/torneo') {
-    const division = urlObj.searchParams.get('division') || '1';
-    getClubAsync(urlObj.searchParams.get('club')).then(club => new Promise((resolve, reject) => {
-      fetchAmhStandings(division, club, (err, data) => err ? reject(err) : resolve(data));
-    })).then(data => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.writeHead(200);
-      res.end(JSON.stringify(data));
-    }).catch(err => {
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ error: err.message }));
-    });
-    return;
-  }
-
-  // API Proxy para Partidos AMH
-  if (reqPath === '/api/torneo/matches') {
-    require('./api/torneo/matches.js')(req, res);
-    return;
-  }
-
-  if (reqPath === '/api/amh/catalog') {
-    const catalogHandler = require('./api/amh/catalog.js');
-    catalogHandler(req, res);
-    return;
-  }
-
-  // API para Precarga Oficial AMH
-  if (reqPath === '/api/torneo/precarga' || reqPath === '/api/precarga') {
-    const precargaHandler = require('./api/torneo/precarga.js');
-    precargaHandler(req, res);
-    return;
-  }
-
-  // API de Autenticación de Cuerpo Técnico
-  if (reqPath === '/api/auth') {
-    const authHandler = require('./api/auth.js');
-    authHandler(req, res);
-    return;
-  }
-
-  if (reqPath === '/api/config') {
-    const configHandler = require('./api/config.js');
-    configHandler(req, res);
-    return;
-  }
-
-  if (reqPath === '/api/club-data') {
-    const clubDataHandler = require('./api/club-data.js');
-    clubDataHandler(req, res);
-    return;
-  }
-
-  if (reqPath === '/api/admin/clubs') {
-    const adminClubsHandler = require('./api/admin/clubs.js');
-    adminClubsHandler(req, res);
-    return;
-  }
-
-  const staticRoot = path.resolve(__dirname, 'frontend', 'dist');
+function serveStatic(pathname, res) {
   let relativePath;
-  try { relativePath = decodeURIComponent(reqPath.replace(/^\/+/, '')); }
-  catch (_) {
-    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('400 Solicitud inválida');
-    return;
+  try { relativePath = decodeURIComponent(pathname.replace(/^\/+/, '')); }
+  catch (_) { return send(res, 400, '400 Solicitud inválida'); }
+  const filePath = path.resolve(STATIC_ROOT, relativePath || 'index.html');
+  if (filePath !== STATIC_ROOT && !filePath.toLowerCase().startsWith(`${STATIC_ROOT.toLowerCase()}${path.sep}`)) {
+    return send(res, 403, '403 Acceso denegado');
   }
-  let filePath = path.resolve(staticRoot, relativePath || 'index.html');
-  if (filePath !== staticRoot && !filePath.toLowerCase().startsWith(`${staticRoot.toLowerCase()}${path.sep}`)) {
-    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('403 Acceso denegado');
-    return;
-  }
-  const contentType = MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
-
   fs.readFile(filePath, (err, content) => {
-    if (err) {
-      if (err.code === 'ENOENT') {
-        if (!path.extname(reqPath)) {
-          fs.readFile(path.join(staticRoot, 'index.html'), (indexError, indexContent) => {
-            if (indexError) {
-              res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });
-              res.end('El portal no está compilado. Ejecutá npm start para prepararlo.');
-              return;
-            }
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-            res.end(indexContent);
-          });
-          return;
-        }
-        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('404 No Encontrado');
-      } else {
-        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('Error interno del servidor: ' + err.code);
-      }
-    } else {
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(content, 'utf-8');
-    }
+    if (!err) return send(res, 200, content, MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream');
+    if (err.code !== 'ENOENT' && err.code !== 'EISDIR') return send(res, 500, `Error interno del servidor: ${err.code}`);
+    if (path.extname(pathname)) return send(res, 404, '404 No Encontrado');
+    fs.readFile(path.join(STATIC_ROOT, 'index.html'), (indexError, indexContent) => {
+      if (indexError) return send(res, 503, 'El portal no está compilado. Ejecutá npm start para prepararlo.');
+      send(res, 200, indexContent, MIME_TYPES['.html']);
+    });
   });
+}
+
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const pathname = rewritePath(url.pathname.replace(/\/+$/, '') || '/');
+  if (!pathname.startsWith('/api/')) return serveStatic(pathname, res);
+
+  const handlerFile = findApiHandler(pathname);
+  if (!handlerFile) return send(res, 404, JSON.stringify({ error: 'Ruta no encontrada.' }), 'application/json; charset=utf-8');
+  try {
+    await require(handlerFile)(req, res);
+  } catch (error) {
+    console.error(`[${pathname}]`, error);
+    if (!res.headersSent) send(res, 500, JSON.stringify({ error: 'Error interno del servidor.' }), 'application/json; charset=utf-8');
+  }
 });
 
 server.listen(PORT, () => {

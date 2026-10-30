@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import OpponentBadge from './OpponentBadge';
+import { fetchFixture, fetchStandings } from '../api';
 
 function divisionKey(value) {
   const normalized = String(value || '1').trim().toLowerCase();
@@ -21,14 +22,8 @@ export default function TournamentPanel({ club }) {
     setStatus('Actualizando torneo...');
     try {
       const divisionId = targetDivision === 'intermedia' ? '2' : '1';
-      const query = `club=${encodeURIComponent(club.slug)}&division=${divisionId}`;
-      const standingsResponse = await fetch(`/api/torneo?${query}`, { cache: 'no-store' });
-      const standings = await standingsResponse.json();
-      if (!standingsResponse.ok) throw new Error(standings.error || 'No se pudo cargar la tabla.');
-
-      const matchesResponse = await fetch(`/api/torneo/matches?${query}`, { cache: 'no-store' });
-      const matches = await matchesResponse.json();
-      if (!matchesResponse.ok) throw new Error(matches.error || 'No se pudo cargar el fixture.');
+      const standings = await fetchStandings(club.slug, divisionId);
+      const matches = await fetchFixture(club.slug, divisionId);
 
       setData(current => ({ ...current, [targetDivision]: { ...standings, ...matches } }));
       setStatus(`Actualizado ${new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`);

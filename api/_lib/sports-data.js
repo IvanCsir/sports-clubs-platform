@@ -1,17 +1,49 @@
 const postgres = require('./postgres');
 const { mapDefinition } = require('./physical-tests');
+const { ValidationError } = require('./errors');
+const { PLAYER_CATEGORIES } = require('./categories');
 
 function ensureDb() {
   if (!postgres.isConfigured()) throw new Error('DATABASE_URL no está configurada.');
   return postgres.getPool();
 }
 
+function withTransaction(work) {
+  ensureDb();
+  return postgres.withTransaction(work);
+}
+
+function toCompetitionKey(tournamentKey) {
+  return String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
+}
+
+function upsertTeam(client, slug, category, name = category) {
+  return client.query(
+    `INSERT INTO sc_teams (club_slug, name, category) VALUES ($1, $2, $3)
+     ON CONFLICT (club_slug, category) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+    [slug, name, category]
+  ).then(result => result.rows[0].id);
+}
+
+const UPSERT_MATCH_EVENT_SQL = `
+  INSERT INTO sc_match_events (club_slug, match_id, external_id, occurred_at, quarter, team_side, event_type, player_name, details)
+  VALUES ($1, $2, $3, COALESCE($4::timestamptz, NOW()), $5, $6, $7, $8, $9::jsonb)
+  ON CONFLICT (club_slug, external_id) DO UPDATE SET
+    match_id = EXCLUDED.match_id,
+    occurred_at = CASE WHEN $4::timestamptz IS NULL THEN sc_match_events.occurred_at ELSE EXCLUDED.occurred_at END,
+    quarter = EXCLUDED.quarter,
+    team_side = EXCLUDED.team_side, event_type = EXCLUDED.event_type, player_name = EXCLUDED.player_name,
+    details = EXCLUDED.details`;
+
+function matchEventParams(slug, matchId, event) {
+  return [slug, matchId, String(event.id || `${Date.now()}-${Math.random()}`), event.at || null,
+    event.quarter || 1, event.team || 'home', event.type || 'entry', event.player || null,
+    JSON.stringify(event)];
+}
+
 async function ensureSeasonId(slug, seasonName, tournamentKey) {
   const name = String(seasonName || new Date().getFullYear()).trim().slice(0, 60) || String(new Date().getFullYear());
-  const db = ensureDb();
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
+  return withTransaction(async client => {
     const inserted = await client.query(
       `INSERT INTO sc_seasons (club_slug, name) VALUES ($1, $2)
        ON CONFLICT (club_slug, name) DO NOTHING RETURNING id`, [slug, name]
@@ -26,20 +58,13 @@ async function ensureSeasonId(slug, seasonName, tournamentKey) {
       await client.query(`UPDATE ${table} SET season_id = $2 WHERE club_slug = $1 AND season_id IS NULL`, [slug, season.id]);
     }
     if (tournamentKey !== undefined) {
-      const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
       await client.query(
         `UPDATE sc_matches SET tournament_key = $3
-         WHERE club_slug = $1 AND season_id = $2 AND tournament_key IS NULL`, [slug, season.id, competitionKey]
+         WHERE club_slug = $1 AND season_id = $2 AND tournament_key IS NULL`, [slug, season.id, toCompetitionKey(tournamentKey)]
       );
     }
-    await client.query('COMMIT');
     return season.id;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 async function getPhysicalTestDefinitions(slug, includeInactive = false) {
@@ -62,13 +87,13 @@ async function savePhysicalTestDefinition(slug, input) {
   const category = String(input.category || 'personalizada').trim();
   const direction = ['higher', 'lower', 'neutral'].includes(input.direction) ? input.direction : 'neutral';
   const decimals = Number(input.decimals);
-  if (!name || name.length > 80) throw new Error('Indicá un nombre de prueba de hasta 80 caracteres.');
-  if (unit.length > 16) throw new Error('La unidad no puede superar los 16 caracteres.');
-  if (!category || category.length > 40) throw new Error('Indicá una categoría de hasta 40 caracteres.');
-  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 3) throw new Error('Los decimales deben estar entre 0 y 3.');
+  if (!name || name.length > 80) throw new ValidationError('Indicá un nombre de prueba de hasta 80 caracteres.');
+  if (unit.length > 16) throw new ValidationError('La unidad no puede superar los 16 caracteres.');
+  if (!category || category.length > 40) throw new ValidationError('Indicá una categoría de hasta 40 caracteres.');
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 3) throw new ValidationError('Los decimales deben estar entre 0 y 3.');
   const definitions = await getPhysicalTestDefinitions(slug, true);
   if (definitions.some(test => test.name.localeCompare(name, 'es', { sensitivity: 'base' }) === 0)) {
-    throw new Error('Ya existe una prueba con ese nombre. Si está inactiva, podés reactivarla desde el catálogo.');
+    throw new ValidationError('Ya existe una prueba con ese nombre. Si está inactiva, podés reactivarla desde el catálogo.');
   }
   const baseKey = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 56);
   const key = `custom-${baseKey || 'prueba'}`;
@@ -79,7 +104,7 @@ async function savePhysicalTestDefinition(slug, input) {
      ON CONFLICT (club_slug, test_key) DO NOTHING
      RETURNING test_key`, [slug, key, name, category, unit, direction, decimals]
   );
-  if (!inserted.rowCount) throw new Error('Ya existe una prueba con ese nombre o clave.');
+  if (!inserted.rowCount) throw new ValidationError('Ya existe una prueba con ese nombre o clave.');
   return { saved: true, key };
 }
 
@@ -115,7 +140,7 @@ async function deletePhysicalTestDefinition(slug, testKey) {
 async function getClubData(slug, seasonName, tournamentKey) {
   const db = ensureDb();
   const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
-  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
+  const competitionKey = toCompetitionKey(tournamentKey);
   const physicalTests = await getPhysicalTestDefinitions(slug, true);
   const [callups, assessments, events, roster] = await Promise.all([
     db.query(`SELECT t.category, m.provider_match_id AS callup_match_key, m.round_label, m.opponent, m.home_away, m.date_label,
@@ -229,7 +254,7 @@ async function getClubData(slug, seasonName, tournamentKey) {
 
 async function getMatchPreparations(slug, seasonName, tournamentKey) {
   const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
-  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
+  const competitionKey = toCompetitionKey(tournamentKey);
   const result = await ensureDb().query(
     `SELECT t.category, m.provider_match_id AS match_key, m.round_label, m.opponent,
             m.home_away, m.date_label, m.preparation, m.updated_at
@@ -343,7 +368,7 @@ async function getSeasonBackup(slug, seasonName, tournamentKey) {
 
 async function getTournamentStats(slug, seasonName, tournamentKey, tournamentName) {
   const activeSeasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
-  const activeTournamentKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
+  const activeTournamentKey = toCompetitionKey(tournamentKey);
   const activeKey = `${activeSeasonId}:${activeTournamentKey}`;
   const result = await ensureDb().query(
     `SELECT s.id AS season_id, s.name AS season_name, m.tournament_key, m.tournament_name,
@@ -416,10 +441,10 @@ async function savePlayerMonitoring(slug, input, seasonName) {
   const category = String(input.category || '');
   const date = String(input.date || '');
   const kind = String(input.kind || '');
-  if (!Number.isSafeInteger(playerId) || playerId <= 0) throw new Error('Seleccioná una jugadora válida.');
-  if (!['primera', 'intermedia', '5ta'].includes(category)) throw new Error('Seleccioná una categoría válida.');
+  if (!Number.isSafeInteger(playerId) || playerId <= 0) throw new ValidationError('Seleccioná una jugadora válida.');
+  if (!PLAYER_CATEGORIES.includes(category)) throw new ValidationError('Seleccioná una categoría válida.');
   const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
-  if (!parsedDate || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) throw new Error('La fecha no es válida.');
+  if (!parsedDate || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) throw new ValidationError('La fecha no es válida.');
 
   const db = ensureDb();
   const seasonId = await ensureSeasonId(slug, seasonName);
@@ -429,12 +454,12 @@ async function savePlayerMonitoring(slug, input, seasonName) {
      JOIN sc_teams t ON t.id = tp.team_id AND t.club_slug = p.club_slug AND t.category = $3
      WHERE p.club_slug = $1 AND p.id = $2 AND p.active = TRUE LIMIT 1`, [slug, playerId, category]
   );
-  if (!player.rowCount) throw new Error('La jugadora no pertenece a esa categoría del club.');
+  if (!player.rowCount) throw new ValidationError('La jugadora no pertenece a esa categoría del club.');
 
   if (kind === 'wellness') {
     const metrics = ['sleep', 'fatigue', 'muscleSoreness', 'stress', 'mood'];
     const values = metrics.map(key => Number(input[key]));
-    if (values.some(value => !Number.isInteger(value) || value < 1 || value > 5)) throw new Error('Completá todas las métricas del wellness.');
+    if (values.some(value => !Number.isInteger(value) || value < 1 || value > 5)) throw new ValidationError('Completá todas las métricas del wellness.');
     await db.query(
       `INSERT INTO sc_player_wellness
          (club_slug, player_id, team_category, response_date, sleep, fatigue, muscle_soreness, stress, mood, season_id)
@@ -451,7 +476,7 @@ async function savePlayerMonitoring(slug, input, seasonName) {
     const minutes = Number(input.durationMinutes);
     const effort = Number(input.perceivedEffort);
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 360 || !Number.isInteger(effort) || effort < 1 || effort > 10) {
-      throw new Error('Indicá una duración válida y un esfuerzo entre 1 y 10.');
+      throw new ValidationError('Indicá una duración válida y un esfuerzo entre 1 y 10.');
     }
     await db.query(
       `INSERT INTO sc_player_training_loads
@@ -464,21 +489,14 @@ async function savePlayerMonitoring(slug, input, seasonName) {
     );
     return { saved: true, kind, load: minutes * effort };
   }
-  throw new Error('Tipo de registro inválido.');
+  throw new ValidationError('Tipo de registro inválido.');
 }
 
 async function saveMatchPreparation(slug, input, seasonName, tournamentKey, tournamentName) {
-  const db = ensureDb();
   const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
-  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
-    const teamResult = await client.query(
-      `INSERT INTO sc_teams (club_slug, name, category) VALUES ($1, $2, $3)
-       ON CONFLICT (club_slug, category) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-      [slug, input.category, input.category]
-    );
+  const competitionKey = toCompetitionKey(tournamentKey);
+  return withTransaction(async client => {
+    const teamId = await upsertTeam(client, slug, input.category);
     const result = await client.query(
       `INSERT INTO sc_matches (club_slug, team_id, provider, provider_match_id, round_label,
                                opponent, home_away, date_label, preparation, season_id, tournament_key, tournament_name)
@@ -488,30 +506,23 @@ async function saveMatchPreparation(slug, input, seasonName, tournamentKey, tour
          home_away = EXCLUDED.home_away, date_label = EXCLUDED.date_label,
          preparation = EXCLUDED.preparation, tournament_name = EXCLUDED.tournament_name, updated_at = NOW()
        RETURNING id`,
-      [slug, teamResult.rows[0].id, input.matchKey, input.round, input.opponent,
+      [slug, teamId, input.matchKey, input.round, input.opponent,
         input.homeAway || 'Local', input.date || '', JSON.stringify(input.preparation), seasonId, competitionKey,
         tournamentName || competitionKey]
     );
-    await client.query('COMMIT');
     return { id: String(result.rows[0].id), matchKey: input.matchKey };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 async function deleteMatchPreparation(slug, input, seasonName, tournamentKey) {
   const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
-  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
   const result = await ensureDb().query(
     `DELETE FROM sc_matches m
      USING sc_teams t
      WHERE m.club_slug = $1 AND m.team_id = t.id AND t.club_slug = m.club_slug
        AND t.category = $2 AND m.provider = 'preparation' AND m.provider_match_id = $3
        AND m.season_id = $4 AND m.tournament_key = $5`,
-    [slug, input.category, input.matchKey, seasonId, competitionKey]
+    [slug, input.category, input.matchKey, seasonId, toCompetitionKey(tournamentKey)]
   );
   return result.rowCount > 0;
 }
@@ -519,93 +530,59 @@ async function deleteMatchPreparation(slug, input, seasonName, tournamentKey) {
 async function savePlayer(slug, input) {
   const name = String(input.name || '').trim().replace(/\s+/g, ' ');
   const category = String(input.category || '');
-  if (!name || name.length > 120) throw new Error('El nombre debe tener entre 1 y 120 caracteres.');
-  if (!['primera', 'intermedia', '5ta'].includes(category)) throw new Error('Categoría inválida.');
-  const db = ensureDb();
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
-    const team = await client.query(
-      `INSERT INTO sc_teams (club_slug, name, category) VALUES ($1, $2, $3)
-       ON CONFLICT (club_slug, category) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-      [slug, category, category]
-    );
+  if (!name || name.length > 120) throw new ValidationError('El nombre debe tener entre 1 y 120 caracteres.');
+  if (!PLAYER_CATEGORIES.includes(category)) throw new ValidationError('Categoría inválida.');
+  return withTransaction(async client => {
+    const teamId = await upsertTeam(client, slug, category);
     const player = await client.query(
       `INSERT INTO sc_players (club_slug, display_name) VALUES ($1, $2)
        ON CONFLICT (club_slug, display_name) DO UPDATE SET active = TRUE, updated_at = NOW()
        RETURNING id, display_name`, [slug, name]
     );
     await client.query('INSERT INTO sc_team_players (team_id, player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-      [team.rows[0].id, player.rows[0].id]);
-    await client.query('COMMIT');
+      [teamId, player.rows[0].id]);
     return { id: String(player.rows[0].id), name: player.rows[0].display_name, category, active: true };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 async function updatePlayer(slug, input) {
   const id = Number(input.id);
   const name = String(input.name || '').trim().replace(/\s+/g, ' ');
   const categories = [...new Set(Array.isArray(input.categories) ? input.categories : [])];
-  const allowedCategories = ['primera', 'intermedia', '5ta'];
-  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('La jugadora seleccionada no es válida.');
-  if (!name || name.length > 120) throw new Error('El nombre debe tener entre 1 y 120 caracteres.');
-  if (!categories.length || categories.some(category => !allowedCategories.includes(category))) {
-    throw new Error('Seleccioná al menos una categoría válida.');
+  if (!Number.isSafeInteger(id) || id <= 0) throw new ValidationError('La jugadora seleccionada no es válida.');
+  if (!name || name.length > 120) throw new ValidationError('El nombre debe tener entre 1 y 120 caracteres.');
+  if (!categories.length || categories.some(category => !PLAYER_CATEGORIES.includes(category))) {
+    throw new ValidationError('Seleccioná al menos una categoría válida.');
   }
 
-  const db = ensureDb();
-  const client = await db.connect();
   try {
-    await client.query('BEGIN');
-    const updated = await client.query(
-      `UPDATE sc_players SET display_name = $3, updated_at = NOW()
-       WHERE club_slug = $1 AND id = $2 RETURNING id, display_name`, [slug, id, name]
-    );
-    if (!updated.rowCount) {
-      await client.query('ROLLBACK');
-      throw new Error('No se encontró la jugadora en este club.');
-    }
-    await client.query('DELETE FROM sc_team_players WHERE player_id = $1', [id]);
-    for (const category of categories) {
-      const team = await client.query(
-        `INSERT INTO sc_teams (club_slug, name, category) VALUES ($1, $2, $2)
-         ON CONFLICT (club_slug, category) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-        [slug, category]
+    return await withTransaction(async client => {
+      const updated = await client.query(
+        `UPDATE sc_players SET display_name = $3, updated_at = NOW()
+         WHERE club_slug = $1 AND id = $2 RETURNING id, display_name`, [slug, id, name]
       );
-      await client.query('INSERT INTO sc_team_players (team_id, player_id) VALUES ($1, $2)', [team.rows[0].id, id]);
-    }
-    await client.query('COMMIT');
-    return { id: String(updated.rows[0].id), name: updated.rows[0].display_name, categories, active: true };
+      if (!updated.rowCount) throw new ValidationError('No se encontró la jugadora en este club.', 404);
+      await client.query('DELETE FROM sc_team_players WHERE player_id = $1', [id]);
+      for (const category of categories) {
+        const teamId = await upsertTeam(client, slug, category);
+        await client.query('INSERT INTO sc_team_players (team_id, player_id) VALUES ($1, $2)', [teamId, id]);
+      }
+      return { id: String(updated.rows[0].id), name: updated.rows[0].display_name, categories, active: true };
+    });
   } catch (error) {
-    await client.query('ROLLBACK');
-    if (error.code === '23505') throw new Error('Ya existe otra jugadora con ese nombre en este club.');
+    if (error.code === '23505') throw new ValidationError('Ya existe otra jugadora con ese nombre en este club.', 409);
     throw error;
-  } finally {
-    client.release();
   }
 }
 
 async function saveCallup(slug, input, seasonName, tournamentKey, tournamentName) {
   const players = [...new Set((input.players || []).map(name => String(name).trim()).filter(Boolean))];
-  if (players.length > 60 || players.some(name => name.length > 120)) throw new Error('La convocatoria supera los límites permitidos.');
-  if (!String(input.matchKey || '').trim()) throw new Error('Falta identificar el partido de la convocatoria.');
-  const db = ensureDb();
+  if (players.length > 60 || players.some(name => name.length > 120)) throw new ValidationError('La convocatoria supera los límites permitidos.');
+  if (!String(input.matchKey || '').trim()) throw new ValidationError('Falta identificar el partido de la convocatoria.');
   const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
-  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
-    const teamResult = await client.query(
-      `INSERT INTO sc_teams (club_slug, name, category) VALUES ($1, $2, $3)
-       ON CONFLICT (club_slug, category) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-      [slug, input.teamName || input.category, input.category]
-    );
-    const teamId = teamResult.rows[0].id;
+  const competitionKey = toCompetitionKey(tournamentKey);
+  return withTransaction(async client => {
+    const teamId = await upsertTeam(client, slug, input.category, input.teamName || input.category);
     const matchResult = await client.query(
       `INSERT INTO sc_matches (club_slug, team_id, provider, provider_match_id, round_label, opponent,
                            home_away, date_label, call_time, match_time, venue, opponent_logo_url, season_id, tournament_key, tournament_name)
@@ -633,7 +610,7 @@ async function saveCallup(slug, input, seasonName, tournamentKey, tournamentName
       )
       : { rows: [] };
     if (roster.rows.length !== players.length) {
-      throw new Error('La citación solo puede incluir jugadoras activas cargadas en el plantel del club.');
+      throw new ValidationError('La citación solo puede incluir jugadoras activas cargadas en el plantel del club.');
     }
     const rosterByName = new Map(roster.rows.map(player => [player.display_name, player.id]));
     await client.query(
@@ -647,25 +624,20 @@ async function saveCallup(slug, input, seasonName, tournamentKey, tournamentName
       await client.query('INSERT INTO sc_callup_players (callup_id, player_id, position) VALUES ($1, $2, $3)',
         [callupId, rosterByName.get(displayName), position]);
     }
-    await client.query('COMMIT');
     return { matchId, callupId };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
+}
+
+function trackerMatchKey(input) {
+  const round = String(input.match || 'Amistoso');
+  return { round, matchKey: String(input.matchKey || round.toLowerCase().replace(/[^a-z0-9]+/g, '_')) };
 }
 
 async function saveEvent(slug, input, seasonName, tournamentKey, tournamentName) {
-  const db = ensureDb();
   const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
-  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
-    const round = String(input.match || 'Amistoso');
-    const matchKey = String(input.matchKey || round.toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+  const competitionKey = toCompetitionKey(tournamentKey);
+  return withTransaction(async client => {
+    const { round, matchKey } = trackerMatchKey(input);
     const matchResult = await client.query(
       `INSERT INTO sc_matches (club_slug, provider, provider_match_id, round_label, opponent, season_id, tournament_key, tournament_name)
        VALUES ($1, 'tracker', $2, $3, $4, $5, $6, $7)
@@ -673,40 +645,18 @@ async function saveEvent(slug, input, seasonName, tournamentKey, tournamentName)
          round_label = EXCLUDED.round_label, tournament_name = EXCLUDED.tournament_name
        RETURNING id`, [slug, matchKey, round, input.opponent || 'Rival', seasonId, competitionKey, tournamentName || competitionKey]
     );
-    const event = input.event || input;
-    const result = await client.query(
-      `INSERT INTO sc_match_events (club_slug, match_id, external_id, occurred_at, quarter, team_side, event_type, player_name, details)
-       VALUES ($1, $2, $3, COALESCE($4::timestamptz, NOW()), $5, $6, $7, $8, $9::jsonb)
-       ON CONFLICT (club_slug, external_id) DO UPDATE SET
-         match_id = EXCLUDED.match_id,
-         occurred_at = CASE WHEN $4::timestamptz IS NULL THEN sc_match_events.occurred_at ELSE EXCLUDED.occurred_at END,
-         quarter = EXCLUDED.quarter,
-         team_side = EXCLUDED.team_side, event_type = EXCLUDED.event_type, player_name = EXCLUDED.player_name,
-         details = EXCLUDED.details RETURNING id`,
-      [slug, matchResult.rows[0].id, String(event.id || `${Date.now()}-${Math.random()}`), event.at || null,
-        event.quarter || 1, event.team || 'home', event.type || 'entry', event.player || null,
-        JSON.stringify(event)]
-    );
-    await client.query('COMMIT');
+    const result = await client.query(`${UPSERT_MATCH_EVENT_SQL} RETURNING id`,
+      matchEventParams(slug, matchResult.rows[0].id, input.event || input));
     return result.rows[0];
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 async function replaceMatchEvents(slug, input, seasonName, tournamentKey, tournamentName) {
-  if (input.events.length > 1000) throw new Error('El partido supera el máximo de incidencias permitido.');
-  const db = ensureDb();
+  if (input.events.length > 1000) throw new ValidationError('El partido supera el máximo de incidencias permitido.');
   const seasonId = await ensureSeasonId(slug, seasonName, tournamentKey);
-  const competitionKey = String(tournamentKey || 'general').trim().slice(0, 120) || 'general';
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
-    const round = String(input.match || 'Amistoso');
-    const matchKey = String(input.matchKey || round.toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+  const competitionKey = toCompetitionKey(tournamentKey);
+  return withTransaction(async client => {
+    const { round, matchKey } = trackerMatchKey(input);
     const matchResult = await client.query(
       `INSERT INTO sc_matches (club_slug, provider, provider_match_id, round_label, opponent, season_id, tournament_key, tournament_name)
        VALUES ($1, 'tracker', $2, $3, $4, $5, $6, $7)
@@ -722,28 +672,10 @@ async function replaceMatchEvents(slug, input, seasonName, tournamentKey, tourna
        AND NOT (external_id = ANY($3::text[]))`, [slug, matchId, eventIds]
     );
     for (const event of input.events) {
-      await client.query(
-        `INSERT INTO sc_match_events (club_slug, match_id, external_id, occurred_at, quarter, team_side, event_type, player_name, details)
-         VALUES ($1, $2, $3, COALESCE($4::timestamptz, NOW()), $5, $6, $7, $8, $9::jsonb)
-         ON CONFLICT (club_slug, external_id) DO UPDATE SET
-           match_id = EXCLUDED.match_id,
-           occurred_at = CASE WHEN $4::timestamptz IS NULL THEN sc_match_events.occurred_at ELSE EXCLUDED.occurred_at END,
-           quarter = EXCLUDED.quarter,
-           team_side = EXCLUDED.team_side, event_type = EXCLUDED.event_type, player_name = EXCLUDED.player_name,
-           details = EXCLUDED.details`,
-        [slug, matchId, String(event.id || `${Date.now()}-${Math.random()}`), event.at || null,
-          event.quarter || 1, event.team || 'home', event.type || 'entry', event.player || null,
-          JSON.stringify(event)]
-      );
+      await client.query(UPSERT_MATCH_EVENT_SQL, matchEventParams(slug, matchId, event));
     }
-    await client.query('COMMIT');
     return { matchId, saved: input.events.length };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 async function deleteEvent(slug, id) {
@@ -761,19 +693,16 @@ async function deleteEvents(slug, ids) {
 }
 
 async function savePhysicalAssessment(slug, input, seasonName) {
-  if ((!input.playerId && !input.name) || !Array.isArray(input.results)) throw new Error('Seleccioná una jugadora del plantel y completá sus mediciones.');
-  const db = ensureDb();
+  if ((!input.playerId && !input.name) || !Array.isArray(input.results)) throw new ValidationError('Seleccioná una jugadora del plantel y completá sus mediciones.');
   const testDefinitions = await getPhysicalTestDefinitions(slug);
   const testsByKey = new Map(testDefinitions.map(test => [test.key, test]));
   const seasonId = await ensureSeasonId(slug, seasonName);
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
-    const category = ['primera', 'intermedia', '5ta'].includes(input.category) ? input.category : 'primera';
+  return withTransaction(async client => {
+    const category = PLAYER_CATEGORIES.includes(input.category) ? input.category : 'primera';
     let playerId;
     if (input.playerId) {
       const selectedPlayerId = Number(input.playerId);
-      if (!Number.isSafeInteger(selectedPlayerId) || selectedPlayerId <= 0) throw new Error('Seleccioná una jugadora válida del plantel.');
+      if (!Number.isSafeInteger(selectedPlayerId) || selectedPlayerId <= 0) throw new ValidationError('Seleccioná una jugadora válida del plantel.');
       const player = await client.query(
         `SELECT p.id FROM sc_players p
          JOIN sc_team_players tp ON tp.player_id = p.id
@@ -781,21 +710,17 @@ async function savePhysicalAssessment(slug, input, seasonName) {
          WHERE p.club_slug = $1 AND p.id = $2 AND p.active = TRUE AND t.category = $3
          LIMIT 1`, [slug, selectedPlayerId, category]
       );
-      if (!player.rowCount) throw new Error('La jugadora seleccionada no pertenece a esta categoría del plantel.');
+      if (!player.rowCount) throw new ValidationError('La jugadora seleccionada no pertenece a esta categoría del plantel.');
       playerId = player.rows[0].id;
     } else {
-      const team = await client.query(
-        `INSERT INTO sc_teams (club_slug, name, category) VALUES ($1, $2, $3)
-         ON CONFLICT (club_slug, category) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-        [slug, input.teamName || category, category]
-      );
+      const teamId = await upsertTeam(client, slug, category, input.teamName || category);
       const player = await client.query(
         `INSERT INTO sc_players (club_slug, display_name) VALUES ($1, $2)
          ON CONFLICT (club_slug, display_name) DO UPDATE SET active = TRUE, updated_at = NOW() RETURNING id`,
         [slug, String(input.name).trim()]
       );
       await client.query('INSERT INTO sc_team_players (team_id, player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-        [team.rows[0].id, player.rows[0].id]);
+        [teamId, player.rows[0].id]);
       playerId = player.rows[0].id;
     }
     let assessment = await client.query(
@@ -814,7 +739,7 @@ async function savePhysicalAssessment(slug, input, seasonName) {
       const attempt = Number(result.attempt ?? 1);
       const value = Number(result.value);
       if (!definition || !Number.isFinite(value) || attempt !== 1) {
-        throw new Error('Una medición no coincide con las pruebas activas o contiene un valor inválido.');
+        throw new ValidationError('Una medición no coincide con las pruebas activas o contiene un valor inválido.');
       }
       await client.query(
         `INSERT INTO sc_physical_test_results (assessment_id, test_key, attempt, value, unit)
@@ -824,14 +749,8 @@ async function savePhysicalAssessment(slug, input, seasonName) {
         [assessment.rows[0].id, definition.key, attempt, value, definition.unit || '']
       );
     }
-    await client.query('COMMIT');
     return { playerId, assessmentId: assessment.rows[0].id };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 module.exports = { getClubData, getMatchPreparations, getPlayerMonitoring, getSeasonBackup, getTournamentStats, getPlayerPortalRoster, getPhysicalTestDefinitions, savePhysicalTestDefinition, deactivatePhysicalTestDefinition, reactivatePhysicalTestDefinition, deletePhysicalTestDefinition, savePlayerMonitoring, saveMatchPreparation, deleteMatchPreparation, savePlayer, updatePlayer, saveCallup, saveEvent, replaceMatchEvents, deleteEvent, deleteEvents, savePhysicalAssessment };

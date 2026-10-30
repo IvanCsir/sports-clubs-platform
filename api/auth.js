@@ -1,36 +1,16 @@
 /**
- * Endpoint de Autenticación Ligera para Cuerpo Técnico
- * Club Regatas Andino - Plantel Superior B
+ * Autenticación del cuerpo técnico.
  *
- * Valida la contraseña en el backend (Node.js / Vercel Serverless) y emite un
- * token de sesión firmado con expiración automática de 12 horas.
+ * Intercambia una credencial de Google de una cuenta invitada por un token de sesión
+ * firmado con el secreto del club, con expiración automática de 12 horas.
  */
 
-const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
 const { readConfiguredClubsAsync } = require('./_lib/club-config');
 const { exchangeGoogleCredential } = require('./_lib/staff-access');
+const { ValidationError } = require('./_lib/errors');
+const { sendJson: json, readJson, requestUrl, bearerToken } = require('./_lib/http');
 const postgres = require('./_lib/postgres');
-
-// Cargar variables locales faltantes sin reemplazar las del entorno de ejecución.
-(function loadEnv() {
-  const envPath = path.resolve(__dirname, '..', '.env');
-  if (!fs.existsSync(envPath)) return;
-  try {
-    const content = fs.readFileSync(envPath, 'utf8');
-    content.split(/\r?\n/).forEach(line => {
-      line = line.trim();
-      if (!line || line.startsWith('#')) return;
-      const eqIdx = line.indexOf('=');
-      if (eqIdx !== -1) {
-        const key = line.slice(0, eqIdx).trim();
-        const val = line.slice(eqIdx + 1).trim();
-        if (!process.env[key]) process.env[key] = val;
-      }
-    });
-  } catch (_) {}
-})();
 
 const SESSION_DURATION_HOURS = 12;
 
@@ -89,8 +69,13 @@ async function verifyActiveSessionToken(token, club) {
     : { valid: false, error: 'Este acceso fue revocado.' };
 }
 
+// Sesión del cuerpo técnico enviada en el header Authorization de la solicitud.
+async function requestSession(req, club) {
+  const token = bearerToken(req);
+  return token ? verifyActiveSessionToken(token, club) : { valid: false, error: 'Token no provisto' };
+}
+
 module.exports = async function handler(req, res) {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -101,91 +86,48 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const host = (req.headers && req.headers.host) || 'localhost';
-  const urlObj = new URL(req.url || '/', `http://${host}`);
+  const urlObj = requestUrl(req);
   let clubs;
   try {
     clubs = await readConfiguredClubsAsync();
   } catch (_) {
-    res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ error: 'El servicio de clubes no está disponible temporalmente.' }));
-    return;
+    return json(res, 503, { error: 'El servicio de clubes no está disponible temporalmente.' });
   }
   const slug = urlObj.searchParams.get('club');
-  if (!slug) {
-    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ error: 'Ingresá con el enlace de tu club.' }));
-    return;
-  }
+  if (!slug) return json(res, 400, { error: 'Ingresá con el enlace de tu club.' });
   const club = clubs.find(item => item.slug === slug);
-  if (!club) {
-    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ error: 'Club no encontrado.' }));
-    return;
-  }
+  if (!club) return json(res, 404, { error: 'Club no encontrado.' });
 
-  // GET: Validar estado de un token existente
+  // GET: validar el estado de un token existente.
   if (req.method === 'GET') {
-    const authHeader = (req.headers && req.headers.authorization) || '';
-    const token = urlObj.searchParams.get('token') || authHeader.replace(/^Bearer\s+/i, '').trim();
-
-    const verification = await verifyActiveSessionToken(token, club);
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(verification));
-    return;
+    const token = urlObj.searchParams.get('token') || bearerToken(req);
+    return json(res, 200, await verifyActiveSessionToken(token, club));
   }
 
-  // POST: intercambio de credencial Google por sesión del club
+  // POST: intercambio de credencial Google por sesión del club.
   if (req.method === 'POST') {
     try {
-      let body;
-      if (req.body && typeof req.body === 'object') {
-        body = req.body;
-      } else if (req.body && typeof req.body === 'string') {
-        try { body = JSON.parse(req.body); } catch (_) { body = {}; }
-      } else {
-        const raw = await new Promise((resolve) => {
-          let data = '';
-          req.on('data', chunk => data += chunk);
-          req.on('end', () => resolve(data));
-        });
-        try { body = JSON.parse(raw); } catch (_) { body = {}; }
+      const body = await readJson(req);
+      if (!String(club.auth?.secret || '')) {
+        return json(res, 503, { success: false, error: 'Autenticación no configurada para este club.' });
       }
-
-      const authSecret = String(club.auth?.secret || '');
-
-      if (!authSecret) {
-        res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: false, error: 'Autenticación no configurada para este club.' }));
-        return;
+      if (!body.googleCredential) {
+        return json(res, 401, { success: false, error: 'Ingresá con Google usando una invitación vigente del club.' });
       }
-
-      if (body.googleCredential) {
-        try {
-          const identity = await exchangeGoogleCredential(club.slug, body.googleCredential, body.invite || '');
-          const session = createSessionToken(club, identity.email);
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-          res.end(JSON.stringify({ success: true, token: session.token, expiresAt: session.expiresAt, durationHours: session.durationHours }));
-        } catch (error) {
-          res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-          res.end(JSON.stringify({ success: false, error: error.message }));
-        }
-        return;
-      }
-
-      res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ success: false, error: 'Ingresá con Google usando una invitación vigente del club.' }));
-    } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: false, error: err.message }));
+      const identity = await exchangeGoogleCredential(club.slug, body.googleCredential, body.invite || '');
+      const session = createSessionToken(club, identity.email);
+      return json(res, 200, { success: true, token: session.token, expiresAt: session.expiresAt, durationHours: session.durationHours });
+    } catch (error) {
+      if (error instanceof ValidationError) return json(res, error.status, { success: false, error: error.message });
+      console.error('[API Auth]', error);
+      return json(res, 503, { success: false, error: 'No se pudo iniciar sesión. Intentá de nuevo en unos minutos.' });
     }
-    return;
   }
 
-  res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify({ error: 'Método no permitido' }));
+  return json(res, 405, { error: 'Método no permitido' });
 };
 
 module.exports.verifySessionToken = verifySessionToken;
 module.exports.verifyActiveSessionToken = verifyActiveSessionToken;
+module.exports.requestSession = requestSession;
 module.exports.createSessionToken = createSessionToken;

@@ -20,13 +20,11 @@ export default function TrackerPanel({
   nextMatch,
   loadMatches,
   authenticated,
-  onAuthenticate,
   onOpenPrecarga
 }) {
   const [matchIndex, setMatchIndex] = useState(-1);
   const [quarter, setQuarter] = useState(1);
   const [teamView, setTeamView] = useState('home');
-  const [password, setPassword] = useState('');
   const [authStatus, setAuthStatus] = useState('');
   const [eventFlow, setEventFlow] = useState(null);
   const [eventFlowError, setEventFlowError] = useState('');
@@ -41,26 +39,6 @@ export default function TrackerPanel({
   const matchCalledUpPlayers = match && callupMatchKey === expectedCallupMatchKey
     ? [...calledUpPlayers].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
     : [];
-
-  async function login() {
-    setAuthStatus('Validando acceso...');
-    try {
-      const response = await fetch(`/api/auth?club=${encodeURIComponent(club.slug)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.token) {
-        throw new Error(payload.error || 'No se pudo iniciar sesión.');
-      }
-      await onAuthenticate(payload.token);
-      setPassword('');
-      setAuthStatus('Sesión activa');
-    } catch (error) {
-      setAuthStatus(error.message);
-    }
-  }
 
   // Cargar estado inicial desde localStorage
   useEffect(() => {
@@ -269,25 +247,8 @@ export default function TrackerPanel({
         <div className="tracker-hero">
           <span className="kicker">BOTONERA DT · {club.shortName || club.name}</span>
           <h2>Acceso del cuerpo técnico</h2>
-          <p>Ingresá la contraseña de este club para registrar incidencias en tiempo real.</p>
+          <p>Ingresá con tu cuenta Google invitada desde “Acceso cuerpo técnico” para registrar incidencias en tiempo real.</p>
         </div>
-        <form
-          className="tracker-login"
-          onSubmit={event => {
-            event.preventDefault();
-            login();
-          }}
-        >
-          <input
-            type="password"
-            value={password}
-            onChange={event => setPassword(event.target.value)}
-            placeholder="Contraseña del cuerpo técnico"
-            autoComplete="current-password"
-          />
-          <button type="submit">Ingresar</button>
-        </form>
-        {authStatus && <p className="message">{authStatus}</p>}
       </section>
     );
   }

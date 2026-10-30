@@ -2,19 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Pool } = require('pg');
-
-function loadEnv() {
-  const file = path.resolve(__dirname, '..', '.env');
-  if (!fs.existsSync(file)) return;
-  for (const raw of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || line.startsWith('#')) continue;
-    const index = line.indexOf('=');
-    if (index > 0 && !process.env[line.slice(0, index).trim()]) {
-      process.env[line.slice(0, index).trim()] = line.slice(index + 1).trim();
-    }
-  }
-}
+const loadEnv = require('./load-env');
 
 async function main() {
   loadEnv();

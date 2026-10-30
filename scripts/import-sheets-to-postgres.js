@@ -1,25 +1,11 @@
-const fs = require('fs');
-const path = require('path');
 const { Pool } = require('pg');
+const loadEnv = require('./load-env');
 
 const TESTS = [
   ['broadJump', 'm'], ['cmj', 'cm'], ['agility', 'seg'], ['sprint', 'seg'], ['yoyo', 'm'],
   ['bench', 'kg'], ['deadlift', 'kg'], ['squat', 'kg'], ['platform', '']
 ];
 const TEST_COLUMNS = [3, 6, 9, 12, 15, 18, 21, 24, 27];
-
-function loadEnv() {
-  const file = path.resolve(__dirname, '..', '.env');
-  if (!fs.existsSync(file)) return;
-  for (const raw of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || line.startsWith('#')) continue;
-    const index = line.indexOf('=');
-    if (index > 0 && !process.env[line.slice(0, index).trim()]) {
-      process.env[line.slice(0, index).trim()] = line.slice(index + 1).trim();
-    }
-  }
-}
 
 function cell(row, index) {
   const item = row?.c?.[index];

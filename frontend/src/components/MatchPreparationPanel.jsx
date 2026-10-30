@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Italic, List, ListOrdered, Underline } from 'lucide-react';
 import TacticalPlays from './TacticalPlays';
+import { fetchClubDataset, fetchFixture, postClubAction } from '../api';
 
 const emptyPreparation = () => ({ focus: '', videos: [{ title: '', url: '' }], plays: [] });
 
@@ -197,9 +198,7 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
 
   async function loadPreparations() {
     try {
-      const response = await fetch('/api/club-data?club=' + encodeURIComponent(club.slug) + '&dataset=preparations', { cache: 'no-store' });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'No se pudo cargar el plan del partido.');
+      const payload = await fetchClubDataset(club.slug, 'preparations', { fallbackError: 'No se pudo cargar el plan del partido.' });
       setPreparations(payload.preparations || []);
       setStatus('');
     } catch (loadError) {
@@ -216,9 +215,7 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
     async function loadFixtures() {
       try {
         const division = category === 'intermedia' ? '2' : '1';
-        const response = await fetch('/api/torneo/matches?club=' + encodeURIComponent(club.slug) + '&division=' + division, { cache: 'no-store' });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || 'Fixture no disponible.');
+        const payload = await fetchFixture(club.slug, division, 'Fixture no disponible.');
         if (!cancelled) setFixtures(current => ({
           ...current,
           [category]: payload.matches || payload.pendingMatches || []
@@ -343,30 +340,15 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
     setSaving(true);
     setError('');
     try {
-      const response = await fetch('/api/club-data?club=' + encodeURIComponent(club.slug), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({
-          action: 'save-preparation',
-          category,
-          matchKey: selectedMatch.matchKey,
-          round: matchDraft.round.trim(),
-          opponent: matchDraft.opponent.trim(),
-          homeAway: matchDraft.homeAway,
-          date: matchDraft.date.trim(),
-          preparation: { ...preparation, videoUrls: preparation.videos.map(video => video.url) }
-        })
-      });
-      const payload = await response.json();
-      if (!response.ok) {
-        const message = payload.error === 'Acción de persistencia desconocida.'
-          ? 'El servidor está desactualizado y todavía no reconoce los planes de partido. Detenelo y volvé a iniciar la aplicación para cargar la versión nueva.'
-          : payload.error === 'La pizarra táctica contiene una ficha inválida.' &&
-            preparation.plays.some(play => (play.frames || []).some(frame => frame.some(marker => marker.side === 'ball')))
-            ? 'El servidor todavía no reconoce la ficha de la bocha. Detenelo y volvé a iniciar la aplicación; si está publicada, volvé a desplegar la versión actualizada.'
-          : payload.error || 'No se pudo guardar el plan del partido.';
-        throw new Error(message);
-      }
+      await postClubAction(club.slug, 'save-preparation', {
+        category,
+        matchKey: selectedMatch.matchKey,
+        round: matchDraft.round.trim(),
+        opponent: matchDraft.opponent.trim(),
+        homeAway: matchDraft.homeAway,
+        date: matchDraft.date.trim(),
+        preparation: { ...preparation, videoUrls: preparation.videos.map(video => video.url) }
+      }, { token, fallbackError: 'No se pudo guardar el plan del partido.' });
       const saved = {
         category, matchKey: selectedMatch.matchKey,
         round: matchDraft.round.trim(), opponent: matchDraft.opponent.trim(),
@@ -390,18 +372,8 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
     setDeleting(true);
     setDeleteError('');
     try {
-      const response = await fetch('/api/club-data?club=' + encodeURIComponent(club.slug), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ action: 'delete-preparation', category, matchKey: selectedMatch.matchKey })
-      });
-      const payload = await response.json();
-      if (!response.ok) {
-        const message = payload.error === 'Acción de persistencia desconocida.'
-          ? 'El servidor todavía no tiene la opción de eliminar planes. Volvé a desplegar la versión actualizada.'
-          : payload.error || 'No se pudo eliminar el plan del partido.';
-        throw new Error(message);
-      }
+      await postClubAction(club.slug, 'delete-preparation', { category, matchKey: selectedMatch.matchKey },
+        { token, fallbackError: 'No se pudo eliminar el plan del partido.' });
       setPreparations(current => current.filter(item => item.category !== category || item.matchKey !== selectedMatch.matchKey));
       setSelectedKey(selectedMatch.matchKey);
       setConfirmDelete(false);

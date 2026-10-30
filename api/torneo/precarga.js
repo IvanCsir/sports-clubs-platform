@@ -1,15 +1,14 @@
 /**
- * Endpoint para Precarga Oficial AMH
- * Soporta GET (listar partidos disponibles) y POST (inscribir tildados)
- * Compatible con Node.js local y Vercel Serverless Functions
+ * Precarga oficial en AMH.
+ * GET lista los partidos disponibles y POST inscribe a las jugadoras citadas.
  */
 
 const { fetchAvailableMatches, executeAmhPrecarga } = require('../_lib/amh.js');
 const { getClubAsync } = require('../_lib/club-config');
-const { verifyActiveSessionToken } = require('../auth');
+const { requestSession } = require('../auth');
+const { sendJson: json, readJson, requestUrl } = require('../_lib/http');
 
 module.exports = async function handler(req, res) {
-  // Configuración de CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -20,90 +19,44 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const url = requestUrl(req);
 
-  // GET: Obtener partidos disponibles
   if (req.method === 'GET' || url.searchParams.has('matches')) {
-    const division = url.searchParams.get('division') || '1';
-    const slug = url.searchParams.get('club');
-    const club = slug ? await getClubAsync(slug) : null;
     try {
-      if (!club) {
-        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: false, error: 'Club no encontrado.' }));
-        return;
-      }
-      const matches = await fetchAvailableMatches(division, club);
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: true, matches }));
+      const slug = url.searchParams.get('club');
+      const club = slug ? await getClubAsync(slug) : null;
+      if (!club) return json(res, 404, { success: false, error: 'Club no encontrado.' });
+      const matches = await fetchAvailableMatches(url.searchParams.get('division') || '1', club);
+      return json(res, 200, { success: true, matches });
     } catch (err) {
       console.error('[API Precarga GET Error]:', err);
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: false, matches: [], error: err.message }));
+      return json(res, 200, { success: false, matches: [], error: 'No se pudieron consultar los partidos en AMH.' });
     }
-    return;
   }
 
-  // POST: Ejecutar precarga en AMH
   if (req.method === 'POST') {
     try {
-      // Extraer payload de forma compatible con Vercel (pre-parsed) y Node raw stream
-      let payload;
-      if (req.body && typeof req.body === 'object') {
-        payload = req.body;
-      } else if (req.body && typeof req.body === 'string') {
-        try { payload = JSON.parse(req.body); } catch (_) { payload = {}; }
-      } else {
-        const raw = await new Promise((resolve) => {
-          let data = '';
-          req.on('data', chunk => data += chunk);
-          req.on('end', () => resolve(data));
-          req.on('error', () => resolve(''));
-        });
-        try { payload = JSON.parse(raw || '{}'); } catch (_) { payload = {}; }
-      }
-
+      const payload = await readJson(req);
       const { division = '1', partidoId = null, rival = null, players = [] } = payload;
       const clubSlug = String(payload.clubSlug || url.searchParams.get('club') || '').trim();
       const club = clubSlug ? await getClubAsync(clubSlug) : null;
-      const authHeader = String(req.headers?.authorization || '');
-      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
 
-      if (!club) {
-        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: false, error: 'Club no encontrado.' }));
-        return;
+      if (!club) return json(res, 404, { success: false, error: 'Club no encontrado.' });
+      if (!(await requestSession(req, club)).valid) {
+        return json(res, 401, { success: false, error: 'Sesión inválida o perteneciente a otro club.' });
       }
-      if (!token || !(await verifyActiveSessionToken(token, club)).valid) {
-        res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: false, error: 'Sesión inválida o perteneciente a otro club.' }));
-        return;
-      }
-
       if (!players || players.length === 0) {
-        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: false, error: 'Lista de jugadoras citadas vacía.' }));
-        return;
+        return json(res, 400, { success: false, error: 'Lista de jugadoras citadas vacía.' });
       }
 
-      const result = await executeAmhPrecarga({
-        club,
-        division,
-        partidoId,
-        rival,
-        players
-      });
-
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: true, result }));
+      const result = await executeAmhPrecarga({ club, division, partidoId, rival, players });
+      return json(res, 200, { success: true, result });
     } catch (err) {
       console.error('[API Precarga POST Error]:', err);
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: false, error: err.message }));
+      // Los errores de la automatización describen el paso de AMH que falló y no contienen credenciales.
+      return json(res, 500, { success: false, error: err.message });
     }
-    return;
   }
 
-  res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify({ error: 'Método no permitido' }));
+  return json(res, 405, { error: 'Método no permitido' });
 };

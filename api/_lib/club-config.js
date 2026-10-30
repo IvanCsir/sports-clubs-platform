@@ -1,3 +1,7 @@
+const postgres = require('./postgres');
+
+// Valores por defecto de cada club. Sin CLUBS_CONFIG_JSON, también es el club inicial
+// que `npm run db:migrate` registra en club_catalog.
 const DEFAULT_CLUB = {
   slug: 'regatas-andino',
   name: 'CLUB REGATAS ANDINO',
@@ -10,10 +14,6 @@ const DEFAULT_CLUB = {
     accent: '#00a2ff',
     danger: '#d32f2f'
   },
-  spreadsheetId: '1S0g4BpD6m6Ih9_DQRrdLlnUsruUKrZmlKBAKiWL3XbU',
-  physicalSpreadsheetId: '1dAoeA0_F4RGLDEjJ0taIJiPA3WlMWl5e',
-  dtSpreadsheetId: '1EfZtExHcLrio49A3wmyZcUOCZYZ7jNnatFt-wsebPQg',
-  dtSpreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1EfZtExHcLrio49A3wmyZcUOCZYZ7jNnatFt-wsebPQg/edit',
   tournament: {
     provider: 'amh',
     baseUrl: 'http://15.235.75.172:8080',
@@ -28,35 +28,27 @@ const DEFAULT_CLUB = {
     secret: ''
   }
 };
-const supabase = require('./supabase');
-const localClubs = require('./local-clubs');
-const postgres = require('./postgres');
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+// Clubes del despliegue (CLUBS_CONFIG_JSON o el club por defecto) combinados con el
+// catálogo de PostgreSQL, que es la fuente operativa.
 async function readConfiguredClubsAsync() {
-  if (postgres.isConfigured()) {
-    try {
-      const [clubs, deletedSlugs] = await Promise.all([
-        postgres.listClubs(),
-        postgres.listDeletedClubSlugs()
-      ]);
-      const deleted = new Set(deletedSlugs);
-      const configured = readConfiguredClubs().filter(club => !deleted.has(club.slug));
-      return mergeClubs(configured, clubs).map(normalizeClub);
-    } catch (err) {
-      console.error('[Postgres] No se pudo leer la configuración de clubes:', err.message);
-      throw new Error('No se pudo acceder a la configuración de clubes.');
-    }
+  if (!postgres.isConfigured()) return readConfiguredClubs().map(normalizeClub);
+  try {
+    const [clubs, deletedSlugs] = await Promise.all([
+      postgres.listClubs(),
+      postgres.listDeletedClubSlugs()
+    ]);
+    const deleted = new Set(deletedSlugs);
+    const configured = readConfiguredClubs().filter(club => !deleted.has(club.slug));
+    return mergeClubs(configured, clubs).map(normalizeClub);
+  } catch (err) {
+    console.error('[Postgres] No se pudo leer la configuración de clubes:', err.message);
+    throw new Error('No se pudo acceder a la configuración de clubes.');
   }
-  if (!supabase.isConfigured()) {
-    const local = localClubs.readClubs();
-    return mergeClubs(readConfiguredClubs(), local).map(normalizeClub);
-  }
-  const rows = await supabase.request('clubs?select=config&order=created_at.asc');
-  return rows.length > 0 ? rows.map(row => normalizeClub(row.config)) : readConfiguredClubs();
 }
 
 function readConfiguredClubs() {
@@ -89,11 +81,6 @@ function normalizeClub(club) {
   };
 }
 
-function getClub(slug) {
-  const clubs = mergeClubs(readConfiguredClubs(), supabase.isConfigured() ? [] : localClubs.readClubs()).map(normalizeClub);
-  return slug ? clubs.find(club => club.slug === slug) : undefined;
-}
-
 async function getClubAsync(slug) {
   const clubs = await readConfiguredClubsAsync();
   return slug ? clubs.find(club => club.slug === slug) : undefined;
@@ -118,7 +105,6 @@ function getPublicClub(club) {
 
 module.exports = {
   DEFAULT_CLUB,
-  getClub,
   getClubAsync,
   getPublicClub,
   readConfiguredClubs,

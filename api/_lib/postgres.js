@@ -20,6 +20,22 @@ function getPool() {
   return pool;
 }
 
+// Ejecuta `work(client)` dentro de una transacción y la revierte si algo falla.
+async function withTransaction(work) {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function listClubs() {
   const result = await getPool().query('SELECT config FROM club_catalog ORDER BY created_at ASC');
   return result.rows.map(row => row.config);
@@ -30,29 +46,19 @@ async function listDeletedClubSlugs() {
   return result.rows.map(row => row.slug);
 }
 
-async function insertClub(config) {
-  const client = await getPool().connect();
-  try {
-    await client.query('BEGIN');
+function insertClub(config) {
+  return withTransaction(async client => {
     const result = await client.query(
       `INSERT INTO club_catalog (slug, config) VALUES ($1, $2::jsonb) RETURNING config`,
       [config.slug, JSON.stringify(config)]
     );
     await client.query('DELETE FROM deleted_club_slugs WHERE slug = $1', [config.slug]);
-    await client.query('COMMIT');
     return result.rows[0].config;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
-async function updateClub(slug, config) {
-  const client = await getPool().connect();
-  try {
-    await client.query('BEGIN');
+function updateClub(slug, config) {
+  return withTransaction(async client => {
     const result = await client.query(
       `INSERT INTO club_catalog (slug, config)
        VALUES ($1, $2::jsonb)
@@ -62,33 +68,19 @@ async function updateClub(slug, config) {
       [slug, JSON.stringify(config)]
     );
     await client.query('DELETE FROM deleted_club_slugs WHERE slug = $1', [slug]);
-    await client.query('COMMIT');
     return result.rows[0].config;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
-async function deleteClub(slug) {
-  const client = await getPool().connect();
-  try {
-    await client.query('BEGIN');
+function deleteClub(slug) {
+  return withTransaction(async client => {
     await client.query(
       `INSERT INTO deleted_club_slugs (slug) VALUES ($1)
        ON CONFLICT (slug) DO UPDATE SET deleted_at = NOW()`, [slug]
     );
     const result = await client.query('DELETE FROM club_catalog WHERE slug = $1 RETURNING slug', [slug]);
-    await client.query('COMMIT');
     return { deleted: result.rowCount > 0 };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
-module.exports = { isConfigured, getPool, listClubs, listDeletedClubSlugs, insertClub, updateClub, deleteClub };
+module.exports = { isConfigured, getPool, withTransaction, listClubs, listDeletedClubSlugs, insertClub, updateClub, deleteClub };
