@@ -1724,7 +1724,7 @@ function App() {
           </>
         ) : (
           <>
-            <span className="kicker">SPORTS CLUBS PLATFORM</span>
+            <span className="kicker">BLUE HOCKEY</span>
             <h1>Ingresá a tu club</h1>
             <p className="intro">Abrí el enlace que te compartió el cuerpo técnico de tu club.</p>
           </>

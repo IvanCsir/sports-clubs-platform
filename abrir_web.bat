@@ -1,5 +1,5 @@
 @echo off
-title Sports Clubs Platform
+title Blue Hockey
 echo ======================================================
 echo    Iniciando el portal de clubes...
 echo ======================================================
