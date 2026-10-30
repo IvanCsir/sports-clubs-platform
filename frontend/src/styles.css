@@ -635,6 +635,19 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 }
 @media (max-width: 760px) { .physical-player-layout { grid-template-columns: 1fr; } .physical-player-list { max-height: 260px; } }
 @media (max-width: 760px) { .tournament-grid { grid-template-columns: 1fr; } .tournament-stats { grid-template-columns: repeat(4, 1fr); } .tournament-stats div:nth-child(4) { border-right: 0; } .tournament-stats div:nth-child(-n+4) { border-bottom: 1px solid #8dd3ff20; } }
+@media (max-width: 560px) {
+  .portal { padding: 12px; }
+  .workspace { width: 100%; padding: 16px 0 28px; }
+  .tournament-panel { min-width: 0; margin-top: 14px; }
+  .tournament-actions { align-items: stretch; gap: 4px; margin: 12px 0; }
+  .tournament-tabs { gap: 6px; }
+  .tournament-tabs button { flex: 1 1 auto; min-width: 0; padding: 10px 12px; }
+  .tournament-summary, .tournament-card { min-width: 0; padding: 14px; }
+  .tournament-summary-title { gap: 9px; min-width: 0; }
+  .tournament-summary-title > div { min-width: 0; overflow-wrap: anywhere; }
+  .tournament-summary-title b { flex: 0 0 auto; font-size: 1.45rem; }
+  .tournament-stats div { padding: 10px 3px; }
+}
 @media (max-width: 760px) {
   .sync-status { margin: 8px 0 22px; font-size: .82rem; }
   .refresh { padding: 9px 11px; font-size: .88rem; }
