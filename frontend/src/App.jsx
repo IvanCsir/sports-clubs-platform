@@ -1452,10 +1452,11 @@ function App() {
   useEffect(() => {
     const favicon = document.querySelector('link[rel~="icon"]');
     if (!favicon) return;
-    favicon.href = isLandingRoute ? '/blue-hockey.svg' : workspaceClub?.logoUrl || '/blue-hockey.svg';
-    favicon.type = workspaceClub?.logoUrl?.startsWith('data:image/')
-      ? workspaceClub.logoUrl.slice(5, workspaceClub.logoUrl.indexOf(';'))
-      : '';
+    favicon.href = isLandingRoute ? '/blue-hockey.png' : workspaceClub?.logoUrl || '/blue-hockey.png';
+    favicon.type = isLandingRoute || !workspaceClub?.logoUrl ? 'image/png'
+      : workspaceClub.logoUrl.startsWith('data:image/')
+        ? workspaceClub.logoUrl.slice(5, workspaceClub.logoUrl.indexOf(';'))
+        : '';
   }, [workspaceClub, isLandingRoute]);
 
   async function loadClubs() {
