@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CircleDot, Goal, Target, ArrowDownToLine } from 'lucide-react';
+import { EVENT_LABELS } from '../utils/eventLabels';
 
 const TRACKER_ACTIONS = [
   ['entry', ArrowDownToLine, 'Ingreso al área'],
@@ -7,18 +8,6 @@ const TRACKER_ACTIONS = [
   ['stroke', Target, 'Penal'],
   ['fieldGoal', CircleDot, 'Gol de jugada']
 ];
-
-const EVENT_LABELS = {
-  entry: 'Ingreso al área',
-  corner: 'Córner corto',
-  stroke: 'Penal',
-  fieldGoal: 'Gol de jugada',
-  cornerGoal: 'Gol de córner corto',
-  strokeGoal: 'Gol de penal',
-  green: 'Tarjeta verde',
-  yellow: 'Tarjeta amarilla',
-  red: 'Tarjeta roja'
-};
 
 export default function TrackerPanel({
   club,

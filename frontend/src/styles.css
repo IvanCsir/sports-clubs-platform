@@ -1273,3 +1273,59 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
   .tracker-event-grid > button { min-height: 56px; }
   .tracker-grid.single-team .tracker-event-grid > button { min-height: 92px; }
 }
+
+/* Estadísticas: selectores en una fila, resumen y conclusiones primero */
+.stats-panel { margin-top: 12px; padding: clamp(14px, 3vw, 26px); }
+.stats-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }
+.stats-toolbar select { flex: 1 1 220px; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #b7d5f22b; border-radius: 11px; color: #eaf6ff; background: #0b1a2d; }
+.stats-summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 0 14px; }
+.stats-summary-card { padding: 14px; border-color: #b7d5f21c; background: #ffffff07; }
+.stats-summary-card span { color: #9eb4cc; font-size: .82rem; font-weight: 600; letter-spacing: 0; }
+.stats-summary-card strong { font-size: 1.7rem; line-height: 1.1; }
+.stats-summary-card strong small { font-size: .9rem; }
+.stats-highlights { display: grid; gap: 0; margin: 0 0 16px; padding: 0; border: 1px solid #b7d5f21c; border-radius: 14px; background: #ffffff05; list-style: none; }
+.stats-highlights li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px 14px; }
+.stats-highlights li + li { border-top: 1px solid #b7d5f21a; }
+.stats-highlights svg { width: 20px; height: 20px; color: var(--club-accent, #58bdff); }
+.stats-highlights span { color: #b7c9de; font-size: .88rem; }
+.stats-highlights strong { color: #fff; font-size: .9rem; text-align: right; }
+.stats-tabs { display: flex; width: 100%; margin-bottom: 4px; }
+.stats-tabs button { flex: 1; }
+.stats-table-wrap { margin-top: 12px; }
+.stats-quarter-table { min-width: 560px; }
+.stats-quarter-table th { text-transform: none; letter-spacing: 0; font-size: .82rem; }
+.stats-quarter-table tbody th { color: #eaf6ff; font-size: .86rem; font-weight: 600; background: #0c1a2e; }
+.stats-quarter-table th:first-child { position: sticky; left: 0; z-index: 1; min-width: 150px; }
+.stats-player-table { min-width: 620px; }
+.stats-card-counts { display: inline-flex; gap: 10px; }
+.stats-card-counts > span { display: inline-flex; align-items: center; gap: 4px; }
+.stats-card-counts .dot { width: 10px; height: 14px; border-radius: 2px; }
+.stats-card-counts .dot.green { background: #3fbf7f; }
+.stats-card-counts .dot.yellow { background: #f2c94c; }
+.stats-card-counts .dot.red { background: #e5484d; }
+.stats-empty { display: grid; justify-items: start; gap: 6px; padding: 22px; border: 1px dashed #b7d5f233; border-radius: 14px; background: #ffffff05; }
+.stats-empty strong { font-size: 1.05rem; }
+.stats-empty p { max-width: 460px; margin: 0 0 8px; color: #9eb4cc; line-height: 1.5; }
+.timeline-desc strong.is-away { color: #f2b66d; }
+@media (max-width: 680px) {
+  .stats-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-summary-card strong { font-size: 1.45rem; }
+  .stats-highlights li { grid-template-columns: 22px minmax(0, 1fr); }
+  .stats-highlights strong { grid-column: 2; text-align: left; }
+  .stats-quarter-table th:first-child { min-width: 128px; }
+}
+
+/* Cabecera del club compacta en celular */
+@media (max-width: 760px) {
+  .workspace-header { display: grid; grid-template-columns: 44px minmax(0, 1fr); grid-template-areas: "crest identity" "actions actions"; align-items: center; gap: 4px 12px; margin-bottom: 10px; }
+  .workspace-header > img { grid-area: crest; width: 44px; height: 44px; border-width: 2px; }
+  .workspace-header > div:not(.workspace-header-actions) { grid-area: identity; min-width: 0; }
+  .workspace-header .kicker { font-size: .68rem; }
+  .workspace-header h1 { margin: 1px 0 0; font-size: 1.2rem; line-height: 1.15; letter-spacing: -.01em; }
+  .workspace-header p { display: none; }
+  .workspace-header-actions { grid-area: actions; justify-self: start; margin-left: 0; }
+  .precarga-trigger-btn { padding: 7px 12px; font-size: .8rem; }
+}
+.stats-quarter-table th:first-child { max-width: 170px; }
+.stats-halves-table { min-width: 0; }
+@media (max-width: 680px) { .stats-tabs button { padding: 9px 4px; font-size: .8rem; } }

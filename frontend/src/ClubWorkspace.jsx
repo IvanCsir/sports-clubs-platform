@@ -256,6 +256,7 @@ export default function ClubWorkspace({ club, onBack, showAdminBack }) {
             activeTournamentKey={tournamentStats.activeKey}
             matches={matches}
             authenticated={authenticated}
+            onGoToTracker={() => selectSection('dt')}
           />
         );
       case 'respaldo':

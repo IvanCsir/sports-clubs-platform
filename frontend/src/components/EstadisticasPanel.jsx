@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Goal, Zap, Shield, Timer } from 'lucide-react';
+import { Goal, Zap, Shield } from 'lucide-react';
 import { calculateQuarterStats } from '../utils/statsCalculator';
+import { EVENT_LABELS } from '../utils/eventLabels';
+
+const TABS = [
+  ['quarters', 'Por cuartos'],
+  ['players', 'Jugadoras'],
+  ['timeline', 'Cronología']
+];
 
 function calculatePlayerContributions(events) {
   const players = new Map();
@@ -33,17 +40,30 @@ function calculatePlayerContributions(events) {
   });
 }
 
+const plural = (n, one, many) => `${n} ${Number(n) === 1 ? one : many}`;
+
+function CardCounts({ stats }) {
+  return (
+    <span className="stats-card-counts" aria-label={`${stats.green} verdes, ${stats.yellow} amarillas, ${stats.red} rojas`}>
+      <span><i className="dot green" />{stats.green}</span>
+      <span><i className="dot yellow" />{stats.yellow}</span>
+      <span><i className="dot red" />{stats.red}</span>
+    </span>
+  );
+}
+
 export default function EstadisticasPanel({
   club,
   events = [],
   tournaments = [],
   activeTournamentKey = '',
   matches = [],
-  authenticated
+  authenticated,
+  onGoToTracker
 }) {
   const [selectedMatch, setSelectedMatch] = useState('all');
   const [selectedTournamentKey, setSelectedTournamentKey] = useState(activeTournamentKey);
-  const [activeTab, setActiveTab] = useState('quarters'); // 'quarters' | 'trends' | 'timeline'
+  const [activeTab, setActiveTab] = useState('quarters');
 
   useEffect(() => {
     if (activeTournamentKey) setSelectedTournamentKey(activeTournamentKey);
@@ -56,360 +76,260 @@ export default function EstadisticasPanel({
   const selectedTournament = tournaments.find(tournament => tournament.key === selectedTournamentKey);
   const tournamentEvents = selectedTournament ? selectedTournament.events : events;
 
-  // Filtrar eventos por partido seleccionado
   const filteredEvents = selectedMatch === 'all'
     ? tournamentEvents
     : tournamentEvents.filter(e => (e.match || 'amistoso') === selectedMatch);
   const playerContributions = calculatePlayerContributions(filteredEvents);
 
-  // Obtener partidos únicos presentes en las incidencias
+  // Partidos únicos presentes en las incidencias
   const matchOptions = Array.from(new Set(tournamentEvents.map(e => e.match || 'amistoso')));
 
-  // Calcular estadísticas
   const { quarters, insights, halves } = calculateQuarterStats(filteredEvents);
 
   if (!authenticated) {
     return (
       <section className="stats-panel">
         <div className="stats-hero">
-          <span className="kicker">ANÁLISIS TÁCTICO · {club.shortName || club.name}</span>
-          <h2>Acceso a Estadísticas Avanzadas</h2>
-          <p>Ingresá con tu cuenta Google invitada desde “Acceso cuerpo técnico” para visualizar métricas por cuartos, efectividad en cortos y tendencias.</p>
+          <h2>Estadísticas del equipo</h2>
+          <p>Ingresá con tu cuenta Google invitada desde “Acceso cuerpo técnico” para ver las métricas por cuartos, la efectividad en cortos y las tendencias.</p>
         </div>
       </section>
     );
   }
 
   const homeName = club.shortName || club.name;
-  const awayName = selectedMatch !== 'all'
-    ? (tournamentEvents.find(e => (e.match || 'amistoso') === selectedMatch)?.opponent || matches.find(m => m.round === selectedMatch)?.rival || 'Rival')
-    : 'Rivales (Acumulado)';
+  const rivalOf = key => {
+    const eventMatch = tournamentEvents.find(e => (e.match || 'amistoso') === key);
+    return eventMatch?.opponent || matches.find(m => m.round === key)?.rival || '';
+  };
+  const awayName = selectedMatch !== 'all' ? (rivalOf(selectedMatch) || 'Rival') : 'Rivales';
+  const total = quarters.total;
+  const hasEvents = filteredEvents.length > 0;
 
   return (
     <section className="stats-panel">
-      <div className="stats-heading-row">
-        <div className="stats-hero">
-          <span className="kicker">ESTADÍSTICAS DT · {homeName}</span>
-          <h2>Rendimiento táctico por cuartos</h2>
-          <p>Análisis de efectividad en ingresos al área, córners cortos y evolución durante el partido.</p>
-        </div>
-
-        {tournaments.length > 0 && (
-          <div className="stats-tournament-picker">
-            <select
-              id="select-stats-tournament"
-              aria-label="Seleccionar torneo para las estadísticas"
-              value={selectedTournamentKey || activeTournamentKey}
-              onChange={event => setSelectedTournamentKey(event.target.value)}
-            >
-              {tournaments.map(tournament => (
-                <option key={tournament.key} value={tournament.key}>{tournament.label}</option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
       <div className="stats-toolbar">
-        <div className="stats-selector-box">
-          <label htmlFor="select-stats-match">Seleccionar partido a analizar:</label>
+        {tournaments.length > 1 && (
           <select
-            id="select-stats-match"
-            value={selectedMatch}
-            onChange={e => setSelectedMatch(e.target.value)}
+            aria-label="Torneo"
+            value={selectedTournamentKey || activeTournamentKey}
+            onChange={event => setSelectedTournamentKey(event.target.value)}
           >
-            <option value="all">🌟 Todos los partidos (Acumulado General - {tournamentEvents.length} incidencias)</option>
-            {matchOptions.map(key => {
-              const count = tournamentEvents.filter(e => (e.match || 'amistoso') === key).length;
-              const eventMatch = tournamentEvents.find(e => (e.match || 'amistoso') === key);
-              const matchObj = matches.find(m => m.round === key);
-              const rival = eventMatch?.opponent || matchObj?.rival;
-              const label = rival ? `${key} vs ${rival}` : key;
-              return (
-                <option key={key} value={key}>
-                  {label} ({count} incidencias)
-                </option>
-              );
-            })}
+            {tournaments.map(tournament => (
+              <option key={tournament.key} value={tournament.key}>{tournament.label}</option>
+            ))}
           </select>
-        </div>
-
-        <div className="stats-subtabs">
-          <button
-            className={activeTab === 'quarters' ? 'active' : ''}
-            onClick={() => setActiveTab('quarters')}
-          >
-            📊 Cuartos
-          </button>
-          <button
-            className={activeTab === 'trends' ? 'active' : ''}
-            onClick={() => setActiveTab('trends')}
-          >
-            📈 Tendencias 1T vs 2T
-          </button>
-          <button
-            className={activeTab === 'timeline' ? 'active' : ''}
-            onClick={() => setActiveTab('timeline')}
-          >
-            <Timer aria-hidden="true" /> Cronología ({filteredEvents.length})
-          </button>
-          <button
-            className={activeTab === 'players' ? 'active' : ''}
-            onClick={() => setActiveTab('players')}
-          >
-            👥 Jugadoras
-          </button>
-        </div>
+        )}
+        <select aria-label="Partido" value={selectedMatch} onChange={e => setSelectedMatch(e.target.value)}>
+          <option value="all">Todos los partidos</option>
+          {matchOptions.map(key => {
+            const rival = rivalOf(key);
+            return <option key={key} value={key}>{rival ? `${key} · vs ${rival}` : key}</option>;
+          })}
+        </select>
       </div>
 
-      {/* Resumen rápido de métricas */}
-      <div className="stats-summary-grid">
-        <div className="stats-summary-card">
-          <span>MARCADOR GLOBAL</span>
-          <strong>{quarters.total.home.goals} - {quarters.total.away.goals}</strong>
-          <small>{homeName} vs {awayName}</small>
+      {!hasEvents ? (
+        <div className="stats-empty">
+          <strong>{tournamentEvents.length ? 'No hay incidencias para este partido' : 'Todavía no hay incidencias'}</strong>
+          <p>Registralas en la Botonera durante el partido y acá vas a ver cómo rindió el equipo en cada cuarto.</p>
+          {onGoToTracker && <button type="button" onClick={onGoToTracker}>Ir a la Botonera</button>}
         </div>
-        <div className="stats-summary-card">
-          <span>INGRESOS AL ÁREA</span>
-          <strong>{quarters.total.home.entries} <small>vs</small> {quarters.total.away.entries}</strong>
-          <small>Conversión propia: {quarters.total.home.conversion}%</small>
-        </div>
-        <div className="stats-summary-card">
-          <span>CÓRNERS CORTOS</span>
-          <strong>{quarters.total.home.corners} <small>({quarters.total.home.cornerGoals} goles)</small></strong>
-          <small>Efectividad: {quarters.total.home.cornerEff}%</small>
-        </div>
-        <div className="stats-summary-card">
-          <span>PENALES (STROKES)</span>
-          <strong>{quarters.total.home.strokes} <small>({quarters.total.home.strokeGoals} goles)</small></strong>
-          <small>Efectividad: {quarters.total.home.strokeEff}%</small>
-        </div>
-      </div>
-
-      {activeTab === 'quarters' && (
-        <div className="stats-tab-content">
-          {/* Insights tácticos */}
-          <div className="tactical-insights">
-            <div className="insight-card">
-              <span className="insight-icon"><Goal /></span>
-              <div>
-                <strong>Mejor cuarto ofensivo</strong>
-                <p>
-                  {insights.bestQByGoals.val > 0
-                    ? `${insights.bestQByGoals.q}° Cuarto (${insights.bestQByGoals.val} goles marcados)`
-                    : 'Aún no se registraron goles'}
-                </p>
-              </div>
+      ) : (
+        <>
+          <div className="stats-summary-grid">
+            <div className="stats-summary-card">
+              <span>Marcador</span>
+              <strong>{total.home.goals} - {total.away.goals}</strong>
+              <small>{homeName} vs {awayName}</small>
             </div>
-            <div className="insight-card">
-              <span className="insight-icon"><Zap /></span>
-              <div>
-                <strong>Mayor volumen de ataque</strong>
-                <p>
-                  {insights.bestQByEntries.val > 0
-                    ? `${insights.bestQByEntries.q}° Cuarto (${insights.bestQByEntries.val} ingresos al área)`
-                    : 'Sin registros de ingresos'}
-                </p>
-              </div>
+            <div className="stats-summary-card">
+              <span>Ingresos al área</span>
+              <strong>{total.home.entries} <small>vs</small> {total.away.entries}</strong>
+              <small>Conversión propia {total.home.conversion}%</small>
             </div>
-            <div className="insight-card">
-              <span className="insight-icon"><Shield /></span>
-              <div>
-                <strong>Cuarto defensivo más exigido</strong>
-                <p>
-                  {insights.hardestQDef.val > 0
-                    ? `${insights.hardestQDef.q}° Cuarto (${insights.hardestQDef.val} ingresos del rival)`
-                    : 'Sin ingresos rivales registrados'}
-                </p>
-              </div>
+            <div className="stats-summary-card">
+              <span>Córners cortos</span>
+              <strong>{total.home.corners}</strong>
+              <small>{plural(total.home.cornerGoals, 'gol', 'goles')} · {total.home.cornerEff}% de efectividad</small>
+            </div>
+            <div className="stats-summary-card">
+              <span>Penales</span>
+              <strong>{total.home.strokes}</strong>
+              <small>{plural(total.home.strokeGoals, 'gol', 'goles')} · {total.home.strokeEff}% de efectividad</small>
             </div>
           </div>
 
-          {/* Tabla de análisis por cuartos */}
-          <div className="stats-table-wrap">
-            <table className="stats-quarter-table">
-              <thead>
-                <tr>
-                  <th>Métrica</th>
-                  <th>1° Cuarto</th>
-                  <th>2° Cuarto</th>
-                  <th>3° Cuarto</th>
-                  <th>4° Cuarto</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>⚽ Goles ({homeName} - Rival)</strong></td>
-                  {[1, 2, 3, 4, 'total'].map(q => (
-                    <td key={q} className="stat-highlight">
-                      {quarters[q].home.goals} - {quarters[q].away.goals}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td>📥 Ingresos al Área ({homeName})</td>
-                  {[1, 2, 3, 4, 'total'].map(q => (
-                    <td key={q}>{quarters[q].home.entries}</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td>📥 Ingresos al Área (Rival)</td>
-                  {[1, 2, 3, 4, 'total'].map(q => (
-                    <td key={q}>{quarters[q].away.entries}</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td>🏑 Córners Cortos ({homeName})</td>
-                  {[1, 2, 3, 4, 'total'].map(q => (
-                    <td key={q}>
-                      {quarters[q].home.corners}
-                      {quarters[q].home.corners > 0 && (
-                        <small className="eff-tag"> ({quarters[q].home.cornerEff}%)</small>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td>🏑 Córners Cortos (Rival)</td>
-                  {[1, 2, 3, 4, 'total'].map(q => (
-                    <td key={q}>
-                      {quarters[q].away.corners}
-                      {quarters[q].away.corners > 0 && (
-                        <small className="eff-tag"> ({quarters[q].away.cornerEff}%)</small>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td>🎯 Penales ({homeName})</td>
-                  {[1, 2, 3, 4, 'total'].map(q => (
-                    <td key={q}>
-                      {quarters[q].home.strokes} ({quarters[q].home.strokeGoals}G)
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td>🟨 Tarjetas Recibidas</td>
-                  {[1, 2, 3, 4, 'total'].map(q => (
-                    <td key={q}>
-                      🟩 {quarters[q].home.green} | 🟨 {quarters[q].home.yellow} | 🟥 {quarters[q].home.red}
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
+          <ul className="stats-highlights">
+            <li>
+              <Goal aria-hidden="true" />
+              <span>Mejor cuarto ofensivo</span>
+              <strong>{insights.bestQByGoals.val > 0 ? `${insights.bestQByGoals.q}° · ${plural(insights.bestQByGoals.val, 'gol', 'goles')}` : 'Sin goles todavía'}</strong>
+            </li>
+            <li>
+              <Zap aria-hidden="true" />
+              <span>Mayor volumen de ataque</span>
+              <strong>{insights.bestQByEntries.val > 0 ? `${insights.bestQByEntries.q}° · ${plural(insights.bestQByEntries.val, 'ingreso', 'ingresos')}` : 'Sin ingresos todavía'}</strong>
+            </li>
+            <li>
+              <Shield aria-hidden="true" />
+              <span>Cuarto más exigido en defensa</span>
+              <strong>{insights.hardestQDef.val > 0 ? `${insights.hardestQDef.q}° · ${plural(insights.hardestQDef.val, 'ingreso rival', 'ingresos rivales')}` : 'Sin ingresos rivales'}</strong>
+            </li>
+          </ul>
+
+          <div className="segmented stats-tabs" role="group" aria-label="Vista de estadísticas">
+            {TABS.map(([id, label]) => (
+              <button type="button" key={id} className={activeTab === id ? 'active' : ''} aria-pressed={activeTab === id} onClick={() => setActiveTab(id)}>
+                {label}{id === 'timeline' ? ` (${filteredEvents.length})` : ''}
+              </button>
+            ))}
           </div>
-        </div>
-      )}
 
-      {activeTab === 'trends' && (
-        <div className="stats-tab-content">
-          <div className="halves-comparison-grid">
-            <div className="half-card">
-              <h3>Primer Tiempo (1°C + 2°C)</h3>
-              <div className="half-metric">
-                <span>Goles marcados:</span>
-                <strong>{halves.half1.home.goals} - {halves.half1.away.goals}</strong>
-              </div>
-              <div className="half-metric">
-                <span>Ingresos al área:</span>
-                <strong>{halves.half1.home.entries} vs {halves.half1.away.entries}</strong>
-              </div>
-              <div className="half-metric">
-                <span>Córners cortos:</span>
-                <strong>{halves.half1.home.corners} ({halves.half1.home.cornerGoals}G)</strong>
-              </div>
-            </div>
-
-            <div className="half-card">
-              <h3>Segundo Tiempo (3°C + 4°C)</h3>
-              <div className="half-metric">
-                <span>Goles marcados:</span>
-                <strong>{halves.half2.home.goals} - {halves.half2.away.goals}</strong>
-              </div>
-              <div className="half-metric">
-                <span>Ingresos al área:</span>
-                <strong>{halves.half2.home.entries} vs {halves.half2.away.entries}</strong>
-              </div>
-              <div className="half-metric">
-                <span>Córners cortos:</span>
-                <strong>{halves.half2.home.corners} ({halves.half2.home.cornerGoals}G)</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'timeline' && (
-        <div className="stats-tab-content">
-          <div className="timeline-list">
-            {filteredEvents.length === 0 ? (
-              <p className="empty-state">No hay incidencias registradas para este filtro.</p>
-            ) : (
-              [...filteredEvents].reverse().map(e => (
-                <div key={e.id} className="timeline-item">
-                  <span className="timeline-badge">{e.quarter}°C</span>
-                  <div className="timeline-desc">
-                    <strong>{e.team === 'home' ? homeName : awayName}</strong>
-                    <span>{e.type}{e.player ? ` · Gol: ${e.player}` : ''}{e.generatedBy ? ` · Generó: ${e.generatedBy}` : ''}</span>
-                  </div>
-                  <small className="timeline-time">
-                    {e.at ? new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                  </small>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'players' && (
-        <div className="stats-tab-content">
-          <div className="stats-player-contributions">
-            <div className="stats-player-heading">
-              <div>
-                <h3>Goles y córners generados por jugadora</h3>
-                <p>Se aplican los filtros de torneo y partido seleccionados.</p>
-              </div>
-            </div>
-            {playerContributions.length ? (
+          {activeTab === 'quarters' && (
+            <div className="stats-tab-content">
               <div className="stats-table-wrap">
-                <table className="stats-quarter-table stats-player-table">
+                <table className="stats-quarter-table">
                   <thead>
                     <tr>
-                      <th scope="col">Jugadora</th>
-                      <th scope="col">Gol de jugada</th>
-                      <th scope="col">Gol de corto</th>
-                      <th scope="col">Gol de penal</th>
-                      <th scope="col">Goles</th>
-                      <th scope="col">Cortos generados</th>
+                      <th scope="col">Por cuarto</th>
+                      {['1°', '2°', '3°', '4°', 'Total'].map(label => <th scope="col" key={label}>{label}</th>)}
                     </tr>
                   </thead>
                   <tbody>
-                    {playerContributions.map(player => {
-                      const totalGoals = player.fieldGoals + player.cornerGoals + player.strokeGoals;
-                      return (
-                        <tr key={player.name}>
-                          <td><strong>{player.name}</strong></td>
-                          <td>{player.fieldGoals}</td>
-                          <td>{player.cornerGoals}</td>
-                          <td>{player.strokeGoals}</td>
-                          <td className="stat-highlight">{totalGoals}</td>
-                          <td>{player.cornersGenerated}</td>
-                        </tr>
-                      );
-                    })}
+                    <tr>
+                      <th scope="row">Goles (a favor - en contra)</th>
+                      {[1, 2, 3, 4, 'total'].map(q => (
+                        <td key={q} className="stat-highlight">{quarters[q].home.goals} - {quarters[q].away.goals}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <th scope="row">Ingresos al área</th>
+                      {[1, 2, 3, 4, 'total'].map(q => <td key={q}>{quarters[q].home.entries}</td>)}
+                    </tr>
+                    <tr>
+                      <th scope="row">Ingresos del rival</th>
+                      {[1, 2, 3, 4, 'total'].map(q => <td key={q}>{quarters[q].away.entries}</td>)}
+                    </tr>
+                    <tr>
+                      <th scope="row">Córners cortos</th>
+                      {[1, 2, 3, 4, 'total'].map(q => (
+                        <td key={q}>
+                          {quarters[q].home.corners}
+                          {quarters[q].home.corners > 0 && <small className="eff-tag"> ({quarters[q].home.cornerEff}%)</small>}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <th scope="row">Córners del rival</th>
+                      {[1, 2, 3, 4, 'total'].map(q => (
+                        <td key={q}>
+                          {quarters[q].away.corners}
+                          {quarters[q].away.corners > 0 && <small className="eff-tag"> ({quarters[q].away.cornerEff}%)</small>}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <th scope="row">Penales</th>
+                      {[1, 2, 3, 4, 'total'].map(q => <td key={q}>{quarters[q].home.strokes} ({quarters[q].home.strokeGoals} gol)</td>)}
+                    </tr>
+                    <tr>
+                      <th scope="row">Tarjetas</th>
+                      {[1, 2, 3, 4, 'total'].map(q => <td key={q}><CardCounts stats={quarters[q].home} /></td>)}
+                    </tr>
                   </tbody>
                 </table>
               </div>
-            ) : (
-              <p className="empty-state">Todavía no hay goles o córners generados con jugadoras identificadas en este filtro.</p>
-            )}
-          </div>
-        </div>
+
+              <div className="stats-table-wrap">
+                <table className="stats-quarter-table stats-halves-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Primer y segundo tiempo</th>
+                      <th scope="col">1° tiempo</th>
+                      <th scope="col">2° tiempo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">Goles (a favor - en contra)</th>
+                      <td className="stat-highlight">{halves.half1.home.goals} - {halves.half1.away.goals}</td>
+                      <td className="stat-highlight">{halves.half2.home.goals} - {halves.half2.away.goals}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Ingresos (a favor - en contra)</th>
+                      <td>{halves.half1.home.entries} - {halves.half1.away.entries}</td>
+                      <td>{halves.half2.home.entries} - {halves.half2.away.entries}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Córners cortos</th>
+                      <td>{halves.half1.home.corners} ({halves.half1.home.cornerGoals} gol)</td>
+                      <td>{halves.half2.home.corners} ({halves.half2.home.cornerGoals} gol)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'players' && (
+            <div className="stats-tab-content">
+              {playerContributions.length ? (
+                <div className="stats-table-wrap">
+                  <table className="stats-quarter-table stats-player-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Jugadora</th>
+                        <th scope="col">Gol de jugada</th>
+                        <th scope="col">Gol de corto</th>
+                        <th scope="col">Gol de penal</th>
+                        <th scope="col">Goles</th>
+                        <th scope="col">Cortos generados</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {playerContributions.map(player => {
+                        const totalGoals = player.fieldGoals + player.cornerGoals + player.strokeGoals;
+                        return (
+                          <tr key={player.name}>
+                            <th scope="row">{player.name}</th>
+                            <td>{player.fieldGoals}</td>
+                            <td>{player.cornerGoals}</td>
+                            <td>{player.strokeGoals}</td>
+                            <td className="stat-highlight">{totalGoals}</td>
+                            <td>{player.cornersGenerated}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="empty-state">Todavía no hay goles ni córners con jugadoras identificadas en este partido.</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'timeline' && (
+            <div className="stats-tab-content">
+              <div className="timeline-list">
+                {[...filteredEvents].reverse().map(e => (
+                  <div key={e.id} className="timeline-item">
+                    <span className="timeline-badge">{e.quarter}°</span>
+                    <div className="timeline-desc">
+                      <strong className={e.team === 'home' ? '' : 'is-away'}>{e.team === 'home' ? homeName : awayName}</strong>
+                      <span>{EVENT_LABELS[e.type] || e.type}{e.player ? ` · Gol: ${e.player}` : ''}{e.generatedBy ? ` · Generó: ${e.generatedBy}` : ''}</span>
+                    </div>
+                    <small className="timeline-time">
+                      {e.at ? new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </small>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </section>
   );
 }
-
