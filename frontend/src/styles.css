@@ -1227,8 +1227,14 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
   .tracker-scoreline b { padding: 2px 12px; font-size: 1.8rem; }
   .tracker-controls .tracker-quarters { flex: 1; }
   .tracker-controls .tracker-quarters button { min-width: 0; }
-  .tracker-controls .tracker-team-view { display: none; }
+  .tracker-controls .tracker-team-view { order: 3; flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tracker-controls .tracker-team-view button { min-height: 36px; padding: 4px 6px; overflow: hidden; font-size: .78rem; line-height: 1.1; text-overflow: ellipsis; }
   .tracker-controls .tracker-quarters button, .tracker-undo { min-height: 40px; }
+  .tracker-grid.single-team .tracker-event-icon { display: flex; }
+  .tracker-grid.single-team .tracker-event-grid > button { grid-template-areas: "icon num" "label num" "total num"; min-height: 110px; padding: 12px 14px; }
+  .tracker-grid.single-team .tracker-event-grid strong { font-size: .95rem; }
+  .tracker-grid.single-team .tracker-event-grid b { font-size: 2.6rem; }
+  .tracker-grid.single-team .tracker-cards > span, .tracker-grid.single-team .tracker-cards small { display: inline; }
   .live-mode .workspace { padding-top: 8px; }
   .live-mode .workspace-header, .live-mode .view-toolbar { display: none; }
   .live-mode .tracker-panel { margin-top: 0; padding: 10px; }
@@ -1251,4 +1257,19 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
   .tracker-event-grid b { font-size: 1.9rem; }
   .tracker-status-line { margin-top: 4px; }
   .tracker-cards { margin-top: 8px; padding-top: 8px; }
+}
+/* El rival se distingue por color (ámbar) para no confundir las columnas ni la vista individual */
+.tracker-team.away { border-color: #f2b66d55; background: #f2b66d0b; }
+.tracker-team.away h3, .tracker-team.away .tracker-event-icon { color: #f2b66d; }
+.tracker-team.away .tracker-event-grid > button:hover { border-color: #f2b66d88; background: #2a2a2e; }
+.tracker-team.away .tracker-event-grid > button.flash { animation-name: tracker-flash-away; }
+@keyframes tracker-flash-away { from { background: #8a6330; } to { background: #10243c; } }
+@media (prefers-reduced-motion: reduce) { .tracker-team.away .tracker-event-grid > button.flash { border-color: #f2b66d; } }
+.tracker-team-view button[data-team="away"].active { border-color: #f2b66d; color: #1d1405; background: #f2b66d; }
+.tracker-panel.viewing-away .tracker-live { border-bottom-color: #f2b66d88; box-shadow: 0 2px 0 #f2b66d33; }
+@media (max-width: 680px) and (max-height: 720px) {
+  .tracker-live { padding-bottom: 4px; }
+  .tracker-status-line { min-height: 1.1em; font-size: .72rem; }
+  .tracker-event-grid > button { min-height: 56px; }
+  .tracker-grid.single-team .tracker-event-grid > button { min-height: 92px; }
 }

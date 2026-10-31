@@ -276,7 +276,7 @@ export default function TrackerPanel({
   const lastEvent = currentEvents.at(-1);
 
   return (
-    <section className="tracker-panel">
+    <section className={`tracker-panel${teamView === 'away' ? ' viewing-away' : ''}`}>
       <div className="tracker-live">
         <div className="tracker-scoreline" aria-live="polite">
           <span>{homeName}</span>
@@ -291,7 +291,7 @@ export default function TrackerPanel({
           </div>
           <div className="tracker-team-view" role="group" aria-label="Equipo">
             {[['home', homeName], ['away', awayName], ['both', 'Ambos']].map(([team, label]) => (
-              <button type="button" className={teamView === team ? 'active' : ''} aria-pressed={teamView === team} onClick={() => setTeamView(team)} key={team}>{label}</button>
+              <button type="button" data-team={team} className={teamView === team ? 'active' : ''} aria-pressed={teamView === team} onClick={() => setTeamView(team)} key={team}>{label}</button>
             ))}
           </div>
           <button type="button" className="tracker-undo" onClick={undoLastAction} disabled={!currentEvents.length || savingEvent}>
