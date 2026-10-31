@@ -53,7 +53,8 @@ export default function WorkspaceNav({ club, view, sections, authenticated, onSe
   const groups = items.filter(item => item.type === 'group');
   const activeGroup = groups.find(group => group.sections.some(section => section.id === view));
   const playerSections = PLAYER_SECTION_IDS.map(byId).filter(Boolean);
-  const expandedGroup = groups.find(group => group.id === openGroup);
+  // El submenú del grupo activo queda visible para saber en qué sección se está; abrir otro grupo lo reemplaza.
+  const expandedGroup = groups.find(group => group.id === openGroup) || activeGroup;
   const inBottomBar = BOTTOM_BAR.some(item => item.id === view);
 
   function select(id) {
@@ -77,9 +78,9 @@ export default function WorkspaceNav({ club, view, sections, authenticated, onSe
       type="button"
       key={group.id}
       className={`workspace-nav-more${activeGroup?.id === group.id ? ' active' : ''}`}
-      aria-expanded={openGroup === group.id}
+      aria-expanded={expandedGroup?.id === group.id}
       onClick={() => setOpenGroup(open => open === group.id ? false : group.id)}
-    >{group.label} <span aria-hidden="true">{openGroup === group.id ? '−' : '+'}</span></button>
+    >{group.label} <span aria-hidden="true">{expandedGroup?.id === group.id ? '−' : '+'}</span></button>
   );
 
   const mobileItem = section => (

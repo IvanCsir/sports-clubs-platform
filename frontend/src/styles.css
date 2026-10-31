@@ -798,11 +798,23 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .workspace-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .precarga-trigger-btn { font-size: .85rem; padding: 9px 14px; }
 @media (min-width: 761px) {
-  .workspace-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "identity crest" "actions actions"; align-items: center; column-gap: 24px; row-gap: 12px; }
-  .workspace-header > img { grid-area: crest; justify-self: end; }
-  .workspace-header > div:not(.workspace-header-actions) { grid-area: identity; min-width: 0; }
-  .workspace-header-actions { grid-area: actions; justify-self: end; margin-left: 0; }
+  .workspace-header { display: flex; flex-wrap: nowrap; align-items: center; gap: 16px; margin-bottom: 14px; }
+  .workspace-header > img { width: 56px; height: 56px; border-width: 2px; }
+  .workspace-header > div:not(.workspace-header-actions) { flex: 1; min-width: 0; }
+  .workspace-header h1 { margin: 2px 0 0; font-size: clamp(1.5rem, 2.4vw, 2rem); letter-spacing: -.02em; }
+  .workspace-header p { margin: 2px 0 0; font-size: .9rem; }
+  .workspace-header-actions { flex-wrap: nowrap; margin-left: auto; }
+  .workspace-nav { margin: 12px 0 14px; }
 }
+.workspace-nav-secondary { align-items: center; margin: -6px 0 16px; padding: 0 0 0 4px; border: 0; border-left: 2px solid var(--club-accent, #00a2ff); border-radius: 0; background: transparent; }
+.workspace-nav-secondary button { padding: 8px 13px; font-size: .88rem; }
+.view-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 0 0 14px; }
+.view-toolbar:empty { display: none; }
+.view-toolbar .sync-status { flex: 1; justify-content: flex-end; min-height: 0; margin: 0; }
+.segmented { display: inline-flex; padding: 3px; border: 1px solid #8dd3ff40; border-radius: 12px; background: #ffffff0a; }
+.segmented button { padding: 8px 14px; border-radius: 9px; color: #b7c9de; background: transparent; font-size: .88rem; }
+.segmented button.active { color: #071426; background: var(--club-accent, #00a2ff); }
+@media (max-width: 760px) { .view-toolbar .sync-status { flex-basis: 100%; justify-content: space-between; } }
 
 
 /* ==========================================================================

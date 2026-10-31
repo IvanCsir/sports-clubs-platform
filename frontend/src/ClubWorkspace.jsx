@@ -345,10 +345,11 @@ export default function ClubWorkspace({ club, onBack, showAdminBack }) {
           onLogout={logoutStaff}
         />
 
+        <div className="view-toolbar">
         {showsCitations && (
-          <div className="category-tabs">
-            <button className={category === 'primera' ? 'active' : ''} onClick={() => setCategory('primera')}>1ra División</button>
-            <button className={category === 'intermedia' ? 'active' : ''} onClick={() => setCategory('intermedia')}>Intermedia</button>
+          <div className="segmented" role="group" aria-label="Categoría">
+            <button type="button" className={category === 'primera' ? 'active' : ''} aria-pressed={category === 'primera'} onClick={() => setCategory('primera')}>1ra División</button>
+            <button type="button" className={category === 'intermedia' ? 'active' : ''} aria-pressed={category === 'intermedia'} onClick={() => setCategory('intermedia')}>Intermedia</button>
           </div>
         )}
 
@@ -368,6 +369,7 @@ export default function ClubWorkspace({ club, onBack, showAdminBack }) {
             }} aria-label={citationLoadState.error ? 'Reintentar carga de datos' : 'Actualizar datos'}><span aria-hidden="true">↻</span><span>{citationLoadState.error ? 'Reintentar' : 'Actualizar'}</span></button>
           </div>
         )}
+        </div>
 
         {renderView()}
       </section>
