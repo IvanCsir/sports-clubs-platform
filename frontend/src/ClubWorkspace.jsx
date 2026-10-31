@@ -303,7 +303,7 @@ export default function ClubWorkspace({ club, onBack, showAdminBack }) {
   }
 
   return (
-    <main className="portal" style={{ '--club-accent': club.theme?.accent || '#00a2ff', '--club-primary': club.theme?.primary || '#1e88e5' }}>
+    <main className={`portal${view === 'dt' ? ' live-mode' : ''}`} style={{ '--club-accent': club.theme?.accent || '#00a2ff', '--club-primary': club.theme?.primary || '#1e88e5' }}>
       <section className="workspace">
         {showAdminBack && <button className="secondary back-button" onClick={() => { logoutStaff(); onBack(); }}>← Volver a administración</button>}
         <header className="workspace-header">

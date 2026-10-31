@@ -1227,10 +1227,28 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
   .tracker-scoreline b { padding: 2px 12px; font-size: 1.8rem; }
   .tracker-controls .tracker-quarters { flex: 1; }
   .tracker-controls .tracker-quarters button { min-width: 0; }
-  .tracker-controls .tracker-team-view { order: 3; flex: 1 1 100%; }
-  .tracker-controls .tracker-team-view button { min-height: 38px; padding: 6px; font-size: .78rem; line-height: 1.15; }
-  .tracker-controls .tracker-quarters button, .tracker-undo { min-height: 38px; }
-  .tracker-event-grid > button { min-height: 88px; padding: 12px; }
-  .tracker-event-grid b { font-size: 2.2rem; }
-  .tracker-grid { grid-template-columns: minmax(0, 1fr); }
+  .tracker-controls .tracker-team-view { display: none; }
+  .tracker-controls .tracker-quarters button, .tracker-undo { min-height: 40px; }
+  .live-mode .workspace { padding-top: 8px; }
+  .live-mode .workspace-header, .live-mode .view-toolbar { display: none; }
+  .live-mode .tracker-panel { margin-top: 0; padding: 10px; }
+  .tracker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .tracker-team { padding: 8px; }
+  .tracker-team h3 { margin: 0 0 6px; overflow: hidden; font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
+  .tracker-event-grid { gap: 8px; }
+  .tracker-event-grid > button { grid-template-areas: "label num" "total num"; min-height: 76px; padding: 8px 10px; }
+  .tracker-event-icon { display: none; }
+  .tracker-event-grid strong { font-size: .8rem; }
+  .tracker-event-grid b { font-size: 2.1rem; }
+  .tracker-cards { flex-wrap: nowrap; gap: 6px; margin-top: 10px; padding-top: 10px; }
+  .tracker-cards > span, .tracker-cards small { display: none; }
+  .tracker-cards button { flex: 1; min-width: 0; min-height: 44px; padding: 4px; }
+}
+.tracker-team.away .tracker-event-grid b { color: #f2b66d; }
+@media (max-width: 680px) and (max-height: 720px) {
+  .tracker-event-grid { gap: 6px; }
+  .tracker-event-grid > button { min-height: 60px; padding: 6px 10px; }
+  .tracker-event-grid b { font-size: 1.9rem; }
+  .tracker-status-line { margin-top: 4px; }
+  .tracker-cards { margin-top: 8px; padding-top: 8px; }
 }

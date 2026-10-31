@@ -35,7 +35,7 @@ export default function TrackerPanel({
 }) {
   const [matchIndex, setMatchIndex] = useState(-1);
   const [quarter, setQuarter] = useState(1);
-  const [teamView, setTeamView] = useState('home');
+  const [teamView, setTeamView] = useState('both');
   const [authStatus, setAuthStatus] = useState('');
   const [eventFlow, setEventFlow] = useState(null);
   const [eventFlowError, setEventFlowError] = useState('');
