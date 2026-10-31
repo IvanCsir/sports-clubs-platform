@@ -28,10 +28,22 @@ const QUARTERS = [
 ];
 
 const MORE = [
-  ['Evaluaciones físicas', 'Cargá las pruebas de cada jugadora y mirá cómo evoluciona a lo largo de la temporada.'],
-  ['Seguimiento del plantel', 'Las jugadoras completan wellness y cargas de entrenamiento desde el celular; el cuerpo técnico ve el resumen.'],
+  ['Torneos de AMH', 'Fixture, resultados y tabla de posiciones de AMH para 1ra División e Intermedia.'],
+  ['Para las jugadoras', 'Ven su citación y el plan del partido, y completan wellness y cargas desde el celular.'],
   ['Plantel y accesos', 'Sumá jugadoras por categoría y dale acceso a cada integrante del cuerpo técnico con su cuenta de Google.'],
   ['Temporadas y respaldo', 'Los datos quedan ordenados por temporada y torneo, y podés descargar un respaldo cuando quieras.']
+];
+
+const WELLNESS_TODAY = [
+  { name: 'C. Ruiz', value: 86 },
+  { name: 'L. Paz', value: 74 },
+  { name: 'M. Soto', value: 58, alert: true },
+  { name: 'A. Díaz', value: 81 }
+];
+
+const LOAD_WEEK = [
+  { day: 'lun', value: 420 }, { day: 'mar', value: 520 }, { day: 'mié', value: 0 }, { day: 'jue', value: 610 },
+  { day: 'vie', value: 380 }, { day: 'sáb', value: 700 }, { day: 'dom', value: 0 }
 ];
 
 // Líneas del campo: línea de fondo, arco del círculo de tiro, su borde punteado, punto de penal y arco.
@@ -168,6 +180,38 @@ function EstadisticasShot() {
   );
 }
 
+function SeguimientoShot() {
+  const max = Math.max(...LOAD_WEEK.map(item => item.value));
+  return (
+    <figure className="landing-shot" aria-label="Vista de ejemplo del seguimiento del plantel">
+      <div className="shot-head"><strong>Wellness, cargas y disponibilidad</strong><span>Categoría: Todas</span></div>
+      <div className="shot-tiles">
+        <div><span>Wellness hoy</span><b>16/18</b></div>
+        <div><span>Disposición promedio</span><b>76%</b></div>
+        <div><span>Cargas hoy</span><b>14/18</b></div>
+      </div>
+      <h4 className="shot-title">Respuestas de wellness de hoy</h4>
+      <ul className="shot-responses">
+        {WELLNESS_TODAY.map(item => (
+          <li key={item.name} className={item.alert ? 'alert' : ''}>
+            <span>{item.name}<small>disposición</small></span>
+            <b>{item.value}%</b>
+          </li>
+        ))}
+      </ul>
+      <div className="shot-trend-head"><h4 className="shot-title">Carga percibida, últimos 7 días</h4><span>+120 UA vs. semana anterior</span></div>
+      <div className="shot-trend">
+        {LOAD_WEEK.map(item => (
+          <div key={item.day}>
+            <span style={{ height: item.value ? `${(item.value / max) * 100}%` : '4px' }} className={item.value ? '' : 'empty'} />
+            <small>{item.day}</small>
+          </div>
+        ))}
+      </div>
+      <figcaption>Datos de ejemplo</figcaption>
+    </figure>
+  );
+}
 export default function LandingPage() {
   const [showChat, setShowChat] = useState(false);
   useEffect(() => {
@@ -182,13 +226,13 @@ export default function LandingPage() {
         <Pitch className="landing-pitch" />
         <header className="landing-nav landing-wrap">
           <a className="landing-brand" href="/inicio" aria-label="Blue Hockey, inicio"><img src="/blue-hockey-icon.png" alt="" /><span>Blue Hockey</span></a>
-          <nav aria-label="Secciones"><a href="#momentos">Cómo funciona</a><a href="#ademas">Y además</a></nav>
+          <nav aria-label="Secciones"><a href="#momentos">Cómo funciona</a><a href="#preparacion-fisica">Preparación física</a><a href="#ademas">Y además</a></nav>
           <a className="landing-nav-link" href="/">Ingresar a mi club</a>
         </header>
         <div className="landing-hero-grid landing-wrap">
           <div className="landing-hero-copy">
             <h1>Anotá el partido mientras se juega.</h1>
-            <p>Blue Hockey es la plataforma del cuerpo técnico: citaciones, plan de partido, botonera en vivo y estadísticas por cuarto, en un solo lugar y pensada para el celular.</p>
+            <p>Blue Hockey es la plataforma del cuerpo técnico: citaciones, plan de partido, botonera en vivo, estadísticas por cuarto, wellness y control de cargas, en un solo lugar y pensada para el celular.</p>
             <div className="landing-actions">
               <a className="landing-btn" href="/">Ingresar a mi club</a>
               <a className="landing-btn ghost" href={whatsAppLink} target="_blank" rel="noreferrer">Sumar mi club</a>
@@ -241,6 +285,32 @@ export default function LandingPage() {
         </article>
       </section>
 
+      <section className="landing-pf" id="preparacion-fisica" aria-labelledby="pf-title">
+        <div className="landing-wrap">
+          <h2 id="pf-title">El preparador físico también tiene su lugar</h2>
+          <div className="landing-pf-grid">
+            <SeguimientoShot />
+            <div className="landing-pf-copy">
+              <div>
+                <h3>Wellness todos los días</h3>
+                <p>Cada jugadora responde desde el celular, eligiendo su nombre y sin crear una cuenta: calidad del sueño, fatiga, dolor muscular, estrés y estado de ánimo. Vos ves la disposición de cada una y quién necesita atención ese día.</p>
+              </div>
+              <div>
+                <h3>Control de cargas</h3>
+                <p>Después de cada entrenamiento cargan los minutos y el esfuerzo percibido (RPE). La carga de la sesión se calcula sola: minutos por esfuerzo.</p>
+              </div>
+              <div>
+                <h3>La semana, de un vistazo</h3>
+                <p>Comparás los últimos 7 días con la semana anterior, por categoría, para ver si el plantel viene cargado o descansado.</p>
+              </div>
+              <div>
+                <h3>Evaluaciones físicas</h3>
+                <p>Armá las pruebas que usa tu club, cargá las mediciones y mirá promedios, el Top 10 y la evolución de cada jugadora a lo largo del año.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
       <section className="landing-more landing-wrap" id="ademas" aria-labelledby="ademas-title">
         <h2 id="ademas-title">Y todo lo demás del cuerpo técnico</h2>
         <dl>
