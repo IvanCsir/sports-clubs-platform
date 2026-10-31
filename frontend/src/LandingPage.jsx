@@ -29,7 +29,7 @@ const QUARTERS = [
 
 const MORE = [
   ['Torneos de AMH', 'Fixture, resultados y tabla de posiciones de AMH para 1ra División e Intermedia.'],
-  ['Para las jugadoras', 'Ven su citación y el plan del partido, y completan wellness y cargas desde el celular.'],
+  ['Un espacio por club', 'Cada club tiene su propio espacio, con sus datos y sus accesos separados de los demás.'],
   ['Plantel y accesos', 'Sumá jugadoras por categoría y dale acceso a cada integrante del cuerpo técnico con su cuenta de Google.'],
   ['Temporadas y respaldo', 'Los datos quedan ordenados por temporada y torneo, y podés descargar un respaldo cuando quieras.']
 ];
@@ -212,6 +212,32 @@ function SeguimientoShot() {
     </figure>
   );
 }
+const PLAYER_LINKS = [
+  ['Citaciones', '14 jugadoras citadas'],
+  ['Plan de partido', 'Foco semanal, videos y jugadas del equipo'],
+  ['Torneos y resultados', 'Fixture y tabla de posiciones'],
+  ['Evaluaciones físicas', 'Consultá las mediciones y su evolución']
+];
+
+function JugadoraShot() {
+  return (
+    <figure className="landing-shot landing-shot-phone" aria-label="Vista de ejemplo del inicio de una jugadora">
+      <div className="shot-match">
+        <span>Fecha 14</span>
+        <strong>vs Rival (B)</strong>
+        <small>Sáb 7/11 · Citación 15:00 · 16:45 · Local</small>
+        <i>Ver citación</i>
+      </div>
+      <ul className="shot-links">
+        {PLAYER_LINKS.map(([title, copy]) => (
+          <li key={title}><strong>{title}</strong><small>{copy}</small></li>
+        ))}
+      </ul>
+      <div className="shot-tabbar" aria-hidden="true"><span className="on">Inicio</span><span>Citaciones</span><span>Torneos</span><span>Más</span></div>
+      <figcaption>Datos de ejemplo</figcaption>
+    </figure>
+  );
+}
 export default function LandingPage() {
   const [showChat, setShowChat] = useState(false);
   useEffect(() => {
@@ -226,13 +252,13 @@ export default function LandingPage() {
         <Pitch className="landing-pitch" />
         <header className="landing-nav landing-wrap">
           <a className="landing-brand" href="/inicio" aria-label="Blue Hockey, inicio"><img src="/blue-hockey-icon.png" alt="" /><span>Blue Hockey</span></a>
-          <nav aria-label="Secciones"><a href="#momentos">Cómo funciona</a><a href="#preparacion-fisica">Preparación física</a><a href="#ademas">Y además</a></nav>
+          <nav aria-label="Secciones"><a href="#momentos">Cómo funciona</a><a href="#preparacion-fisica">Preparación física</a><a href="#jugadoras">Jugadoras</a><a href="#ademas">Y además</a></nav>
           <a className="landing-nav-link" href="/">Ingresar a mi club</a>
         </header>
         <div className="landing-hero-grid landing-wrap">
           <div className="landing-hero-copy">
-            <h1>Anotá el partido mientras se juega.</h1>
-            <p>Blue Hockey es la plataforma del cuerpo técnico: citaciones, plan de partido, botonera en vivo, estadísticas por cuarto, wellness y control de cargas, en un solo lugar y pensada para el celular.</p>
+            <h1>Todos los datos, en una misma jugada.</h1>
+            <p>Blue Hockey junta al cuerpo técnico y a las jugadoras en un mismo lugar: citaciones, plan de partido, botonera en vivo, estadísticas, wellness, cargas y evaluaciones. Todo desde el celular.</p>
             <div className="landing-actions">
               <a className="landing-btn" href="/">Ingresar a mi club</a>
               <a className="landing-btn ghost" href={whatsAppLink} target="_blank" rel="noreferrer">Sumar mi club</a>
@@ -309,6 +335,31 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+      <section className="landing-players landing-wrap" id="jugadoras" aria-labelledby="jugadoras-title">
+        <div className="landing-players-grid">
+          <div className="landing-players-copy">
+            <h2 id="jugadoras-title">Las jugadoras también la usan</h2>
+            <p className="landing-players-lead">Entran desde el enlace de su club, sin descargar nada, y tienen todo lo que necesitan en el celular.</p>
+            <div>
+              <h3>Saben cuándo y dónde se juega</h3>
+              <p>Ven la próxima fecha, el horario, la cancha y la citación del partido en cuanto el cuerpo técnico la guarda.</p>
+            </div>
+            <div>
+              <h3>Preparan el partido</h3>
+              <p>Miran el plan con los videos y las jugadas del equipo, y siguen el fixture y la tabla del torneo.</p>
+            </div>
+            <div>
+              <h3>Consultan sus evaluaciones</h3>
+              <p>Ven las pruebas físicas, sus marcas y los promedios del plantel, y cómo vienen evolucionando.</p>
+            </div>
+            <div>
+              <h3>Completan wellness y cargas</h3>
+              <p>Eligen su nombre y responden desde el celular, sin crear una cuenta. Sus respuestas individuales solo las ve el cuerpo técnico.</p>
+            </div>
+          </div>
+          <JugadoraShot />
         </div>
       </section>
       <section className="landing-more landing-wrap" id="ademas" aria-labelledby="ademas-title">
