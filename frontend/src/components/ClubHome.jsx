@@ -8,14 +8,11 @@ function citationSummary(citationLoadState, callup) {
 }
 
 export default function ClubHome({
-  club, category, matchInfo, hasNextMatch, matchLoadState, onRetryMatches,
+  matchInfo, hasNextMatch, matchLoadState, onRetryMatches,
   callup, citationLoadState, latestResult, authenticated, activePlayerCount, onSelect
 }) {
   return (
     <section className="club-home">
-      <header className="club-home-heading">
-        <div><span className="kicker">PANEL DEL CLUB</span><h2>Hola, {club.shortName || club.name}</h2><p>Resumen de {category === 'primera' ? '1ra División' : 'Intermedia'}</p></div>
-      </header>
       <section className="home-next-match">
         {matchLoadState.loading ? (
           <div className="home-data-notice" role="status">Cargando fixture desde AMH…</div>
@@ -55,20 +52,20 @@ export default function ClubHome({
         </button>
         <button type="button" className="home-dashboard-card" onClick={() => onSelect('preparacion')}>
           <span className="home-card-icon" aria-hidden="true"><Goal /></span>
-          <span className="home-card-copy"><strong>Plan partido</strong><small>Foco semanal, videos y jugadas del equipo</small></span><ChevronRight className="home-card-chevron" aria-hidden="true" />
+          <span className="home-card-copy"><strong>Plan de partido</strong><small>Foco semanal, videos y jugadas del equipo</small></span><ChevronRight className="home-card-chevron" aria-hidden="true" />
         </button>
         <button type="button" className="home-dashboard-card" onClick={() => onSelect('torneo')}>
           <span className="home-card-icon" aria-hidden="true"><Trophy /></span>
           <span className="home-card-copy"><strong>Torneos y resultados</strong><small>{latestResult ? `${latestResult.round}: ${latestResult.score} vs ${latestResult.rival}` : 'Fixture y tabla de posiciones'}</small></span><ChevronRight className="home-card-chevron" aria-hidden="true" />
         </button>
-        <button type="button" className="home-dashboard-card" onClick={() => onSelect('fisico')}>
-          <span className="home-card-icon" aria-hidden="true"><Zap /></span>
-          <span className="home-card-copy"><strong>Evaluaciones físicas</strong><small>Consultá las mediciones y su evolución</small></span><ChevronRight className="home-card-chevron" aria-hidden="true" />
-        </button>
         {authenticated && <button type="button" className="home-dashboard-card" onClick={() => onSelect('jugadoras')}>
           <span className="home-card-icon" aria-hidden="true"><UsersRound /></span>
           <span className="home-card-copy"><strong>Plantel</strong><small>{activePlayerCount} jugadoras activas</small></span><ChevronRight className="home-card-chevron" aria-hidden="true" />
         </button>}
+        <button type="button" className="home-dashboard-card" onClick={() => onSelect('fisico')}>
+          <span className="home-card-icon" aria-hidden="true"><Zap /></span>
+          <span className="home-card-copy"><strong>Evaluaciones físicas</strong><small>Consultá las mediciones y su evolución</small></span><ChevronRight className="home-card-chevron" aria-hidden="true" />
+        </button>
       </div>
     </section>
   );
