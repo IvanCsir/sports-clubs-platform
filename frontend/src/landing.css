@@ -1,0 +1,179 @@
+/* Landing pública (/inicio). Césped azul con líneas de campo; capturas con el azul marino de la app. */
+.landing-page {
+  --turf: #0e4db8;
+  --turf-deep: #0a2f73;
+  --chalk: #f3f6fb;
+  --ink: #0b1b3a;
+  --ink-soft: #4a5b78;
+  --rule: #0b1b3a24;
+  --amber: #e8a33d;
+  --sky: #58bdff;
+  --app-bg: #071426;
+  --display: 'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
+  --text: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--chalk);
+  font-family: var(--text);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+.landing-page *, .landing-page *::before, .landing-page *::after { box-sizing: border-box; }
+.landing-page h1, .landing-page h2, .landing-page h3, .landing-page p, .landing-page ul, .landing-page dl, .landing-page dd, .landing-page figure { margin: 0; }
+.landing-page ul { padding: 0; list-style: none; }
+.landing-page :where(a) { color: inherit; }
+.landing-page a:focus-visible, .landing-page button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+.landing-wrap { width: min(1180px, calc(100% - 48px)); margin-inline: auto; }
+
+/* Hero: el campo */
+.landing-hero { position: relative; overflow: hidden; color: #fff; background: var(--turf); }
+.landing-pitch { position: absolute; top: 0; left: 50%; z-index: 0; width: max(1200px, 100%); height: auto; color: #ffffff3d; transform: translateX(-50%); pointer-events: none; }
+.landing-nav { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 0; }
+.landing-brand { display: inline-flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-family: var(--display); font-size: 1.5rem; font-weight: 800; letter-spacing: .01em; }
+.landing-brand img { width: 34px; height: 34px; border-radius: 9px; object-fit: cover; }
+.landing-brand.dark { color: var(--ink); }
+.landing-nav nav { display: flex; gap: 28px; margin-left: auto; }
+.landing-nav nav a, .landing-nav-link { color: #ffffffd9; text-decoration: none; font-size: .95rem; font-weight: 500; }
+.landing-nav nav a:hover, .landing-nav-link:hover { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
+.landing-nav-link { padding: 9px 16px; border: 1.5px solid #ffffff80; border-radius: 10px; font-weight: 600; }
+.landing-hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); align-items: center; gap: clamp(32px, 6vw, 88px); padding: clamp(36px, 6vw, 72px) 0 clamp(64px, 9vw, 112px); }
+.landing-hero h1 { max-width: 11ch; margin-bottom: 24px; font-family: var(--display); font-size: clamp(3.1rem, 9.5vw, 7.4rem); font-weight: 800; line-height: .9; letter-spacing: -.005em; text-transform: uppercase; text-wrap: balance; }
+.landing-hero-copy > p { max-width: 46ch; color: #e6eefb; font-size: 1.2rem; line-height: 1.55; }
+.landing-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.landing-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 24px; border: 1.5px solid #fff; border-radius: 10px; color: var(--ink); background: #fff; text-decoration: none; font-size: 1rem; font-weight: 600; transition: background .15s ease, color .15s ease; }
+.landing-btn:hover { background: #e6eefb; }
+.landing-btn.ghost { color: #fff; background: transparent; border-color: #ffffff99; }
+.landing-btn.ghost:hover { background: #ffffff1f; }
+
+/* Botonera de demostración */
+.landing-phone { position: relative; width: 100%; max-width: 380px; justify-self: center; }
+.demo { padding: 14px; border: 1px solid #ffffff26; border-radius: 28px; color: #eaf6ff; background: var(--app-bg); box-shadow: 0 30px 60px #04143c73; }
+:where(.demo) button { min-height: 0; padding: 0; border: 0; border-radius: 0; color: inherit; background: none; font: inherit; font-weight: 400; cursor: pointer; }
+.demo-score { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; margin-bottom: 10px; }
+.demo-score span { overflow: hidden; color: #c5d4e4; font-size: .85rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.demo-score span:first-child { text-align: right; }
+.demo-score b { padding: 1px 12px; border: 1px solid #58bdff4d; border-radius: 12px; color: var(--sky); background: #58bdff14; font-family: var(--display); font-size: 2rem; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.demo-controls { display: flex; gap: 8px; }
+.demo-quarters { display: flex; flex: 1; gap: 6px; }
+.demo-quarters button { flex: 1; min-height: 40px; border: 1px solid #b7d5f222; border-radius: 11px; color: #b7c9de; background: #ffffff08; font-size: .85rem; font-weight: 700; }
+.demo-quarters button.active { border-color: var(--sky); color: #071426; background: var(--sky); }
+.demo-undo { min-height: 40px; padding: 0 12px; border: 1px solid #b7d5f233; border-radius: 11px; color: #eaf6ff; background: #ffffff10; font-size: .85rem; font-weight: 600; }
+.demo-undo:disabled { opacity: .45; cursor: not-allowed; }
+.demo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.demo-team { padding: 8px; border: 1px solid #b7d5f222; border-radius: 14px; }
+.demo-team.away { border-color: #f2b66d55; background: #f2b66d0b; }
+.landing-page .demo-team h3 { margin: 0 0 6px; overflow: hidden; color: #c5d4e4; font-family: var(--text); font-size: .82rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.demo-team.away h3 { color: #f2b66d; }
+.demo-btn { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label num" "total num"; align-items: center; gap: 2px 8px; width: 100%; min-height: 68px; margin-bottom: 6px; padding: 8px 10px; border: 1px solid #b7d5f21a; border-radius: 12px; color: #eaf6ff; text-align: left; background: #10243c; transition: transform .1s ease; }
+.demo-btn:last-child { margin-bottom: 0; }
+.demo-btn:hover { background: #142d49; }
+.demo-btn:active { transform: scale(.97); }
+.demo-btn strong { grid-area: label; font-size: .8rem; font-weight: 700; line-height: 1.15; }
+.demo-btn small { grid-area: total; color: #9eb4cc; font-size: .72rem; }
+.demo-btn b { grid-area: num; color: var(--sky); font-family: var(--display); font-size: 2.1rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.demo-team.away .demo-btn b { color: #f2b66d; }
+.demo-btn.flash { animation: demo-flash .4s ease-out; }
+.demo-team.away .demo-btn.flash { animation-name: demo-flash-away; }
+@keyframes demo-flash { from { background: #2d6f9c; } to { background: #10243c; } }
+@keyframes demo-flash-away { from { background: #8a6330; } to { background: #10243c; } }
+.demo-btn.hint { animation: demo-hint 1.6s ease-in-out 1.2s infinite; }
+@keyframes demo-hint { 0%, 100% { box-shadow: 0 0 0 0 #58bdff00; } 50% { box-shadow: 0 0 0 5px #58bdff55; } }
+.landing-phone-note { margin-top: 14px; color: #e6eefb; font-size: .95rem; text-align: center; }
+
+/* Antes, durante y después */
+.landing-moments { padding: clamp(72px, 10vw, 128px) 0 clamp(24px, 4vw, 48px); }
+.landing-page h2 { max-width: 16ch; font-family: var(--display); font-size: clamp(2.6rem, 6vw, 4.6rem); font-weight: 800; line-height: .95; text-transform: uppercase; text-wrap: balance; }
+.landing-moment { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: start; gap: clamp(32px, 6vw, 88px); padding: clamp(40px, 6vw, 64px) 0; border-top: 1px solid var(--rule); }
+.landing-moments h2 { margin-bottom: clamp(32px, 5vw, 56px); }
+.landing-moment:first-of-type { margin-top: 0; }
+.landing-moment h3 { margin-bottom: 14px; color: var(--turf); font-family: var(--display); font-size: clamp(2.2rem, 4vw, 3rem); font-weight: 800; line-height: 1; text-transform: uppercase; }
+.landing-moment-copy > p { max-width: 54ch; color: var(--ink-soft); }
+.landing-moment-copy ul { display: grid; gap: 8px; margin-top: 20px; }
+.landing-moment-copy li { position: relative; padding-left: 22px; font-weight: 500; }
+.landing-moment-copy li::before { content: ''; position: absolute; left: 0; top: .6em; width: 9px; height: 9px; border-radius: 50%; background: var(--turf); }
+
+/* Capturas de ejemplo */
+.landing-shot { padding: 18px; border: 1px solid #b7d5f222; border-radius: 16px; color: #eaf6ff; background: var(--app-bg); box-shadow: 0 18px 40px #0b1b3a2e; }
+.landing-shot figcaption { margin-top: 14px; color: #7f95ad; font-size: .78rem; }
+.shot-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 14px; }
+.shot-head strong { font-size: 1rem; }
+.shot-head span { color: #9eb4cc; font-size: .85rem; }
+.shot-subhead { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: #b7c9de; font-size: .9rem; }
+.shot-subhead b { padding: 1px 9px; border-radius: 999px; color: #071426; background: var(--sky); font-size: .8rem; }
+.shot-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.shot-chips li { padding: 7px 12px; border: 1px solid #58bdff55; border-radius: 9px; color: #eaf6ff; background: #58bdff14; font-size: .88rem; }
+.shot-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.shot-pill { padding: 9px 14px; border-radius: 10px; color: #071426; background: var(--sky); font-size: .88rem; font-weight: 700; }
+.shot-pill.ghost { color: #eaf6ff; background: transparent; border: 1px solid #b7d5f240; font-weight: 600; }
+.shot-feed { display: grid; gap: 8px; }
+.shot-feed li { display: grid; grid-template-columns: 34px 78px minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #b7d5f21a; border-radius: 10px; background: #ffffff06; }
+.shot-feed li span { color: #9eb4cc; font-size: .85rem; }
+.shot-feed li strong { color: var(--sky); font-size: .88rem; }
+.shot-feed li.away strong { color: #f2b66d; }
+.shot-feed li em { color: #dbe8f5; font-size: .88rem; font-style: normal; }
+.shot-legend { display: inline-flex; align-items: center; gap: 6px; }
+.shot-legend i { width: 10px; height: 10px; margin-left: 8px; border-radius: 3px; }
+.shot-legend i:first-child { margin-left: 0; }
+.shot-legend .home, .shot-pair .home { background: var(--sky); }
+.shot-legend .away, .shot-pair .away { background: #f2b66d; }
+.shot-bars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.shot-pair { display: flex; align-items: flex-end; gap: 6px; height: 140px; }
+.shot-pair span { position: relative; flex: 1; min-height: 14px; border-radius: 6px 6px 0 0; }
+.shot-pair b { position: absolute; top: -20px; left: 0; right: 0; color: #dbe8f5; font-size: .8rem; font-weight: 600; text-align: center; }
+.shot-bars small { display: block; margin-top: 8px; color: #9eb4cc; font-size: .85rem; text-align: center; }
+.shot-highlights { border: 1px solid #b7d5f21c; border-radius: 12px; }
+.shot-highlights li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 11px 14px; }
+.shot-highlights li + li { border-top: 1px solid #b7d5f21a; }
+.shot-highlights span { color: #b7c9de; font-size: .88rem; }
+.shot-highlights strong { font-size: .88rem; }
+
+/* El resto */
+.landing-more { padding: clamp(48px, 7vw, 88px) 0 clamp(72px, 10vw, 128px); }
+.landing-more h2 { margin-bottom: clamp(28px, 4vw, 48px); }
+.landing-more dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 clamp(32px, 6vw, 88px); }
+.landing-more dl > div { padding: 24px 0 28px; border-top: 1px solid var(--rule); }
+.landing-more dt { margin-bottom: 6px; font-size: 1.2rem; font-weight: 700; }
+.landing-more dd { max-width: 50ch; color: var(--ink-soft); }
+
+/* Cierre */
+.landing-closing { position: relative; overflow: hidden; color: #fff; background: var(--turf-deep); }
+.landing-pitch-closing { color: #ffffff2e; }
+.landing-closing-inner { position: relative; z-index: 1; padding: clamp(72px, 10vw, 128px) 0; }
+.landing-closing h2 { max-width: 13ch; margin-bottom: 20px; }
+.landing-closing p { max-width: 52ch; color: #dbe6f7; font-size: 1.15rem; }
+
+/* Pie */
+.landing-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 28px 0 36px; color: var(--ink-soft); font-size: .9rem; }
+.landing-footer small { flex-basis: 100%; font-size: .8rem; }
+
+/* WhatsApp */
+.landing-whatsapp { position: fixed; right: 18px; bottom: 18px; z-index: 20; opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .2s ease, transform .2s ease; display: inline-flex; align-items: center; gap: 9px; padding: 11px 18px 11px 14px; border-radius: 999px; color: #fff; background: #1faa59; box-shadow: 0 10px 28px #0b1b3a45; text-decoration: none; font-size: .95rem; font-weight: 600; }
+.landing-whatsapp.visible { opacity: 1; transform: none; pointer-events: auto; }
+.landing-whatsapp:hover { background: #188f4a; }
+.landing-whatsapp svg { width: 24px; height: 24px; fill: currentColor; }
+
+@media (max-width: 900px) {
+  .landing-hero-grid { grid-template-columns: minmax(0, 1fr); }
+  .landing-hero h1 { max-width: 12ch; }
+  .landing-phone { justify-self: start; }
+  .landing-pitch { transform: translateX(-80%); }
+  .landing-moment { grid-template-columns: minmax(0, 1fr); }
+  .landing-more dl { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .landing-wrap { width: calc(100% - 36px); }
+  .landing-nav nav { display: none; }
+  .landing-nav-link { margin-left: auto; }
+  .landing-hero-copy > p { font-size: 1rem; }
+  .landing-actions { flex-wrap: nowrap; gap: 8px; margin-top: 24px; }
+  .landing-btn { flex: 1 1 0; min-width: 0; min-height: 48px; padding: 0 10px; font-size: .92rem; text-align: center; }
+  .landing-hero-grid { gap: 28px; padding-top: 20px; }
+  .landing-phone { justify-self: stretch; max-width: none; }
+  .landing-whatsapp span { display: none; }
+  .landing-whatsapp { padding: 13px; }
+  .shot-feed li { grid-template-columns: 30px 66px minmax(0, 1fr); gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-btn.flash, .demo-btn.hint { animation: none; }
+  .demo-btn.flash { border-color: var(--sky); }
+  .demo-btn, .landing-whatsapp { transition: none; }
+}
