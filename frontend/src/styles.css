@@ -1361,3 +1361,15 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
   .home-dashboard-card:nth-child(4):nth-last-child(2), .home-dashboard-card:nth-child(5):nth-last-child(1) { grid-column: span 3; }
   .home-dashboard-card:nth-child(4):nth-last-child(1) { grid-column: span 6; }
 }
+
+/* Un solo control segmentado para todas las pestañas de categoría, filtro y modo */
+.tournament-tabs, .matches-tabs, .preparation-category-tabs, .physical-filters, .physical-modes, .category-tabs { display: inline-flex; flex-wrap: nowrap; gap: 0; width: fit-content; max-width: 100%; margin: 0 0 14px; padding: 3px; overflow-x: auto; border: 1px solid #8dd3ff40; border-radius: 12px; background: #ffffff0a; }
+.tournament-tabs button, .matches-tabs button, .preparation-category-tabs button, .physical-filters button, .physical-modes button, .category-tabs button { min-height: 0; padding: 8px 14px; border: 0; border-radius: 9px; color: #b7c9de; background: transparent; box-shadow: none; font-size: .88rem; white-space: nowrap; }
+.tournament-tabs button.active, .matches-tabs button.active, .preparation-category-tabs button.active, .physical-filters button.active, .physical-modes button.active, .category-tabs button.active { color: #071426; background: var(--club-accent, #00a2ff); box-shadow: none; }
+.physical-modes button svg { width: 16px; height: 16px; }
+.physical-filters, .physical-modes { margin: 12px 10px 4px 0; }
+@media (max-width: 680px) {
+  .tournament-tabs, .matches-tabs, .preparation-category-tabs, .physical-filters, .physical-modes, .category-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; overflow: visible; margin-right: 0; }
+  .tournament-tabs button, .matches-tabs button, .preparation-category-tabs button, .physical-filters button, .physical-modes button, .category-tabs button { padding: 9px 4px; font-size: .8rem; line-height: 1.15; text-align: center; white-space: normal; }
+  .physical-modes button svg { display: none; }
+}
