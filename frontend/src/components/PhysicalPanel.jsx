@@ -200,7 +200,6 @@ export default function PhysicalPanel({ club, authenticated, token, physicalPlay
         </form>
       )}
       <div className="physical-hero">
-        <span className="kicker"><Activity aria-hidden="true" /> RENDIMIENTO ATLÉTICO</span>
         <p>Consultá las evaluaciones anuales, marcas y promedios del plantel.</p>
       </div>
       <div className="physical-summary" aria-live="polite">
@@ -256,7 +255,6 @@ export default function PhysicalPanel({ club, authenticated, token, physicalPlay
             <div className="physical-profile">
               <div className="physical-profile-header">
                 <div>
-                  <span className="kicker">FICHA ATLÉTICA</span>
                   <h3>{selected.name}</h3>
                   <div className="physical-profile-meta">
                     <span>{divisionLabel(selected.filterTag)}</span>

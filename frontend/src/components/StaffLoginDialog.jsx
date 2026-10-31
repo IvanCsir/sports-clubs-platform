@@ -7,7 +7,6 @@ export default function StaffLoginDialog({ googleClientId, onCredential, onClose
     <div className="overlay" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
       <div className="form-card staff-login-card" role="dialog" aria-modal="true" aria-labelledby="staffLoginTitle">
         <button type="button" className="close" aria-label="Cerrar" onClick={onClose}>×</button>
-        <span className="kicker">ACCESO PRIVADO</span>
         <h2 id="staffLoginTitle">Cuerpo técnico</h2>
         <p>Ingresá con la cuenta Google que recibió la invitación del club.</p>
         {googleClientId ? (

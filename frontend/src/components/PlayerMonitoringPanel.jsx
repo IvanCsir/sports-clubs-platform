@@ -161,7 +161,7 @@ export default function PlayerMonitoringPanel({ club, authenticated, monitoring 
     return (
       <section className="monitoring-panel">
         <header className="monitoring-hero">
-          <div><span className="kicker">SEGUIMIENTO DEL PLANTEL</span><h2>Tu registro</h2><p>Elegí tu nombre y completá el formulario. Tus respuestas individuales solo las ve el cuerpo técnico.</p></div>
+          <div><h2>Tu registro</h2><p>Elegí tu nombre y completá el formulario. Tus respuestas individuales solo las ve el cuerpo técnico.</p></div>
         </header>
         <form className="monitoring-form" onSubmit={submit}>
           <div className="monitoring-form-heading"><h3>Registrar respuesta</h3><span>Sin cuenta · respuesta privada</span></div>
@@ -218,7 +218,7 @@ export default function PlayerMonitoringPanel({ club, authenticated, monitoring 
   return (
     <section className="monitoring-panel">
       <header className="monitoring-hero">
-        <div><span className="kicker">SEGUIMIENTO DEL PLANTEL</span><h2>Wellness, cargas y disponibilidad</h2><p>Las jugadoras cargan sus respuestas desde el formulario público. El detalle del plantel solo está disponible para el cuerpo técnico.</p></div>
+        <div><h2>Wellness, cargas y disponibilidad</h2><p>Las jugadoras cargan sus respuestas desde el formulario público. El detalle del plantel solo está disponible para el cuerpo técnico.</p></div>
         <div className="monitoring-tools"><label className="monitoring-filter">Categoría<select value={filterCategory} onChange={event => setFilterCategory(event.target.value)}><option value="all">Todas</option>{Object.entries(CATEGORY_LABELS).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label><button type="button" className="secondary" onClick={onRefresh}>Actualizar respuestas</button></div>
       </header>
       <div className="monitoring-staff-tabs" role="tablist" aria-label="Seguimiento del plantel">
@@ -227,10 +227,10 @@ export default function PlayerMonitoringPanel({ club, authenticated, monitoring 
       {tab === 'analysis' ? (
         <>
           <div className="monitoring-stats-grid">
-            <article><span>PLANTEL</span><strong>{activePlayerCount}</strong><small>jugadoras activas</small></article>
-            <article><span>WELLNESS HOY</span><strong>{wellnessToday.length}/{activePlayerCount}</strong><small>respuestas recibidas</small></article>
-            <article><span>DISPOSICIÓN PROMEDIO</span><strong>{readinessAverage === null ? '—' : `${readinessAverage}%`}</strong><small>{readinessAverage === null ? 'sin respuestas hoy' : 'escala orientativa'}</small></article>
-            <article><span>CARGAS HOY</span><strong>{loadsToday.length}/{activePlayerCount}</strong><small>registros recibidos</small></article>
+            <article><span>Plantel</span><strong>{activePlayerCount}</strong><small>jugadoras activas</small></article>
+            <article><span>Wellness hoy</span><strong>{wellnessToday.length}/{activePlayerCount}</strong><small>respuestas recibidas</small></article>
+            <article><span>Disposición promedio</span><strong>{readinessAverage === null ? '—' : `${readinessAverage}%`}</strong><small>{readinessAverage === null ? 'sin respuestas hoy' : 'escala orientativa'}</small></article>
+            <article><span>Cargas hoy</span><strong>{loadsToday.length}/{activePlayerCount}</strong><small>registros recibidos</small></article>
           </div>
           <div className="monitoring-dashboard-grid">
             <section className="monitoring-card"><h3>Respuestas de wellness de hoy</h3>{wellnessToday.length ? <div className="monitoring-response-list">{wellnessToday.map(row => <div key={row.id}><span><strong>{row.player_name}</strong><small>{CATEGORY_LABELS[row.team_category]} · disposición</small></span><b className={disposition(row) < 60 ? 'alert' : ''}>{disposition(row)}%</b></div>)}</div> : <p>Todavía no hay respuestas de wellness para hoy.</p>}</section>

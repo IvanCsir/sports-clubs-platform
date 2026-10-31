@@ -45,7 +45,6 @@ export default function SeasonBackupPanel({ club, token }) {
     <section className="physical-card season-backup-card">
       <div className="section-heading">
         <div>
-          <span className="kicker">DATOS DEL CUERPO TÉCNICO</span>
           <h2>Respaldo de temporada {season}</h2>
           <p>Descargá una copia de los datos deportivos guardados para esta temporada.</p>
         </div>

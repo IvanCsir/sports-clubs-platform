@@ -240,7 +240,6 @@ export default function AdminPortal({ onOpenWorkspace }) {
     <main className="portal">
       <section className="shell">
         <a className="admin-back-link" href="/">← Volver al portal</a>
-        <span className="kicker">ÁREA PRIVADA</span>
         <h1>Administración</h1>
         <p className="intro">Gestión de clubes. El acceso requiere credenciales de administrador.</p>
         {message && <div className="message">{message}</div>}
@@ -305,7 +304,6 @@ export default function AdminPortal({ onOpenWorkspace }) {
             <button type="button" className="close" onClick={() => setShowForm(false)}>
               ×
             </button>
-            <span className="kicker">ADMINISTRACIÓN</span>
             <h2>{selected ? 'Perfil del club' : 'Agregar club'}</h2>
             {PROFILE_FIELDS.map(name => (
               <label key={name}>

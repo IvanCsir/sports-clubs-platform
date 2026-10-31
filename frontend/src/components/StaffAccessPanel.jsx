@@ -58,7 +58,6 @@ export default function StaffAccessPanel({ club, token }) {
   }
   return (
     <section className="players-section staff-access-panel">
-      <span className="kicker">CUERPO TÉCNICO</span>
       <h2>Invitar a otra persona</h2>
       <p>Solo las personas responsables de accesos pueden invitar o quitar cuentas. El club debe conservar al menos una persona responsable.</p>
       <p>La persona recibirá un enlace para registrarse con Google. La invitación solo funciona con este email y vence en siete días.</p>

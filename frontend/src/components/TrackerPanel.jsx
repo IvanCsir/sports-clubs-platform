@@ -252,7 +252,6 @@ export default function TrackerPanel({
     return (
       <section className="tracker-panel">
         <div className="tracker-hero">
-          <span className="kicker">BOTONERA DT · {club.shortName || club.name}</span>
           <h2>Acceso del cuerpo técnico</h2>
           <p>Ingresá con tu cuenta Google invitada desde “Acceso cuerpo técnico” para registrar incidencias en tiempo real.</p>
         </div>

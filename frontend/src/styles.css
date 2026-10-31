@@ -1334,3 +1334,30 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .precarga-panel { max-width: 640px; }
 .precarga-steps { margin: 0 0 18px; padding-left: 20px; color: #b7c9de; line-height: 1.7; }
 @media (max-width: 760px) { .workspace-header-actions { display: none; } }
+
+/* Rótulos que quedan (nombre del club, fecha): sin mayúsculas forzadas ni letras separadas */
+.kicker { font-weight: 700; letter-spacing: .04em; }
+.home-match-label { font-weight: 700; letter-spacing: .02em; text-transform: none; font-size: .85rem; }
+
+/* Superficie única para las tarjetas de contenido */
+:root { --surface-radius: 18px; --surface-border: #b7d5f222; --surface-bg: linear-gradient(160deg, #0b1a2d, #081426 55%, #091a30); --surface-pad: clamp(14px, 3vw, 24px); }
+.physical-card, .tracker-panel, .stats-panel, .players-section, .match-preparation-card, .tournament-card, .monitoring-card { padding: var(--surface-pad); border: 1px solid var(--surface-border); border-radius: var(--surface-radius); background: var(--surface-bg); box-shadow: none; }
+.physical-card, .tracker-panel, .stats-panel, .players-section { margin-top: 12px; margin-bottom: 0; }
+.players-section > .section-heading, .players-section > h2:first-child { margin-top: 0; }
+.staff-access-panel { max-width: none; }
+
+/* Escudo del rival: iniciales debajo hasta que carga la imagen */
+.opponent-badge > span, .opponent-badge > img { grid-area: 1 / 1; }
+.opponent-badge > img { position: relative; background: #f7f9fc; opacity: 0; transition: opacity .2s ease; }
+.opponent-badge > img.loaded { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .opponent-badge > img { transition: none; } }
+
+/* Más ancho útil en pantallas grandes */
+@media (min-width: 1200px) { .workspace { width: min(1120px, 100%); } }
+.monitoring-stats-grid article span { color: #9eb4cc; font-size: .82rem; font-weight: 600; letter-spacing: 0; }
+@media (min-width: 761px) {
+  .home-dashboard-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .home-dashboard-card { grid-column: span 2; }
+  .home-dashboard-card:nth-child(4):nth-last-child(2), .home-dashboard-card:nth-child(5):nth-last-child(1) { grid-column: span 3; }
+  .home-dashboard-card:nth-child(4):nth-last-child(1) { grid-column: span 6; }
+}

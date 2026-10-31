@@ -77,7 +77,7 @@ export default function PrecargaModal({
       return;
     }
     if (selectedPlayers.size === 0) {
-      setStatus({ text: 'Debes tildar al menos una jugadora para precargar.', type: 'error' });
+      setStatus({ text: 'Tildá al menos una jugadora para precargar.', type: 'error' });
       return;
     }
 
@@ -85,7 +85,7 @@ export default function PrecargaModal({
     const divId = category === 'intermedia' ? '2' : '1';
 
     setIsSubmitting(true);
-    setStatus({ text: 'Ejecutando inscripción en sistema AMH (Oracle APEX)...', type: 'info' });
+    setStatus({ text: 'Inscribiendo jugadoras en AMH…', type: 'info' });
 
     try {
       const data = await api('/api/torneo/precarga', {
@@ -104,11 +104,11 @@ export default function PrecargaModal({
 
       const inscribedCount = data.result?.inscribedCount ?? selectedPlayers.size;
       setStatus({
-        text: `✅ Precarga exitosa: ${inscribedCount} jugadoras inscriptas en el sistema oficial AMH.`,
+        text: `Precarga lista: ${inscribedCount} jugadoras inscriptas en AMH.`,
         type: 'success'
       });
     } catch (err) {
-      setStatus({ text: `❌ Error al precargar: ${err.message}`, type: 'error' });
+      setStatus({ text: `No se pudo precargar: ${err.message}`, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -121,10 +121,9 @@ export default function PrecargaModal({
           ×
         </button>
 
-        <span className="kicker">AUTOMATIZACIÓN OFICIAL · AMH ORACLE APEX</span>
-        <h2>Precarga de Equipos en AMH</h2>
+        <h2>Precarga en AMH</h2>
         <p className="precarga-desc">
-          Inscribe automáticamente a las jugadoras citadas en la planilla oficial de la Asociación Mendocina de Hockey.
+          Inscribí a las jugadoras citadas en la planilla oficial de la Asociación Mendocina de Hockey.
         </p>
 
         {/* Categoría */}
@@ -150,7 +149,7 @@ export default function PrecargaModal({
         {/* Selector de partido oficial */}
         <div className="precarga-field">
           <label htmlFor="precarga-match-select">
-            <strong>Partido Oficial en AMH:</strong>
+            <strong>Partido oficial en AMH</strong>
             {loadingMatches && <small> (Consultando partidos en vivo...)</small>}
           </label>
           <select
@@ -175,7 +174,7 @@ export default function PrecargaModal({
         <div className="precarga-players-box">
           <div className="precarga-players-header">
             <strong>
-              Jugadoras Citadas ({selectedPlayers.size}/{currentPlayers.length})
+              Jugadoras citadas ({selectedPlayers.size}/{currentPlayers.length})
             </strong>
             <div className="precarga-bulk-actions">
               <button type="button" className="secondary" onClick={selectAll} disabled={isSubmitting}>
@@ -217,7 +216,7 @@ export default function PrecargaModal({
         )}
 
         <div className="precarga-disclaimer">
-          ⚠️ <strong>Seguridad garantizada:</strong> El bot únicamente tilda las jugadoras seleccionadas y presiona &quot;Inscribe Tildados&quot;. Nunca cierra ni bloquea la planilla del partido.
+          Solo se tildan las jugadoras que seleccionás. La planilla del partido no se cierra ni se bloquea.
         </div>
 
         <div className="precarga-footer">

@@ -392,7 +392,7 @@ export default function MatchPreparationPanel({ club, authenticated, token }) {
   return (
     <section className="match-preparation-workspace">
       <header className="preparation-page-header">
-        <div><span className="kicker">CUERPO TÉCNICO Y JUGADORAS</span><h2>Plan de partido</h2>
+        <div><h2>Plan de partido</h2>
           <p>Elegí un partido del fixture para consultar o preparar su plan.</p></div>
       </header>
       <div className="preparation-category-tabs">
