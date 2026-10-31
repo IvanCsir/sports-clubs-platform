@@ -1329,3 +1329,8 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .stats-quarter-table th:first-child { max-width: 170px; }
 .stats-halves-table { min-width: 0; }
 @media (max-width: 680px) { .stats-tabs button { padding: 9px 4px; font-size: .8rem; } }
+
+/* Precarga AMH como sección de Administración */
+.precarga-panel { max-width: 640px; }
+.precarga-steps { margin: 0 0 18px; padding-left: 20px; color: #b7c9de; line-height: 1.7; }
+@media (max-width: 760px) { .workspace-header-actions { display: none; } }

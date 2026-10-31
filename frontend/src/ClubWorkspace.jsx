@@ -4,6 +4,7 @@ import TrackerPanel from './components/TrackerPanel';
 import TournamentPanel from './components/TournamentPanel';
 import EstadisticasPanel from './components/EstadisticasPanel';
 import PrecargaModal from './components/PrecargaModal';
+import PrecargaPanel from './components/PrecargaPanel';
 import MatchPreparationPanel from './components/MatchPreparationPanel';
 import PlayerMonitoringPanel from './components/PlayerMonitoringPanel';
 import SeasonBackupPanel from './components/SeasonBackupPanel';
@@ -259,6 +260,8 @@ export default function ClubWorkspace({ club, onBack, showAdminBack }) {
             onGoToTracker={() => selectSection('dt')}
           />
         );
+      case 'precarga':
+        return authenticated ? <PrecargaPanel onOpen={() => setShowPrecargaModal(true)} /> : null;
       case 'respaldo':
         return authenticated ? <SeasonBackupPanel club={club} token={token} /> : null;
       case 'accesos':
@@ -320,16 +323,6 @@ export default function ClubWorkspace({ club, onBack, showAdminBack }) {
             ) : (
               <button type="button" className="secondary staff-access-header" onClick={() => setShowStaffLogin(true)}>
                 Acceso cuerpo técnico
-              </button>
-            )}
-            {authenticated && (
-              <button
-                type="button"
-                className="secondary precarga-trigger-btn"
-                onClick={() => setShowPrecargaModal(true)}
-                title="Inscribir tildadas en el sistema oficial de AMH"
-              >
-                🏑 Precarga AMH
               </button>
             )}
           </div>

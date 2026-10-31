@@ -9,7 +9,7 @@ const STAFF_ITEMS = [
   { type: 'group', id: 'partido', label: 'Partido', sectionIds: ['preparacion', 'dt', 'stats'] },
   { type: 'link', id: 'torneo' },
   { type: 'group', id: 'equipo', label: 'Equipo', sectionIds: ['jugadoras', 'fisico', 'seguimiento'] },
-  { type: 'group', id: 'administracion', label: 'Administración', sectionIds: ['accesos', 'respaldo'] }
+  { type: 'group', id: 'administracion', label: 'Administración', sectionIds: ['precarga', 'accesos', 'respaldo'] }
 ];
 const BOTTOM_BAR = [
   { id: 'inicio', label: 'Inicio', Icon: House },
@@ -29,6 +29,7 @@ export function workspaceSections(authenticated, canManageAccess) {
       { id: 'jugadoras', label: 'Plantel' },
       { id: 'dt', label: 'Botonera' },
       { id: 'stats', label: 'Estadísticas' },
+      { id: 'precarga', label: 'Precarga AMH' },
       { id: 'respaldo', label: 'Respaldo' },
       ...(canManageAccess ? [{ id: 'accesos', label: 'Accesos' }] : [])
     ] : [])
