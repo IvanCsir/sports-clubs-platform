@@ -240,11 +240,6 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .tracker-grid.single-team { grid-template-columns: minmax(0, 1fr); }
 .tracker-team { padding: 16px; border-radius: 16px; background: #ffffff0a; }
 .tracker-team h3 { margin-top: 0; }
-.tracker-team > button { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; width: 100%; margin: 8px 0; text-align: left; color: #eaf6ff; background: #123154; }
-.tracker-team > button span { display: grid; place-items: center; color: #8dd3ff; }
-.tracker-team > button span svg { width: 20px; height: 20px; }
-.tracker-team > button small { grid-column: 2; color: #b7c9de; font-weight: 500; }
-.tracker-team > button b { grid-column: 3; grid-row: 1 / span 2; color: #00a2ff; }
 .tracker-cards { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; color: #b7c9de; }
 .tracker-cards button { padding: 8px 10px; color: #eaf6ff; background: #ffffff12; }
 .tracker-feed { margin-top: 18px; }
@@ -311,13 +306,6 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 .tracker-team { padding: 17px; border: 1px solid #b7d5f21c; border-radius: 17px; background: #ffffff07; }
 .tracker-team h3 { margin: 0 0 8px; font-size: .95rem; color: #c5d4e4; }
 .tracker-score { margin-bottom: 12px; color: var(--club-accent, #58bdff); font-size: 2.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
-.tracker-team > button { min-height: 64px; margin: 8px 0; padding: 11px 13px; border: 1px solid #b7d5f21a; border-radius: 12px; background: #10243c; transition: transform .12s ease, border-color .12s ease, background .12s ease; }
-.tracker-team > button:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--club-accent, #00a2ff) 48%, transparent); background: #142d49; }
-.tracker-team > button:active { transform: scale(.985); }
-.tracker-team > button span { color: var(--club-accent, #58bdff); }
-.tracker-team > button strong { font-size: .9rem; }
-.tracker-team > button small { padding-top: 3px; font-size: .73rem; }
-.tracker-team > button b { color: var(--club-accent, #58bdff); font-size: 1.05rem; }
 .tracker-cards { margin-top: 16px; padding-top: 13px; border-top: 1px solid #b7d5f21a; }
 .tracker-cards button { min-width: 54px; min-height: 40px; border: 1px solid #b7d5f21c; border-radius: 10px; }
 .tracker-actions { gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #b7d5f218; }
@@ -351,11 +339,6 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
   .tracker-team { min-width: 0; padding: 10px; }
   .tracker-team h3 { overflow-wrap: anywhere; font-size: .76rem; line-height: 1.25; }
   .tracker-score { font-size: 1.9rem; }
-  .tracker-team > button { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 4px; min-height: 66px; padding: 8px 6px; }
-  .tracker-team > button span svg { width: 16px; height: 16px; }
-  .tracker-team > button strong { font-size: .72rem; line-height: 1.15; }
-  .tracker-team > button small { font-size: .62rem; line-height: 1.2; }
-  .tracker-team > button b { font-size: .82rem; }
   .tracker-cards { gap: 4px; font-size: .72rem; }
   .tracker-cards button { min-width: 36px; padding: 6px 4px; }
   .tracker-actions button { flex: 1 1 145px; }
@@ -1202,3 +1185,52 @@ input { width: 100%; padding: 11px 12px; border: 1px solid #8dd3ff40; border-rad
 @media (max-width: 680px) { .preview-match-header b { font-size: .65rem; } .preview-team-columns section > div > span b { font-size: .48rem; } }
 @media (max-width: 900px) { .landing-preview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .landing-preview-analytics { grid-column: 1 / -1; } .landing-preview-analytics .preview-app-window { max-width: 440px; margin: auto; } }
 @media (max-width: 680px) { .landing-product-preview { width: calc(100% - 36px); padding: 4px 0 80px; } .landing-preview-heading { display: block; margin-bottom: 24px; } .landing-preview-heading p { margin-top: 12px; } .landing-preview-grid { grid-template-columns: 1fr; gap: 12px; } .landing-preview-analytics { grid-column: auto; } .preview-app-window { min-height: 255px; } }
+
+/* Botonera: barra fija, botones grandes y paneles plegables */
+.tracker-live { position: sticky; top: 0; z-index: 6; margin: -4px -4px 16px; padding: 10px 4px 12px; border-bottom: 1px solid #b7d5f21a; background: #071426f2; backdrop-filter: blur(8px); }
+.tracker-scoreline { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 14px; margin-bottom: 10px; }
+.tracker-scoreline span { overflow: hidden; color: #c5d4e4; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.tracker-scoreline span:first-child { text-align: right; }
+.tracker-scoreline b { padding: 2px 16px; border: 1px solid color-mix(in srgb, var(--club-accent, #00a2ff) 30%, transparent); border-radius: 12px; color: var(--club-accent, #58bdff); background: color-mix(in srgb, var(--club-accent, #00a2ff) 8%, transparent); font-size: 2.2rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tracker-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tracker-controls .tracker-quarters, .tracker-controls .tracker-team-view { margin: 0; }
+.tracker-controls .tracker-quarters button { min-width: 48px; }
+.tracker-status-line { min-height: 1.3em; margin: 8px 0 0; color: #8fe0b8; font-size: .8rem; line-height: 1.3; }
+.tracker-undo { margin-left: auto; min-height: 42px; color: #eaf6ff; border: 1px solid #b7d5f233; border-radius: 11px; background: #ffffff10; }
+.tracker-undo:disabled { opacity: .45; cursor: not-allowed; }
+.tracker-event-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tracker-grid:not(.single-team) .tracker-event-grid { grid-template-columns: minmax(0, 1fr); }
+.tracker-event-grid > button { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "icon num" "label num" "total num"; align-items: center; gap: 2px 10px; min-height: 96px; padding: 14px 16px; border: 1px solid #b7d5f21a; border-radius: 14px; color: #eaf6ff; background: #10243c; text-align: left; transition: transform .1s ease; }
+.tracker-event-grid > button:hover { border-color: color-mix(in srgb, var(--club-accent, #00a2ff) 48%, transparent); background: #142d49; }
+.tracker-event-grid > button:active { transform: scale(.97); }
+.tracker-event-grid > button:disabled { opacity: .6; }
+.tracker-event-icon { grid-area: icon; display: flex; color: var(--club-accent, #58bdff); }
+.tracker-event-icon svg { width: 22px; height: 22px; }
+.tracker-event-grid strong { grid-area: label; font-size: .95rem; line-height: 1.2; }
+.tracker-event-grid small { grid-area: total; color: #9eb4cc; font-weight: 500; }
+.tracker-event-grid b { grid-area: num; color: var(--club-accent, #58bdff); font-size: 2.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.tracker-event-grid > button.flash { animation: tracker-flash .45s ease-out; }
+@keyframes tracker-flash { from { background: color-mix(in srgb, var(--club-accent, #00a2ff) 55%, #10243c); } to { background: #10243c; } }
+@media (prefers-reduced-motion: reduce) { .tracker-event-grid > button.flash { animation: none; border-color: var(--club-accent, #00a2ff); } }
+.tracker-cards small { color: #9eb4cc; font-weight: 500; }
+.tracker-setup, .tracker-feed { margin-top: 14px; padding: 0; border: 1px solid #b7d5f21a; border-radius: 14px; background: #ffffff05; }
+.tracker-setup > summary, .tracker-feed > summary { display: grid; gap: 2px; padding: 13px 16px; cursor: pointer; list-style: none; }
+.tracker-setup > summary::-webkit-details-marker, .tracker-feed > summary::-webkit-details-marker { display: none; }
+.tracker-setup > summary small, .tracker-feed > summary small { color: #9eb4cc; font-weight: 500; }
+.tracker-setup .tracker-toolbar { margin: 0; padding: 12px 16px 16px; border: 0; border-top: 1px solid #b7d5f21a; border-radius: 0; background: transparent; }
+.tracker-feed > div { padding: 12px 16px; }
+.tracker-feed > .empty-state { margin: 0; padding: 12px 16px; }
+.tracker-reset { margin: 12px 16px 16px; }
+@media (max-width: 680px) {
+  .tracker-scoreline { gap: 8px; margin-bottom: 8px; }
+  .tracker-scoreline span { font-size: .85rem; }
+  .tracker-scoreline b { padding: 2px 12px; font-size: 1.8rem; }
+  .tracker-controls .tracker-quarters { flex: 1; }
+  .tracker-controls .tracker-quarters button { min-width: 0; }
+  .tracker-controls .tracker-team-view { order: 3; flex: 1 1 100%; }
+  .tracker-controls .tracker-team-view button { min-height: 38px; padding: 6px; font-size: .78rem; line-height: 1.15; }
+  .tracker-controls .tracker-quarters button, .tracker-undo { min-height: 38px; }
+  .tracker-event-grid > button { min-height: 88px; padding: 12px; }
+  .tracker-event-grid b { font-size: 2.2rem; }
+  .tracker-grid { grid-template-columns: minmax(0, 1fr); }
+}

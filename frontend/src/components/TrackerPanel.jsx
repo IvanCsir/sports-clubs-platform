@@ -8,6 +8,18 @@ const TRACKER_ACTIONS = [
   ['fieldGoal', CircleDot, 'Gol de jugada']
 ];
 
+const EVENT_LABELS = {
+  entry: 'Ingreso al área',
+  corner: 'Córner corto',
+  stroke: 'Penal',
+  fieldGoal: 'Gol de jugada',
+  cornerGoal: 'Gol de córner corto',
+  strokeGoal: 'Gol de penal',
+  green: 'Tarjeta verde',
+  yellow: 'Tarjeta amarilla',
+  red: 'Tarjeta roja'
+};
+
 export default function TrackerPanel({
   club,
   calledUpPlayers = [],
@@ -19,8 +31,7 @@ export default function TrackerPanel({
   matches,
   nextMatch,
   loadMatches,
-  authenticated,
-  onOpenPrecarga
+  authenticated
 }) {
   const [matchIndex, setMatchIndex] = useState(-1);
   const [quarter, setQuarter] = useState(1);
@@ -30,6 +41,7 @@ export default function TrackerPanel({
   const [eventFlowError, setEventFlowError] = useState('');
   const [savingEvent, setSavingEvent] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
+  const [flash, setFlash] = useState('');
 
   const storageKey = `club_tracker_${club.slug}`;
   const match = matches[matchIndex];
@@ -113,6 +125,8 @@ export default function TrackerPanel({
   };
 
   const beginAction = (team, type) => {
+    setFlash(`${team}-${type}`);
+    setTimeout(() => setFlash(''), 450);
     setAuthStatus('');
     setEventFlowError('');
     if (type === 'entry' || ['green', 'yellow', 'red'].includes(type)) {
@@ -217,24 +231,28 @@ export default function TrackerPanel({
   const renderTeam = (team, name) => (
     <div className={`tracker-team ${team}`}>
       <h3>{name}</h3>
-      <div className="tracker-score">{score(team)}</div>
-      {TRACKER_ACTIONS.map(([type, Icon, label]) => (
-        <button
-          key={type}
-          onClick={() => beginAction(team, type)}
-          disabled={savingEvent}
-        >
-          <span><Icon /></span>
-          <strong>{label}</strong>
-          <small>{quarter}° cuarto: {countQuarter(team, type)} · Total: {count(team, type)}</small>
-          <b>+1</b>
-        </button>
-      ))}
+      <div className="tracker-event-grid">
+        {TRACKER_ACTIONS.map(([type, Icon, label]) => (
+          <button
+            type="button"
+            key={type}
+            className={flash === `${team}-${type}` ? 'flash' : ''}
+            onClick={() => beginAction(team, type)}
+            disabled={savingEvent}
+            aria-label={`${label}, ${quarter}° cuarto: ${countQuarter(team, type)}. Sumar uno`}
+          >
+            <span className="tracker-event-icon"><Icon aria-hidden="true" /></span>
+            <strong>{label}</strong>
+            <b>{countQuarter(team, type)}</b>
+            <small>Total {count(team, type)}</small>
+          </button>
+        ))}
+      </div>
       <div className="tracker-cards">
         <span>Tarjetas</span>
         {['green', 'yellow', 'red'].map(card => (
-          <button key={card} onClick={() => beginAction(team, card)} disabled={savingEvent}>
-            {card === 'green' ? '🟩' : card === 'yellow' ? '🟨' : '🟥'} C{quarter}: {countQuarter(team, card)} · {count(team, card)} total
+          <button type="button" key={card} onClick={() => beginAction(team, card)} disabled={savingEvent}>
+            {card === 'green' ? '🟩' : card === 'yellow' ? '🟨' : '🟥'} {countQuarter(team, card)} <small>de {count(team, card)}</small>
           </button>
         ))}
       </div>
@@ -253,114 +271,84 @@ export default function TrackerPanel({
     );
   }
 
+  const homeName = club.shortName || club.name;
+  const awayName = match?.rival || 'Rival';
+  const lastEvent = currentEvents.at(-1);
+
   return (
     <section className="tracker-panel">
-      <div className="tracker-hero">
-        <span className="kicker">BOTONERA DT · {club.shortName || club.name} · 1RA DIVISIÓN</span>
-        <h2>Registro táctico en vivo</h2>
-        <p>Guardá las incidencias del partido por cuarto y equipo. Se actualizan automáticamente en Estadísticas.</p>
-      </div>
-
-      <div className="tracker-toolbar">
-        <select value={matchIndex} onChange={event => { setMatchIndex(Number(event.target.value)); setSaveStatus(''); setAuthStatus(''); setEventFlow(null); }}>
-          <option value={-1}>Amistoso / partido manual</option>
-          {matches.map((item, index) => (
-            <option value={index} key={`${item.round}-${index}`}>
-              {item.round} · {item.rival} · {item.fecha}
-            </option>
-          ))}
-        </select>
-        <button className="refresh" onClick={() => loadMatches('1')}>
-          Actualizar Fixture
-        </button>
-        {onOpenPrecarga && (
-          <button
-            type="button"
-            className="secondary precarga-trigger-btn"
-            onClick={onOpenPrecarga}
-          >
-            🏑 Precarga AMH
+      <div className="tracker-live">
+        <div className="tracker-scoreline" aria-live="polite">
+          <span>{homeName}</span>
+          <b>{score('home')} - {score('away')}</b>
+          <span>{awayName}</span>
+        </div>
+        <div className="tracker-controls">
+          <div className="tracker-quarters" role="group" aria-label="Cuarto">
+            {[1, 2, 3, 4].map(item => (
+              <button type="button" className={quarter === item ? 'active' : ''} aria-pressed={quarter === item} onClick={() => setQuarter(item)} key={item}>{item}°</button>
+            ))}
+          </div>
+          <div className="tracker-team-view" role="group" aria-label="Equipo">
+            {[['home', homeName], ['away', awayName], ['both', 'Ambos']].map(([team, label]) => (
+              <button type="button" className={teamView === team ? 'active' : ''} aria-pressed={teamView === team} onClick={() => setTeamView(team)} key={team}>{label}</button>
+            ))}
+          </div>
+          <button type="button" className="tracker-undo" onClick={undoLastAction} disabled={!currentEvents.length || savingEvent}>
+            ↩ Deshacer
           </button>
-        )}
+        </div>
+        <p className="tracker-status-line" role="status" aria-live="polite">{authStatus ? '' : saveStatus}</p>
       </div>
 
-      {(saveStatus || authStatus) && (
-        <div className={`tracker-save-status ${authStatus ? 'is-error' : ''}`} role={authStatus ? 'alert' : 'status'} aria-live="polite">
-          <span aria-hidden="true">{authStatus ? '!' : saveStatus.startsWith('Guardado') || saveStatus.startsWith('Última acción eliminada') || saveStatus.startsWith('Partido reiniciado') ? '✓' : '•'}</span>
-          <div>{saveStatus && <strong>{saveStatus}</strong>}{authStatus && <small>{authStatus}</small>}</div>
+      {authStatus && (
+        <div className="tracker-save-status is-error" role="alert">
+          <span aria-hidden="true">!</span>
+          <div>{saveStatus && <strong>{saveStatus}</strong>}<small>{authStatus}</small></div>
         </div>
       )}
 
-      <div className="tracker-header">
-        <div>
-          <span className="kicker">{matchLabel || 'PARTIDO MANUAL'}</span>
-          <h3>
-            {club.shortName || club.name} <small>vs</small> {match?.rival || 'Rival'}
-          </h3>
-          <p>{match?.fecha || 'Sin fecha'} · {match?.homeAway || 'Local'}</p>
-        </div>
-        <div className="tracker-total-score">
-          {score('home')} - {score('away')}
-        </div>
-      </div>
-
-      <div className="tracker-quarters">
-        {[1, 2, 3, 4].map(item => (
-          <button
-            className={quarter === item ? 'active' : ''}
-            onClick={() => setQuarter(item)}
-            key={item}
-          >
-            {item}° cuarto
-          </button>
-        ))}
-      </div>
-
-      <div className="tracker-team-view">
-        {[
-          ['home', club.shortName || club.name],
-          ['away', match?.rival || 'Rival'],
-          ['both', 'Ambos']
-        ].map(([team, label]) => (
-          <button
-            className={teamView === team ? 'active' : ''}
-            onClick={() => setTeamView(team)}
-            key={team}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
       <div className={`tracker-grid${teamView === 'both' ? '' : ' single-team'}`}>
-        {(teamView === 'home' || teamView === 'both') && renderTeam('home', club.shortName || club.name)}
-        {(teamView === 'away' || teamView === 'both') && renderTeam('away', match?.rival || 'Rival')}
+        {(teamView === 'home' || teamView === 'both') && renderTeam('home', homeName)}
+        {(teamView === 'away' || teamView === 'both') && renderTeam('away', awayName)}
       </div>
 
-      <div className="tracker-actions">
-        <button onClick={async () => {
-          await undoLastAction();
-        }} disabled={!currentEvents.length || savingEvent}>
-          {savingEvent ? 'Guardando...' : '↩ Deshacer última acción'}
-        </button>
-        <button onClick={() => setTeamView('both')}>📊 Vista Ambos Equipos</button>
-        <button onClick={resetMatch} disabled={savingEvent}>🔄 Nuevo partido</button>
-      </div>
+      <details className="tracker-setup">
+        <summary>
+          <strong>{matchLabel}{match?.rival ? ` · vs ${match.rival}` : ''}</strong>
+          <small>{match?.fecha || 'Sin fecha'} · {match?.homeAway || 'Local'} · Cambiar partido</small>
+        </summary>
+        <div className="tracker-toolbar">
+          <select aria-label="Partido" value={matchIndex} onChange={event => { setMatchIndex(Number(event.target.value)); setSaveStatus(''); setAuthStatus(''); setEventFlow(null); }}>
+            <option value={-1}>Amistoso / partido manual</option>
+            {matches.map((item, index) => (
+              <option value={index} key={`${item.round}-${index}`}>
+                {item.round} · {item.rival} · {item.fecha}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="refresh" onClick={() => loadMatches('1')}>Actualizar fixture</button>
+        </div>
+      </details>
 
-      <div className="tracker-feed">
-        <h3>Feed de incidencias ({currentEvents.length})</h3>
+      <details className="tracker-feed">
+        <summary>
+          <strong>Incidencias ({currentEvents.length})</strong>
+          <small>{lastEvent ? `Última: ${EVENT_LABELS[lastEvent.type] || lastEvent.type}, ${lastEvent.quarter}° cuarto` : 'Todavía no hay incidencias'}</small>
+        </summary>
         {currentEvents.length ? (
           [...currentEvents].reverse().map(event => (
             <div key={event.id}>
               <span>{event.quarter}° cuarto</span>
-              <strong>{event.team === 'home' ? club.shortName || club.name : match?.rival || 'Rival'}</strong>
-              <small>{event.type}{event.player ? ` · Gol: ${event.player}` : ''}{event.generatedBy ? ` · Generó: ${event.generatedBy}` : ''}</small>
+              <strong>{event.team === 'home' ? homeName : awayName}</strong>
+              <small>{EVENT_LABELS[event.type] || event.type}{event.player ? ` · Gol: ${event.player}` : ''}{event.generatedBy ? ` · Generó: ${event.generatedBy}` : ''}</small>
             </div>
           ))
         ) : (
           <p className="empty-state">Todavía no hay incidencias registradas en este partido.</p>
         )}
-      </div>
+        <button type="button" className="secondary tracker-reset" onClick={resetMatch} disabled={savingEvent || !currentEvents.length}>Borrar incidencias del partido</button>
+      </details>
 
       {eventFlow && (
         <div className="overlay" role="presentation">

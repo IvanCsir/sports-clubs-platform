@@ -245,7 +245,6 @@ export default function ClubWorkspace({ club, onBack, showAdminBack }) {
             nextMatch={nextAmhMatch}
             loadMatches={loadMatches}
             authenticated={authenticated}
-            onOpenPrecarga={() => setShowPrecargaModal(true)}
           />
         );
       case 'stats':
